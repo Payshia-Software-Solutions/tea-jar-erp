@@ -84,7 +84,6 @@ function POSContent() {
               value={selectedLocation} 
               onValueChange={(val) => {
                 setSelectedLocation(val);
-                window?.localStorage?.setItem('location_id', val);
               }}
             >
               <SelectTrigger className="h-14 text-lg font-bold rounded-xl border-2 focus:ring-primary">

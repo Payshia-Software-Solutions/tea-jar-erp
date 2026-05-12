@@ -25,8 +25,10 @@ export type PartRow = {
   is_expiry?: number;
   wholesale_price?: number;
   image_filename?: string | null;
+  slug?: string | null;
   item_type: "Part" | "Service";
   recipe_type: "Standard" | "A La Carte" | "Recipe";
+  allowed_locations?: string | null;
   
   // Shipping & Packing Defaults
   net_weight_kg?: number;
@@ -41,10 +43,23 @@ export type PartRow = {
 
   // E-Commerce Rich Data
   is_online?: number;
+  out_of_stock?: number;
+  discount_type?: 'None' | 'Percentage' | 'Fixed';
+  discount_value?: number;
   public_description?: string | null;
+  item_section_id?: number | null;
+  section_name?: string | null;
+  item_department_id?: number | null;
+  department_name?: string | null;
+  item_category_id?: number | null;
+  category_name?: string | null;
   gallery?: Array<{ id: number; filename: string; label: string | null; sort_order: number }>;
   attributes_grouped?: Array<{ id: number; name: string; attributes: any[] }>;
 };
+
+export type ItemSection = { id: number; name: string; };
+export type ItemDepartment = { id: number; section_id: number; name: string; };
+export type ItemCategory = { id: number; name: string; };
 
 // Collections
 export const fetchInventoryCollections = async () => {
@@ -52,6 +67,73 @@ export const fetchInventoryCollections = async () => {
   if (!res.ok) throw new Error('Failed to load collections');
   const data = await res.json();
   return data.status === 'success' ? data.data : data;
+};
+
+export const fetchItemSections = async () => {
+  const res = await api('/api/item-breakdown/sections');
+  if (!res.ok) throw new Error('Failed to load sections');
+  const data = await res.json();
+  return data.status === 'success' ? data.data as ItemSection[] : data as ItemSection[];
+};
+
+export const createItemSection = async (payload: { name: string }) => {
+  const res = await api('/api/item-breakdown/create_section', { method: 'POST', body: JSON.stringify(payload) });
+  return res.json();
+};
+
+export const updateItemSection = async (id: number | string, payload: { name: string }) => {
+  const res = await api(`/api/item-breakdown/update_section/${id}`, { method: 'POST', body: JSON.stringify(payload) });
+  return res.json();
+};
+
+export const deleteItemSection = async (id: number | string) => {
+  const res = await api(`/api/item-breakdown/delete_section/${id}`, { method: 'DELETE' });
+  return res.json();
+};
+
+export const fetchItemDepartments = async (sectionId?: number | string) => {
+  const qs = sectionId ? `?section_id=${sectionId}` : '';
+  const res = await api(`/api/item-breakdown/departments${qs}`);
+  if (!res.ok) throw new Error('Failed to load departments');
+  const data = await res.json();
+  return data.status === 'success' ? data.data as ItemDepartment[] : data as ItemDepartment[];
+};
+
+export const createItemDepartment = async (payload: { section_id: number; name: string }) => {
+  const res = await api('/api/item-breakdown/create_department', { method: 'POST', body: JSON.stringify(payload) });
+  return res.json();
+};
+
+export const updateItemDepartment = async (id: number | string, payload: { section_id: number; name: string }) => {
+  const res = await api(`/api/item-breakdown/update_department/${id}`, { method: 'POST', body: JSON.stringify(payload) });
+  return res.json();
+};
+
+export const deleteItemDepartment = async (id: number | string) => {
+  const res = await api(`/api/item-breakdown/delete_department/${id}`, { method: 'DELETE' });
+  return res.json();
+};
+
+export const fetchItemCategories = async () => {
+  const res = await api('/api/item-breakdown/categories');
+  if (!res.ok) throw new Error('Failed to load categories');
+  const data = await res.json();
+  return data.status === 'success' ? data.data as ItemCategory[] : data as ItemCategory[];
+};
+
+export const createItemCategory = async (payload: { name: string }) => {
+  const res = await api('/api/item-breakdown/create_category', { method: 'POST', body: JSON.stringify(payload) });
+  return res.json();
+};
+
+export const updateItemCategory = async (id: number | string, payload: { name: string }) => {
+  const res = await api(`/api/item-breakdown/update_category/${id}`, { method: 'POST', body: JSON.stringify(payload) });
+  return res.json();
+};
+
+export const deleteItemCategory = async (id: number | string) => {
+  const res = await api(`/api/item-breakdown/delete_category/${id}`, { method: 'DELETE' });
+  return res.json();
 };
 
 // Attributes Groups
@@ -183,6 +265,15 @@ export const updatePart = async (id: string | number, payload: Partial<PartRow> 
   const res = await api(`/api/part/update/${id}`, { method: 'POST', body: JSON.stringify(payload) });
   if (!res.ok) throw new Error('Failed to update part');
   return res.json() as Promise<ApiSuccess<null>>;
+};
+
+export const bulkUpdatePartDiscount = async (payload: { ids: number[], discount_type: string, discount_value: number }) => {
+    const res = await api('/api/part/bulk_update_discount', { 
+        method: 'POST', 
+        body: JSON.stringify(payload) 
+    });
+    if (!res.ok) throw new Error('Failed to bulk update discounts');
+    return res.json() as Promise<ApiSuccess<null>>;
 };
 
 export const deletePart = async (id: string | number) => {

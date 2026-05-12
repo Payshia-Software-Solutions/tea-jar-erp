@@ -41,7 +41,8 @@ import {
   Mail,
   Calendar as CalendarIcon,
   Utensils,
-  Calculator
+  Calculator,
+  FolderTree
 } from "lucide-react";
 
 export type NavItem = {
@@ -110,13 +111,15 @@ export const salesItems: NavItem[] = [
   { icon: FileText, label: "Quotations", href: "/sales/quotations", perm: "sales.read" },
   { icon: FileText, label: "Invoices", href: "/cms/invoices", perm: "invoices.read" },
   { icon: History, label: "Recurring Invoices", href: "/cms/invoices/recurring", perm: "invoices.read" },
-  { icon: ShoppingCart, label: "Online Orders", href: "/sales/online-orders", perm: "invoices.read" },
   { icon: Receipt, label: "Payment Receipts", href: "/cms/payment-receipts", perm: "payments.read" },
   { icon: Landmark, label: "Cheque Inventory", href: "/cms/cheques", perm: "payments.read" },
 ];
 
 export const masterDataItems: NavItem[] = [
   { icon: LayoutGrid, label: "Product Collections", href: "/master-data/collections", perm: "parts.read" },
+  { icon: LayoutGrid, label: "Item Sections", href: "/master-data/item-sections", perm: "parts.read" },
+  { icon: Layers, label: "Item Departments", href: "/master-data/item-departments", perm: "parts.read" },
+  { icon: Grid, label: "Item Categories", href: "/master-data/item-categories", perm: "parts.read" },
   { icon: Settings, label: "Technical Specifications", href: "/master-data/attributes", perm: "parts.read" },
   { icon: Tags, label: "Units", href: "/master-data/units", perm: "units.read" },
   { icon: Percent, label: "Taxes", href: "/master-data/taxes", perm: "taxes.read" },
@@ -173,6 +176,18 @@ export const banquetItems: NavItem[] = [
   { icon: Truck, label: "Banquet Vendors", href: "/banquet/vendors", perm: "orders.read" },
 ];
 
+export const ecommerceItems: NavItem[] = [
+  { icon: ShoppingCart, label: "Online Orders", href: "/ecommerce/orders", perm: "invoices.read" },
+  { icon: Users, label: "Storefront Customers", href: "/ecommerce/customers", perm: "customers.read" },
+  { icon: History, label: "Payment Webhook Logs", href: "/ecommerce/payment-logs", perm: "invoices.read" },
+  { icon: LayoutGrid, label: "Content Management", href: "/ecommerce/content", perm: "promotions.write" },
+  { icon: FolderTree, label: "Navigation Menu", href: "/ecommerce/navigation", perm: "promotions.write" },
+  { icon: Boxes, label: "Storefront Products", href: "/ecommerce/products", perm: "parts.read" },
+  { icon: MessageSquare, label: "Product Reviews", href: "/ecommerce/reviews", perm: "promotions.write" },
+  { icon: Settings, label: "E-commerce Settings", href: "/ecommerce/settings", perm: "promotions.write" },
+  { icon: Calculator, label: "Developer Options", href: "/ecommerce/developer", perm: "promotions.write" },
+];
+
 export const adminNavItems: NavItem[] = [
   { icon: Users, label: "Users", href: "/admin/users" },
   { icon: Shield, label: "RBAC Roles", href: "/admin/rbac" },
@@ -185,3 +200,4 @@ export const adminNavItems: NavItem[] = [
   { icon: CreditCard, label: "Subscription", href: "/admin/subscription" },
   { icon: FileX, label: "Document Cancellations", href: "/accounting/cancellations", perm: "accounting.write" },
 ];
+

@@ -97,12 +97,14 @@ class TenantModel {
         $apiKey = "NX-" . bin2hex(random_bytes(24)); // Also make API key longer
         $expiry = date('Y-m-d', strtotime('+14 days'));
 
-        $this->db->query("INSERT INTO saas_tenants (name, address, business_type, admin_email, slug, package_id, currency, db_name, api_url, status, trial_expiry, license_key, api_key) 
-                         VALUES (:name, :address, :type, :email, :slug, :pid, :curr, :db, :url, 'Trial', :expiry, :license, :apikey)");
+        $this->db->query("INSERT INTO saas_tenants (name, address, business_type, admin_email, contact_number, billing_cc_email, slug, package_id, currency, db_name, api_url, status, trial_expiry, license_key, api_key) 
+                         VALUES (:name, :address, :type, :email, :phone, :cc, :slug, :pid, :curr, :db, :url, 'Trial', :expiry, :license, :apikey)");
         $this->db->bind(':name', $data['name']);
         $this->db->bind(':address', $data['address'] ?? '');
         $this->db->bind(':type', $data['business_type'] ?? '');
         $this->db->bind(':email', $data['admin_email'] ?? '');
+        $this->db->bind(':phone', $data['contact_number'] ?? null);
+        $this->db->bind(':cc', $data['billing_cc_email'] ?? null);
         $this->db->bind(':slug', $data['slug']);
         $this->db->bind(':pid', $data['package_id'] ?? 1);
         $this->db->bind(':curr', $data['currency'] ?? 'USD');
@@ -123,8 +125,10 @@ class TenantModel {
     }
 
     public function update($data) {
-        $this->db->query("UPDATE saas_tenants SET name = :name, slug = :slug, package_id = :pid, currency = :curr, status = :status, license_key = :license, api_key = :apikey, trial_expiry = :expiry WHERE id = :id");
+        $this->db->query("UPDATE saas_tenants SET name = :name, admin_email = :email, contact_number = :phone, slug = :slug, package_id = :pid, currency = :curr, status = :status, license_key = :license, api_key = :apikey, trial_expiry = :expiry, billing_cc_email = :cc WHERE id = :id");
         $this->db->bind(':name', $data['name']);
+        $this->db->bind(':email', $data['admin_email']);
+        $this->db->bind(':phone', $data['contact_number'] ?? null);
         $this->db->bind(':slug', $data['slug']);
         $this->db->bind(':pid', $data['package_id']);
         $this->db->bind(':curr', $data['currency']);
@@ -132,6 +136,7 @@ class TenantModel {
         $this->db->bind(':license', $data['license_key']);
         $this->db->bind(':apikey', $data['api_key']);
         $this->db->bind(':expiry', $data['trial_expiry'] ?? null);
+        $this->db->bind(':cc', $data['billing_cc_email'] ?? null);
         $this->db->bind(':id', $data['id']);
         return $this->db->execute();
     }
@@ -187,5 +192,19 @@ class TenantModel {
             WHERE t.status = 'Active'
         ");
         return $this->db->resultSet();
+    }
+
+    public function logEmail($invoiceId, $type, $recipient, $cc, $status, $error = null, $subject = null, $body = null) {
+        $this->db->query("INSERT INTO saas_email_logs (invoice_id, email_type, subject, body, recipient, cc_recipient, status, error_message) 
+                         VALUES (:id, :type, :sub, :body, :to, :cc, :status, :err)");
+        $this->db->bind(':id', $invoiceId);
+        $this->db->bind(':type', $type);
+        $this->db->bind(':sub', $subject);
+        $this->db->bind(':body', $body);
+        $this->db->bind(':to', $recipient);
+        $this->db->bind(':cc', $cc);
+        $this->db->bind(':status', $status);
+        $this->db->bind(':err', $error);
+        return $this->db->execute();
     }
 }

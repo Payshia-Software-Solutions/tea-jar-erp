@@ -261,3 +261,45 @@ export const updateSystemSettings = async (settings: Record<string, string>): Pr
     throw new Error(err.message || 'Failed to update system settings');
   }
 };
+export const fetchStorefrontSettings = async (locationId: string | number) => {
+  const res = await api(`/api/storefront-settings/index?location_id=${locationId}`);
+  if (!res.ok) throw new Error('Failed to load storefront settings');
+  const data = await res.json();
+  return data.status === 'success' ? data.data : data;
+};
+
+export const updateStorefrontSettings = async (payload: any) => {
+  const res = await api('/api/storefront-settings/update', {
+    method: 'POST',
+    body: JSON.stringify(payload)
+  });
+  if (!res.ok) throw new Error('Failed to update storefront settings');
+  return res.json() as Promise<ApiSuccess<null>>;
+};
+
+export const testSmtpSettings = async (payload: any) => {
+  const res = await api('/api/storefront-settings/testSmtp', {
+    method: 'POST',
+    body: JSON.stringify(payload)
+  });
+  if (!res.ok) {
+    let message = 'Failed to test SMTP settings';
+    try {
+        const err = await res.json();
+        message = err.message || err.error || message;
+    } catch (e) {
+        message = `Server Error (${res.status})`;
+    }
+    throw new Error(message);
+  }
+  return res.json();
+};
+
+export const uploadStorefrontIcon = async (formData: FormData) => {
+  const res = await api('/api/storefront-settings/uploadIcon', {
+    method: 'POST',
+    body: formData
+  });
+  if (!res.ok) throw new Error('Failed to upload icon');
+  return res.json();
+};

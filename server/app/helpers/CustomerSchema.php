@@ -41,7 +41,12 @@ class CustomerSchema {
             'is_active' => "TINYINT(1) DEFAULT 1",
             'is_unsubscribed' => "TINYINT(1) DEFAULT 0",
             'credit_limit' => "DECIMAL(10, 2) DEFAULT 0.00",
-            'credit_days' => "INT DEFAULT 0"
+            'credit_days' => "INT DEFAULT 0",
+            'password' => "VARCHAR(255) NULL",
+            'is_ecommerce_user' => "TINYINT(1) DEFAULT 0",
+            'city' => "VARCHAR(255) NULL",
+            'postal_code' => "VARCHAR(100) NULL",
+            'last_login' => "DATETIME NULL"
         ];
 
         foreach ($cols as $col => $def) {

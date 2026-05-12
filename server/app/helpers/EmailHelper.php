@@ -6,38 +6,50 @@ use PHPMailer\PHPMailer\SMTP;
 class EmailHelper {
     
     /**
-     * Send an HTML email with optional attachments
-     * @param string $to Recipient email
-     * @param string $subject Email subject
-     * @param string $message HTML content
-     * @param array $attachments Array of absolute file paths to attach
-     * @return array Result with status and message
+     * Send an HTML email using global system settings
      */
     public static function send($to, $subject, $message, $attachments = []) {
         require_once __DIR__ . '/../models/SystemSetting.php';
         $settingModel = new SystemSetting();
         $settings = $settingModel->getAll();
 
-        $fromName = $settings['mail_from_name'] ?? 'BizFlow';
-        $fromEmail = $settings['mail_from_addr'] ?? 'no-reply@payshia.com';
+        $config = [
+            'mail_host' => $settings['mail_host'] ?? '',
+            'mail_user' => $settings['mail_user'] ?? '',
+            'mail_pass' => $settings['mail_pass'] ?? '',
+            'mail_port' => $settings['mail_port'] ?? 587,
+            'mail_encryption' => $settings['mail_encryption'] ?? 'tls',
+            'mail_from_addr' => $settings['mail_from_addr'] ?? 'no-reply@payshia.com',
+            'mail_from_name' => $settings['mail_from_name'] ?? 'BizFlow'
+        ];
+
+        return self::sendWithConfig($to, $subject, $message, $config, $attachments);
+    }
+
+    /**
+     * Send an HTML email with specific configuration
+     */
+    public static function sendWithConfig($to, $subject, $message, $config, $attachments = []) {
+        $fromName = $config['mail_from_name'] ?? 'BizFlow';
+        $fromEmail = $config['mail_from_addr'] ?? 'no-reply@payshia.com';
 
         // Wrap message in a premium professional template
         if (strpos($message, '<html') === false) {
-            $message = self::wrapTemplate($message, $subject);
+            $message = self::wrapTemplate($message, $subject, $fromName);
         }
 
         $mail = new PHPMailer(true);
 
         try {
-            // Configure SMTP if settings exist
-            if (isset($settings['mail_host']) && !empty($settings['mail_host'])) {
+            // Configure SMTP if host exists
+            if (!empty($config['mail_host'])) {
                 $mail->isSMTP();
-                $mail->Host       = $settings['mail_host'];
-                $mail->SMTPAuth   = !empty($settings['mail_user']);
-                $mail->Username   = $settings['mail_user'] ?? '';
-                $mail->Password   = $settings['mail_pass'] ?? '';
-                $mail->SMTPSecure = ($settings['mail_encryption'] ?? '') === 'ssl' ? PHPMailer::ENCRYPTION_SMTPS : PHPMailer::ENCRYPTION_STARTTLS;
-                $mail->Port       = $settings['mail_port'] ?? 587;
+                $mail->Host       = $config['mail_host'];
+                $mail->SMTPAuth   = !empty($config['mail_user']);
+                $mail->Username   = $config['mail_user'] ?? '';
+                $mail->Password   = $config['mail_pass'] ?? '';
+                $mail->SMTPSecure = ($config['mail_encryption'] ?? '') === 'ssl' ? PHPMailer::ENCRYPTION_SMTPS : PHPMailer::ENCRYPTION_STARTTLS;
+                $mail->Port       = $config['mail_port'] ?? 587;
                 
                 $mail->SMTPOptions = array(
                     'ssl' => array(
@@ -54,6 +66,20 @@ class EmailHelper {
             $mail->setFrom($fromEmail, $fromName);
             $mail->addAddress($to);
             $mail->addReplyTo($fromEmail);
+
+            // CC & BCC
+            if (!empty($config['cc_email'])) {
+                $ccEmails = array_map('trim', explode(',', $config['cc_email']));
+                foreach ($ccEmails as $cc) {
+                    if (filter_var($cc, FILTER_VALIDATE_EMAIL)) $mail->addCC($cc);
+                }
+            }
+            if (!empty($config['bcc_email'])) {
+                $bccEmails = array_map('trim', explode(',', $config['bcc_email']));
+                foreach ($bccEmails as $bcc) {
+                    if (filter_var($bcc, FILTER_VALIDATE_EMAIL)) $mail->addBCC($bcc);
+                }
+            }
 
             // Attachments
             if (!empty($attachments)) {
@@ -80,7 +106,7 @@ class EmailHelper {
     /**
      * Wrap content in a premium, modern responsive template
      */
-    private static function wrapTemplate($content, $title) {
+    private static function wrapTemplate($content, $title, $brand = 'BizFlow Solutions') {
         $year = date('Y');
         return '
         <!DOCTYPE html>
@@ -113,13 +139,13 @@ class EmailHelper {
             <div class="wrapper">
                 <div class="main">
                     <div class="header">
-                        <h1>BizFlow Solutions</h1>
+                        <h1>' . $brand . '</h1>
                     </div>
                     <div class="content">
                         ' . $content . '
                     </div>
                     <div class="footer">
-                        <p style="margin: 0;">&copy; ' . $year . ' Payshia Software Solutions. All rights reserved.</p>
+                        <p style="margin: 0;">&copy; ' . $year . ' ' . $brand . '. All rights reserved.</p>
                         <p style="margin: 8px 0 0 0; opacity: 0.7;">This is an automated message, please do not reply directly to this email.</p>
                     </div>
                 </div>

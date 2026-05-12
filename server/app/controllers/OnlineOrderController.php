@@ -14,7 +14,7 @@ class OnlineOrderController extends Controller {
         $this->db->query("
             SELECT o.*, l.name as location_name 
             FROM online_orders o
-            JOIN service_locations l ON o.location_id = l.id
+            LEFT JOIN service_locations l ON o.location_id = l.id
             ORDER BY o.created_at DESC
         ");
         $orders = $this->db->resultSet();
@@ -23,9 +23,10 @@ class OnlineOrderController extends Controller {
         foreach ($orders as &$order) {
             $this->db->query("SELECT COUNT(*) as item_count FROM online_order_items WHERE order_id = :id");
             $this->db->bind(':id', $order->id);
-            $order->item_count = $this->db->single()->item_count;
+            $res = $this->db->single();
+            $order->item_count = $res ? $res->item_count : 0;
 
-            $details = json_decode($order->customer_details_json, true);
+            $details = json_decode($order->customer_details_json ?? '', true);
             $order->customer_name = $details['name'] ?? 'Unknown Customer';
         }
 

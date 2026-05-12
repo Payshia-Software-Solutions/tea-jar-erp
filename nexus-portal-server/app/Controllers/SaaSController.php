@@ -103,7 +103,43 @@ class SaaSController extends Controller {
         $this->checkAuth();
         $data = $this->getPostData();
         $model = new TenantModel();
+        
+        // Fetch current state for change detection
+        $oldData = $model->getByIdWithPackage($data['id']);
+        if (!$oldData) return $this->json(['status' => 'error', 'message' => 'Tenant not found'], 404);
+
         if ($model->update($data)) {
+            // Change Detection Logic
+            $changes = [];
+            $fieldsToTrack = [
+                'status' => 'Account Status',
+                'package_id' => 'Subscription Plan',
+                'currency' => 'Billing Currency',
+                'trial_expiry' => 'Trial Expiry Date'
+            ];
+
+            foreach ($fieldsToTrack as $key => $label) {
+                $oldVal = (string)$oldData->$key;
+                $newVal = (string)($data[$key] ?? $oldVal);
+
+                if ($oldVal !== $newVal) {
+                    // For package_id, fetch names
+                    if ($key === 'package_id') {
+                        $pkgModel = new PackageModel();
+                        $oldPkg = $pkgModel->getById($oldVal);
+                        $newPkg = $pkgModel->getById($newVal);
+                        $oldVal = $oldPkg ? $oldPkg->name : $oldVal;
+                        $newVal = $newPkg ? $newPkg->name : $newVal;
+                    }
+                    $changes[$label] = ['old' => $oldVal, 'new' => $newVal];
+                }
+            }
+
+            if (!empty($changes)) {
+                $sent = \App\Core\Mailer::sendTenantUpdateEmail($oldData->admin_email, $oldData->name, $changes);
+                $model->logEmail(null, 'Account Update', $oldData->admin_email, null, $sent ? 'Sent' : 'Failed');
+            }
+
             return $this->json(['status' => 'success', 'message' => 'Tenant updated']);
         } else {
             return $this->json(['status' => 'error', 'message' => 'Update failed'], 500);
@@ -114,7 +150,18 @@ class SaaSController extends Controller {
         $this->checkAuth();
         $data = $this->getPostData();
         $model = new TenantModel();
+        
+        $oldData = $model->getByIdWithPackage($data['id']);
+        if (!$oldData) return $this->json(['status' => 'error', 'message' => 'Tenant not found'], 404);
+
         if ($model->updateStatus($data['id'], $data['status'])) {
+            if ($oldData->status !== $data['status']) {
+                $changes = [
+                    'Account Status' => ['old' => $oldData->status, 'new' => $data['status']]
+                ];
+                $sent = \App\Core\Mailer::sendTenantUpdateEmail($oldData->admin_email, $oldData->name, $changes);
+                $model->logEmail(null, 'Account Update', $oldData->admin_email, null, $sent ? 'Sent' : 'Failed');
+            }
             return $this->json(['status' => 'success', 'message' => 'Status updated']);
         } else {
             return $this->json(['status' => 'error', 'message' => 'Update failed'], 500);

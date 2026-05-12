@@ -1,443 +1,493 @@
 <?php
 /**
  * Public Order Controller
- * Handles order placement from the public website.
+ * Provides public API access to order/invoice details using API Key authentication.
  */
 class PublicOrderController extends Controller {
-    private $orderModel;
-    private $itemModel;
-    private $systemModel;
-    private $locationModel;
-    private $promotionModel;
+    private $invoiceModel;
     private $apiClientModel;
+    private $db;
 
     public function __construct() {
-        $this->orderModel = $this->model('OnlineOrder');
-        $this->itemModel = $this->model('Part');
-        $this->systemModel = $this->model('SystemSetting');
-        $this->locationModel = $this->model('ServiceLocation');
-        $this->promotionModel = $this->model('Promotion');
-        
-        require_once __DIR__ . '/../models/ApiClient.php';
-        $this->apiClientModel = new ApiClient();
+        $this->invoiceModel = $this->model('Invoice');
+        $this->apiClientModel = $this->model('ApiClient');
+        $this->db = new Database();
+    }
+
+    private function handlePublicCors() {
+        $origin = $_SERVER['HTTP_ORIGIN'] ?? '';
+        $apiKey = $_SERVER['HTTP_X_API_KEY'] ?? $_GET['api_key'] ?? '';
+        header('Access-Control-Allow-Methods: GET, POST, OPTIONS');
+        header('Access-Control-Allow-Headers: X-API-Key, Content-Type');
+        if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
+            if (!empty($apiKey) && !empty($origin) && $this->apiClientModel->validate($apiKey, $origin)) {
+                header('Access-Control-Allow-Origin: ' . $origin);
+            } else {
+                header('Access-Control-Allow-Origin: *');
+            }
+            http_response_code(204);
+            exit;
+        }
+        if (!empty($origin) && !empty($apiKey) && $this->apiClientModel->validate($apiKey, $origin)) {
+            header('Access-Control-Allow-Origin: ' . $origin);
+        } else {
+            header('Access-Control-Allow-Origin: *');
+        }
     }
 
     private function validatePublicApiKey() {
-        $key = $this->getApiKey();
-        if (!$key) {
-            $this->error('X-API-Key header is missing', 401);
+        $this->handlePublicCors();
+        $headerKey = $_SERVER['HTTP_X_API_KEY'] ?? $_GET['api_key'] ?? '';
+        $origin = $_SERVER['HTTP_ORIGIN'] ?? '';
+        if (empty($headerKey) || !$this->apiClientModel->validate($headerKey, $origin)) {
+            $this->error('Unauthorized', 403);
+        }
+    }
+
+    /**
+     * POST /api/publicorder/upload-slip
+     * Uploads a bank transfer slip proof.
+     */
+    public function upload_slip() {
+        $this->handlePublicCors();
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            $this->error('Method Not Allowed', 405);
         }
 
-        $origin = $_SERVER['HTTP_ORIGIN'] ?? $_SERVER['HTTP_REFERER'] ?? '';
-        // Parse domain from referer if origin is missing
-        if ($origin && !filter_var($origin, FILTER_VALIDATE_URL) === false) {
-            $parsed = parse_url($origin);
-            $origin = ($parsed['scheme'] ?? 'http') . '://' . ($parsed['host'] ?? '');
+        $this->validatePublicApiKey();
+
+        if (!isset($_FILES['slip']) || $_FILES['slip']['error'] !== UPLOAD_ERR_OK) {
+            $errCode = $_FILES['slip']['error'] ?? 'unknown';
+            error_log("PublicOrder uploadSlip: No file or error code $errCode");
+            $this->error('No file uploaded or upload error code: ' . $errCode, 400);
         }
 
-        $client = $this->apiClientModel->getByKey($key);
-        if (!$client) {
-            $this->error('Invalid or inactive API Key', 401);
-        }
-
-        // Domain validation (if not '*')
-        if ($client->domain !== '*') {
-            $target = rtrim(strtolower($client->domain), '/');
-            $req = rtrim(strtolower($origin), '/');
-            if ($target !== $req) {
-                // For development, we might want to log this or be more lenient, 
-                // but for production, we enforce it.
-                // $this->error('Origin mismatch: Unauthorized domain', 403);
+        $uploadDir = '../public/uploads/slips/';
+        if (!is_dir($uploadDir)) {
+            if (!mkdir($uploadDir, 0777, true)) {
+                error_log("PublicOrder uploadSlip: Failed to create directory $uploadDir");
+                $this->error('Failed to create upload directory.', 500);
             }
         }
 
-        return $client;
+        $filename = 'slip_' . time() . '_' . bin2hex(random_bytes(4)) . '.' . pathinfo($_FILES['slip']['name'], PATHINFO_EXTENSION);
+        $targetFile = $uploadDir . $filename;
+
+        if (move_uploaded_file($_FILES['slip']['tmp_name'], $targetFile)) {
+            $this->success(['path' => 'uploads/slips/' . $filename], 'Slip uploaded successfully.');
+        } else {
+            error_log("PublicOrder uploadSlip: Failed to move file to $targetFile");
+            $this->error('Failed to save file.', 500);
+        }
     }
 
     /**
-     * GET /api/public/inventory
+     * POST /api/publicorder/create
+     * Creates a new online order.
      */
-    public function inventory() {
-        $client = $this->validatePublicApiKey();
-
-        if ($_SERVER['REQUEST_METHOD'] !== 'GET') {
+    public function create() {
+        $this->handlePublicCors();
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
             $this->error('Method Not Allowed', 405);
-            return;
         }
 
-        $locationId = (int)($_GET['location_id'] ?? $client->location_id ?? 1);
-        $q = $_GET['q'] ?? '';
-        
-        $rows = $this->itemModel->listLocationBalances($locationId, $q);
-        
-        // Filter to only show active items
-        $filtered = array_filter($rows, function($r) {
-            return (int)$r->is_active === 1;
-        });
-
-        $this->success(array_values($filtered));
-    }
-
-    /**
-     * GET /api/public/locations
-     */
-    public function locations() {
         $this->validatePublicApiKey();
-        
-        if ($_SERVER['REQUEST_METHOD'] !== 'GET') {
-            $this->error('Method Not Allowed', 405);
-            return;
+
+        $raw = file_get_contents('php://input');
+        $data = json_decode($raw, true);
+
+        if (!$data || empty($data['items']) || empty($data['total_amount'])) {
+            $this->error('Invalid order data', 400);
         }
-        $rows = $this->locationModel->getAll();
-        $onlineEnabled = array_filter($rows, function($r) {
-            return (int)($r->allow_online ?? 0) === 1;
-        });
-        $this->success(array_values($onlineEnabled));
+
+        require_once '../app/models/OnlineOrder.php';
+        $orderModel = new OnlineOrder();
+
+        // 1. Handle Customer
+        $customerId = $data['customer_id'] ?? null;
+        if (!$customerId && !empty($data['customer_details']['email'])) {
+            // Find or create guest customer
+            $customerModel = $this->model('Customer');
+            $this->db->query("SELECT id FROM customers WHERE email = :email LIMIT 1");
+            $this->db->bind(':email', $data['customer_details']['email']);
+            $existing = $this->db->single();
+            if ($existing) {
+                $customerId = $existing->id;
+            } else {
+                // Create minimal customer record
+                $cData = [
+                    'name' => $data['customer_details']['name'] ?? 'Guest',
+                    'email' => $data['customer_details']['email'],
+                    'phone' => $data['customer_details']['phone'] ?? null,
+                    'address' => $data['shipping_address'] ?? null,
+                    'order_type' => 'External',
+                    'is_active' => 1
+                ];
+                $customerModel->create($cData);
+                $customerId = $this->db->lastInsertId();
+            }
+        }
+        $data['customer_id'] = $customerId;
+
+        // 2. Create Order
+        $result = $orderModel->create($data);
+        if ($result) {
+            // 3. Send Confirmation Email
+            try {
+                require_once '../app/helpers/EmailHelper.php';
+                require_once '../app/models/StorefrontSetting.php';
+                require_once '../app/models/Company.php';
+                
+                $settingsModel = new StorefrontSetting();
+                $companyModel = new Company();
+                $locationId = $data['location_id'] ?? 1;
+                $ecomSettings = $settingsModel->getAll($locationId);
+                $company = $companyModel->get();
+
+                $to = $data['customer_details']['email'];
+                $subject = "Order Confirmed - " . $result['order_no'];
+                
+                // Asset URLs
+                $contentUrl = defined('CONTENT_BASE_URL') ? CONTENT_BASE_URL : 'https://content-provider.payshia.com/service-center-system/';
+                $itemsDir = defined('CONTENT_ITEMS_DIR') ? CONTENT_ITEMS_DIR : 'items';
+                $imageBaseUrl = rtrim($contentUrl, '/') . '/' . trim($itemsDir, '/') . '/';
+                $logoUrl = !empty($company->logo_filename) ? rtrim($contentUrl, '/') . '/logos/' . $company->logo_filename : '';
+
+                // Build Item List HTML with Images (Using tables for layout as flexbox is poorly supported in many email clients)
+                $itemsHtml = '';
+                foreach ($data['items'] as $item) {
+                    // Fetch real product details from DB for this item
+                    $this->db->query("SELECT part_name, image_filename FROM parts WHERE id = :id LIMIT 1");
+                    $this->db->bind(':id', $item['item_id']);
+                    $part = $this->db->single();
+                    
+                    $realName = !empty($part->part_name) ? $part->part_name : ($item['product_name'] ?? 'Product');
+                    $imgFilename = !empty($part->image_filename) ? $part->image_filename : '';
+                    $imgUrl = $imgFilename ? ($imageBaseUrl . $imgFilename) : 'https://via.placeholder.com/100?text=Product';
+
+                    $itemsHtml .= '
+                    <tr>
+                        <td style="padding: 16px 0; border-bottom: 1px solid #f1f5f9; vertical-align: middle;">
+                            <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
+                                <tr>
+                                    <td width="72" style="vertical-align: middle;">
+                                        <img src="' . $imgUrl . '" alt="' . htmlspecialchars($realName) . '" width="60" height="60" style="width: 60px; height: 60px; border-radius: 8px; border: 1px solid #f1f5f9; display: block; object-fit: cover;">
+                                    </td>
+                                    <td style="vertical-align: middle; padding-left: 12px;">
+                                        <div style="font-size: 14px; font-weight: 700; color: #0f172a; margin-bottom: 2px;">' . htmlspecialchars($realName) . '</div>
+                                        <div style="font-size: 12px; color: #64748b; font-weight: 500;">Quantity: ' . (int)$item['quantity'] . '</div>
+                                    </td>
+                                </tr>
+                            </table>
+                        </td>
+                        <td style="padding: 16px 0; border-bottom: 1px solid #f1f5f9; text-align: right; vertical-align: middle;">
+                            <span style="font-size: 14px; font-weight: 700; color: #0f172a;">LKR ' . number_format($item['unit_price'], 2) . '</span>
+                        </td>
+                    </tr>';
+                }
+
+                // 4. Fetch Related Products for Promotion (Respecting Admin Settings)
+                $relatedProductsHtml = '';
+                $showRelated = ($ecomSettings['show_related_products'] ?? '1') === '1';
+                $featuredIds = !empty($ecomSettings['featured_product_ids']) ? explode(',', $ecomSettings['featured_product_ids']) : [];
+                $featuredIds = array_map('trim', array_filter($featuredIds, 'is_numeric'));
+
+                if ($showRelated) {
+                    $firstItem = reset($data['items']);
+                    $related = [];
+
+                    if (!empty($featuredIds)) {
+                        // Use manually specified products from admin
+                        $placeholders = implode(',', array_fill(0, count($featuredIds), '?'));
+                        $this->db->query("SELECT id, part_name, image_filename, price, slug FROM parts WHERE id IN ($placeholders) AND is_active = 1 AND is_online = 1 LIMIT 3");
+                        foreach ($featuredIds as $i => $fid) {
+                            $this->db->bind($i + 1, (int)$fid);
+                        }
+                        $related = $this->db->resultSet();
+                    } elseif ($firstItem) {
+                        // Fallback to auto-category logic
+                        $this->db->query("SELECT item_category_id FROM parts WHERE id = :id LIMIT 1");
+                        $this->db->bind(':id', $firstItem['item_id']);
+                        $catRow = $this->db->single();
+                        $categoryId = $catRow->item_category_id ?? 0;
+
+                        $this->db->query("
+                            SELECT id, part_name, image_filename, price, slug 
+                            FROM parts 
+                            WHERE item_category_id = :cat_id 
+                            AND id != :current_id 
+                            AND is_active = 1 
+                            AND is_online = 1
+                            LIMIT 3
+                        ");
+                        $this->db->bind(':cat_id', $categoryId);
+                        $this->db->bind(':current_id', $firstItem['item_id']);
+                        $related = $this->db->resultSet();
+                    }
+
+                    if (!empty($related)) {
+                        $storefrontUrl = rtrim($ecomSettings['storefront_url'] ?? 'https://teajarceylon.com', '/');
+                        $productPrefix = $ecomSettings['storefront_product_prefix'] ?? '/product/';
+                        $productPrefix = '/' . ltrim(rtrim($productPrefix, '/'), '/');
+
+                        $relatedProductsHtml = '
+                        <div style="margin-top: 48px; border-top: 1px solid #e2e8f0; padding-top: 32px;">
+                            <h3 style="font-size: 16px; font-weight: 800; color: #0f172a; margin-bottom: 20px; text-align: center; text-transform: uppercase; letter-spacing: 0.05em;">You Might Also Like</h3>
+                            <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
+                                <tr>';
+                        
+                        foreach ($related as $index => $rel) {
+                            $relImgUrl = !empty($rel->image_filename) ? $imageBaseUrl . $rel->image_filename : 'https://via.placeholder.com/150?text=Product';
+                            $relProductUrl = !empty($rel->slug) ? ($storefrontUrl . $productPrefix . '/' . $rel->slug) : $storefrontUrl;
+                            $relatedProductsHtml .= '
+                            <td width="33.33%" style="padding: 0 8px; vertical-align: top; text-align: center;">
+                                <a href="' . $relProductUrl . '" style="text-decoration: none; color: inherit; display: block;">
+                                    <div style="background: #ffffff; border: 1px solid #f1f5f9; border-radius: 12px; padding: 12px;">
+                                        <img src="' . $relImgUrl . '" alt="" width="100%" style="width: 100%; border-radius: 8px; margin-bottom: 12px; display: block; object-fit: cover;">
+                                        <div style="font-size: 13px; font-weight: 700; color: #0f172a; margin-bottom: 4px; height: 32px; overflow: hidden; line-height: 1.2;">' . htmlspecialchars($rel->part_name) . '</div>
+                                        <div style="font-size: 13px; font-weight: 800; color: #b91c1c;">LKR ' . number_format($rel->price, 2) . '</div>
+                                    </div>
+                                </a>
+                            </td>';
+                        }
+                        
+                        for ($i = count($related); $i < 3; $i++) {
+                            $relatedProductsHtml .= '<td width="33.33%"></td>';
+                        }
+
+                        $relatedProductsHtml .= '
+                                </tr>
+                            </table>
+                            <div style="text-align: center; margin-top: 24px;">
+                                <a href="' . $storefrontUrl . '" style="display: inline-block; background: #0f172a; color: #ffffff; padding: 12px 24px; border-radius: 8px; font-weight: 700; text-decoration: none; font-size: 14px;">Shop More Products &rarr;</a>
+                            </div>
+                        </div>';
+                    }
+                }
+
+                $message = '
+                    <div style="text-align: center; margin-bottom: 32px;">
+                        ' . ($logoUrl ? '<img src="' . $logoUrl . '" alt="Logo" style="max-height: 50px; margin-bottom: 16px;">' : '') . '
+                        <div style="text-transform: uppercase; letter-spacing: 0.1em; font-size: 11px; font-weight: 800; color: #64748b; margin-bottom: 4px;">Order Confirmation</div>
+                        <h1 style="margin: 0; font-size: 28px; font-weight: 800; color: #0f172a; letter-spacing: -0.02em;">Thank you for your order!</h1>
+                    </div>
+
+                    <div style="background: #f8fafc; border-radius: 16px; padding: 32px; border: 1px solid #e2e8f0; margin-bottom: 32px;">
+                        <p style="margin: 0 0 24px 0; font-size: 15px; color: #334155; line-height: 1.6;">Hi ' . ($data['customer_details']['name'] ?? 'there') . ', we\'ve received your order <strong>#' . $result['order_no'] . '</strong> and our team is getting it ready for shipment. We\'ll notify you once it\'s on the way!</p>
+                        
+                        <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
+                            <tr>
+                                <td width="50%" style="padding-right: 12px; vertical-align: top;">
+                                    <div style="padding: 16px; background: white; border-radius: 12px; border: 1px solid #e2e8f0;">
+                                        <div style="font-size: 10px; font-weight: 800; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 8px;">Order Details</div>
+                                        <div style="font-size: 14px; font-weight: 700; color: #0f172a; margin-bottom: 4px;">#' . $result['order_no'] . '</div>
+                                        <div style="font-size: 12px; color: #64748b; font-weight: 500;">' . date('M d, Y') . '</div>
+                                    </div>
+                                </td>
+                                <td width="50%" style="padding-left: 12px; vertical-align: top;">
+                                    <div style="padding: 16px; background: white; border-radius: 12px; border: 1px solid #e2e8f0;">
+                                        <div style="font-size: 10px; font-weight: 800; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 8px;">Payment Method</div>
+                                        <div style="font-size: 14px; font-weight: 700; color: #0f172a; margin-bottom: 4px;">' . ($data['payment_method'] ?? 'COD') . '</div>
+                                        <div style="font-size: 12px; color: #64748b; font-weight: 500;">Status: Pending</div>
+                                    </div>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td width="50%" style="padding: 12px 12px 0 0; vertical-align: top;">
+                                    <div style="padding: 16px; background: #ffffff; border-radius: 12px; border: 1px solid #e2e8f0; min-height: 100px;">
+                                        <div style="font-size: 10px; font-weight: 800; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 8px;">Shipping Address</div>
+                                        <div style="font-size: 13px; line-height: 1.5; color: #334155;">' . nl2br(htmlspecialchars($data['shipping_address'] ?? 'No shipping address provided')) . '</div>
+                                    </div>
+                                </td>
+                                <td width="50%" style="padding: 12px 0 0 12px; vertical-align: top;">
+                                    <div style="padding: 16px; background: #ffffff; border-radius: 12px; border: 1px solid #e2e8f0; min-height: 100px;">
+                                        <div style="font-size: 10px; font-weight: 800; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 8px;">Billing Address</div>
+                                        <div style="font-size: 13px; line-height: 1.5; color: #334155;">' . nl2br(htmlspecialchars($data['billing_address'] ?? ($data['shipping_address'] ?? 'No billing address provided'))) . '</div>
+                                    </div>
+                                </td>
+                            </tr>
+                        </table>
+                    </div>
+
+                    <div style="margin-bottom: 32px;">
+                        <h3 style="font-size: 16px; font-weight: 800; color: #0f172a; margin-bottom: 16px; border-bottom: 2px solid #f1f5f9; padding-bottom: 8px;">Order Summary</h3>
+                        <table style="width: 100%; border-collapse: collapse;">
+                            ' . $itemsHtml . '
+                            <tr>
+                                <td style="padding: 24px 0 8px 0; text-align: right; color: #64748b; font-size: 14px; font-weight: 500;">Subtotal</td>
+                                <td style="padding: 24px 0 8px 0; text-align: right; color: #0f172a; font-size: 14px; font-weight: 700;">LKR ' . number_format($data['total_amount'] - ($data['shipping_fee'] ?? 0), 2) . '</td>
+                            </tr>
+                            <tr>
+                                <td style="padding: 4px 0 24px 0; text-align: right; color: #64748b; font-size: 14px; font-weight: 500; border-bottom: 2px solid #f1f5f9;">Shipping</td>
+                                <td style="padding: 4px 0 24px 0; text-align: right; color: #0f172a; font-size: 14px; font-weight: 700; border-bottom: 2px solid #f1f5f9;">LKR ' . number_format($data['shipping_fee'] ?? 0, 2) . '</td>
+                            </tr>
+                            <tr>
+                                <td style="padding: 24px 0; text-align: right; color: #0f172a; font-size: 18px; font-weight: 800;">Total</td>
+                                <td style="padding: 24px 0; text-align: right; color: #0f172a; font-size: 24px; font-weight: 800;">LKR ' . number_format($data['total_amount'], 2) . '</td>
+                            </tr>
+                        </table>
+                    </div>
+
+                    ' . $relatedProductsHtml . '
+
+                    <div style="background: #0f172a; border-radius: 12px; padding: 24px; text-align: center; margin-top: 32px;">
+                        <p style="margin: 0; color: #94a3b8; font-size: 13px; font-weight: 500;">Need help with your order?</p>
+                        <a href="mailto:' . ($ecomSettings['support_email'] ?? 'support@payshia.com') . '" style="display: inline-block; margin-top: 8px; color: #ffffff; font-weight: 700; text-decoration: none; font-size: 15px;">Contact Support &rarr;</a>
+                    </div>
+                ';
+
+                // Map ecom settings to EmailHelper config
+                $emailConfig = [
+                    'mail_host' => $ecomSettings['mail_host'] ?? '',
+                    'mail_user' => $ecomSettings['mail_user'] ?? '',
+                    'mail_pass' => $ecomSettings['mail_pass'] ?? '',
+                    'mail_port' => $ecomSettings['mail_port'] ?? 587,
+                    'mail_encryption' => $ecomSettings['mail_encryption'] ?? 'tls',
+                    'mail_from_addr' => $ecomSettings['mail_from_addr'] ?? 'no-reply@payshia.com',
+                    'mail_from_name' => $ecomSettings['mail_from_name'] ?? ($company->name ?? 'Tea Jar Store'),
+                    'cc_email' => $ecomSettings['cc_email'] ?? '',
+                    'bcc_email' => $ecomSettings['bcc_email'] ?? ''
+                ];
+
+                EmailHelper::sendWithConfig($to, $subject, $message, $emailConfig);
+            } catch (Exception $e) {
+                error_log("Order email failed: " . $e->getMessage());
+            }
+
+            $this->success($result);
+        } else {
+            $this->error('Failed to create order', 500);
+        }
     }
 
     /**
-     * GET /api/public/districts
+     * GET /api/publicorder/get/{id}
      */
-    public function districts() {
+    public function get($id) {
+        $this->handlePublicCors();
         if ($_SERVER['REQUEST_METHOD'] !== 'GET') {
             $this->error('Method Not Allowed', 405);
-            return;
         }
-        $this->db->query("SELECT d.id, d.name, d.shipping_zone_id, z.name as zone_name 
-                          FROM districts d 
-                          LEFT JOIN shipping_zones z ON d.shipping_zone_id = z.id");
-        $rows = $this->db->resultSet();
-        $this->success($rows);
-    }
-
-    /**
-     * GET /api/public/shipping_zones
-     */
-    public function shipping_zones() {
-        if ($_SERVER['REQUEST_METHOD'] !== 'GET') {
-            $this->error('Method Not Allowed', 405);
-            return;
-        }
-        $this->db->query("SELECT id, name, base_fee, free_threshold FROM shipping_zones WHERE is_active = 1");
-        $rows = $this->db->resultSet();
-        $this->success($rows);
-    }
-
-    /**
-     * GET /api/public/shipping_config
-     * Returns consolidated shipping data for the checkout page.
-     */
-    public function shipping_config() {
-        if ($_SERVER['REQUEST_METHOD'] !== 'GET') {
-            $this->error('Method Not Allowed', 405);
-            return;
-        }
-
-        // Fetch Districts
-        $this->db->query("SELECT d.id, d.name, d.shipping_zone_id FROM districts d");
-        $districts = $this->db->resultSet();
-
-        // Fetch Cities
-        $this->db->query("SELECT id, name, district_id FROM cities");
-        $cities = $this->db->resultSet();
-
-        // Fetch Zones
-        $this->db->query("SELECT id, name, base_fee, free_threshold FROM shipping_zones WHERE is_active = 1");
-        $zones = $this->db->resultSet();
-
-        // Fetch Default Settings
-        $this->db->query("SELECT setting_key, setting_value FROM system_settings WHERE setting_key IN ('default_shipping_fee', 'free_shipping_threshold')");
-        $settingsRows = $this->db->resultSet();
-        $settings = [];
-        foreach ($settingsRows as $row) {
-            $settings[$row->setting_key] = $row->setting_value;
-        }
+        $this->validatePublicApiKey();
+        $order = $this->invoiceModel->getById($id);
+        if (!$order) $this->error('Order not found', 404);
 
         $this->success([
-            'districts' => $districts,
-            'cities' => $cities,
-            'zones' => $zones,
-            'settings' => $settings
+            'id' => (string)$order->id,
+            'invoice_number' => (string)$order->invoice_no,
+            'invoice_date' => (string)$order->issue_date,
+            'grand_total' => (string)$order->grand_total,
+            'customer_code' => (string)$order->customer_email,
+            'payment_status' => (string)$order->status,
         ]);
     }
 
     /**
-     * GET /api/public/product/{id}
+     * GET /api/publicorder/items/{id}
      */
-    public function get($id) {
-        $client = $this->validatePublicApiKey();
-        
+    public function items($id) {
+        $this->handlePublicCors();
         if ($_SERVER['REQUEST_METHOD'] !== 'GET') {
             $this->error('Method Not Allowed', 405);
-            return;
         }
+        $this->validatePublicApiKey();
+        $items = $this->invoiceModel->getItems($id);
+        
+        $sanitized = array_map(function($item) {
+            return [
+                'id' => (string)$item->id,
+                'product_id' => (string)$item->item_id,
+                'item_price' => (string)$item->unit_price,
+                'quantity' => (string)$item->quantity,
+                'product_name' => (string)$item->description,
+            ];
+        }, $items);
 
-        $p = $this->itemModel->getById($id);
-        if (!$p || (int)$p->is_active === 0) {
-            $this->error('Product not found or inactive', 404);
-        }
-
-        // Add location-specific stock if requested
-        $locationId = (int)($_GET['location_id'] ?? $client->location_id ?? 1);
-        $stock = $this->itemModel->getLocationStock($p->id, $locationId);
-        $p->stock = $stock;
-
-        $this->success($p);
+        $this->success($sanitized);
     }
 
     /**
-     * POST /api/public/checkout
+     * GET /api/publicorder/get-by-no/{order_no}
      */
-    public function checkout() {
-        $client = $this->validatePublicApiKey();
-
-        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+    public function get_by_no($orderNo) {
+        $this->handlePublicCors();
+        if ($_SERVER['REQUEST_METHOD'] !== 'GET') {
             $this->error('Method Not Allowed', 405);
-            return;
         }
+        $this->validatePublicApiKey();
 
-        $raw = file_get_contents('php://input');
-        $data = json_decode($raw, true);
-        $locationId = (int)($data['location_id'] ?? $client->location_id ?? 1);
-
-        if (empty($data['items'])) {
-            $this->error('Cart is empty', 400);
-        }
-
-        // 1. Verify Location
-        $location = $this->locationModel->getById($locationId);
-        if (!$location || (int)($location->allow_online ?? 0) !== 1) {
-            $this->error('Online sales are not enabled for this location', 403);
-            return;
-        }
-
-        // 2. Validate items and calculate total
-        $total = 0;
-        $orderItems = [];
-        foreach ($data['items'] as $item) {
-            $p = $this->itemModel->getById($item['id']);
-            if (!$p || (int)$p->is_active === 0) {
-                $this->error('Product ' . ($item['name'] ?? $item['id']) . ' is not available', 400);
-            }
-
-            $qty = (float)$item['quantity'];
-
-            // Stock Check per Location
-            $stock = $this->itemModel->getLocationStock($p->id, $locationId);
-            if ($stock->available < $qty) {
-                $this->error("Insufficient stock for '{$p->part_name}' at selected location.", 400);
-                return;
-            }
-            
-            $price = (float)$p->price;
-            $lineTotal = $qty * $price;
-            $total += $lineTotal;
-
-            $orderItems[] = [
-                'item_id' => $p->id,
-                'description' => $p->part_name,
-                'quantity' => $qty,
-                'unit_price' => $price,
-                'line_total' => $lineTotal,
-                'item_type' => 'Part'
-            ];
-        }
-
-        // 3. Apply Promotions
-        $bestPromo = $this->promotionModel->findBestPromotion($orderItems, $total, null, null, $locationId);
-        $discount = 0;
-        $promoId = null;
-        $promoName = null;
-
-        if ($bestPromo) {
-            $discount = $bestPromo->discount_value;
-            $promoId = $bestPromo->promotion_id;
-            $promoName = $bestPromo->name;
-            $total -= $discount;
-            if ($total < 0) $total = 0;
-        }
-
-        // 4. Calculate Shipping Fee based on District/Zone
-        $shippingFee = 0;
-        $zoneId = null;
-        $districtId = isset($data['district_id']) ? (int)$data['district_id'] : null;
+        require_once '../app/models/OnlineOrder.php';
+        $orderModel = new OnlineOrder();
         
-        if ($districtId) {
-            // Verify district and get linked zone
-            $this->db->query("SELECT d.*, z.base_fee, z.free_threshold 
-                              FROM districts d 
-                              JOIN shipping_zones z ON d.shipping_zone_id = z.id 
-                              WHERE d.id = :id AND z.is_active = 1");
-            $this->db->bind(':id', $districtId);
-            $zoneData = $this->db->single();
-            
-            if ($zoneData) {
-                $zoneId = $zoneData->shipping_zone_id;
-                $shippingFee = (float)$zoneData->base_fee;
-                // Check for free shipping threshold
-                if ($zoneData->free_threshold > 0 && $total >= (float)$zoneData->free_threshold) {
-                    $shippingFee = 0;
-                }
-            } else {
-                $this->error('Invalid district or inactive shipping zone', 400);
-                return;
-            }
-        } else {
-            // Legacy support: Try direct zone_id if no district provided
-            $zoneId = isset($data['shipping_zone_id']) ? (int)$data['shipping_zone_id'] : null;
-            if ($zoneId) {
-                $this->db->query("SELECT * FROM shipping_zones WHERE id = :id AND is_active = 1");
-                $this->db->bind(':id', $zoneId);
-                $zone = $this->db->single();
-                if ($zone) {
-                    $shippingFee = (float)$zone->base_fee;
-                    if ($zone->free_threshold > 0 && $total >= (float)$zone->free_threshold) {
-                        $shippingFee = 0;
-                    }
-                }
-            } else {
-                // Fallback to default
-                $this->db->query("SELECT setting_value FROM system_settings WHERE setting_key = 'default_shipping_fee'");
-                $sett = $this->db->single();
-                $shippingFee = $sett ? (float)$sett->setting_value : 0;
-            }
-        }
+        $order = $orderModel->getByOrderNo($orderNo);
+        if (!$order) $this->error('Order not found', 404);
 
-        $orderData = [
-            'location_id' => $locationId,
-            'customer_id' => $data['customer_id'] ?? null,
-            'customer_details' => [
-                'first_name' => $data['first_name'] ?? '',
-                'last_name' => $data['last_name'] ?? '',
-                'email' => $data['email'] ?? '',
-                'phone' => $data['phone'] ?? ''
-            ],
-            'shipping_address' => $data['shipping_address'] ?? '',
-            'billing_address' => $data['billing_address'] ?? '',
-            'shipping_fee' => $shippingFee,
-            'shipping_zone_id' => $zoneId,
-            'district_id' => $districtId,
-            'total_amount' => $total + $shippingFee,
-            'applied_promotion_id' => $promoId,
-            'applied_promotion_name' => $promoName,
-            'discount_total' => $discount,
-            'payment_method' => strtoupper($data['payment_method'] ?? 'COD'),
-            'items' => $orderItems
-        ];
-
-        $res = $this->orderModel->create($orderData);
-
-        if ($res) {
-            $response = [
-                'order_id' => $res['id'],
-                'order_no' => $res['order_no'],
-                'total' => $total,
-                'payment_method' => $orderData['payment_method']
-            ];
-
-            // If IPG, prepare Gateway params
-            if ($orderData['payment_method'] === 'IPG') {
-                require_once __DIR__ . '/../helpers/PaymentGatewayFactory.php';
-                $selectedGateway = $data['gateway'] ?? 'payhere'; // Default to payhere or get from settings
-                
-                try {
-                    $gateway = PaymentGatewayFactory::getGateway($selectedGateway);
-                    $settings = $this->systemModel->getAll();
-                    
-                    // Fetch the full order object for the gateway helper
-                    $orderObj = $this->orderModel->getById($res['id']);
-                    
-                    $response['gateway_type'] = $selectedGateway;
-                    $response['payment_params'] = $gateway->prepareCheckout(
-                        $orderObj, 
-                        $orderItems, 
-                        $orderData['customer_details'], 
-                        $settings
-                    );
-                } catch (Exception $e) {
-                    $this->error('Payment gateway error: ' . $e->getMessage());
-                }
-            } else {
-                // If COD, raise invoice immediately
-                $this->raiseInvoiceForOrder($res['id']);
-            }
-
-            $this->success($response, 'Order placed successfully');
-        } else {
-            $this->error('Failed to place order');
-        }
-    }
-
-    private function raiseInvoiceForOrder($orderId) {
-        $order = $this->orderModel->getById($orderId);
-        $items = $this->orderModel->getItems($orderId);
-        
-        require_once __DIR__ . '/../models/Invoice.php';
-        $invoiceModel = new Invoice();
+        $items = $orderModel->getItems($order->id);
         
         $details = json_decode($order->customer_details_json, true);
-        
-        // Find or create customer in main database
-        require_once __DIR__ . '/../models/Customer.php';
-        $custModel = new Customer();
-        $email = $details['email'] ?? '';
-        $existing = null;
-        if ($email) {
-            // Find by email or create
-            $this->db->query("SELECT id FROM customers WHERE email = :email LIMIT 1");
-            $this->db->bind(':email', $email);
-            $existing = $this->db->single();
-        }
 
-        $customerId = $existing ? $existing->id : 1; // Default to Walk-in if not found
-
-        $invoiceData = [
-            'invoice_no' => 'INV-' . strtoupper(bin2hex(random_bytes(4))),
-            'order_id' => null, 
-            'location_id' => $order->location_id,
-            'customer_id' => $customerId,
-            'billing_address' => $order->billing_address,
-            'shipping_address' => $order->shipping_address,
-            'issue_date' => date('Y-m-d'),
-            'due_date' => date('Y-m-d'),
-            'subtotal' => $order->total_amount - ($order->shipping_fee ?? 0) + ($order->discount_total ?? 0),
-            'tax_total' => 0,
-            'discount_total' => $order->discount_total ?? 0,
-            'shipping_fee' => $order->shipping_fee ?? 0,
-            'grand_total' => $order->total_amount,
-            'order_type' => 'online',
-            'notes' => 'Online Order ' . $order->order_no,
-            'applied_promotion_id' => $order->applied_promotion_id,
-            'applied_promotion_name' => $order->applied_promotion_name,
-            'userId' => 1 // System user
-        ];
-
-        $invId = $invoiceModel->create($invoiceData);
-        if ($invId) {
-            $invoiceItems = [];
-            foreach ($items as $item) {
-                $invoiceItems[] = [
-                    'item_id' => $item->item_id,
-                    'description' => $item->description,
-                    'item_type' => 'Part',
-                    'quantity' => $item->quantity,
-                    'unit_price' => $item->unit_price,
-                    'line_total' => $item->line_total
+        $this->success([
+            'id' => (string)$order->id,
+            'order_no' => (string)$order->order_no,
+            'total_amount' => (string)$order->total_amount,
+            'payment_method' => (string)$order->payment_method,
+            'payment_status' => (string)$order->payment_status,
+            'shipping_address' => (string)$order->shipping_address,
+            'billing_address' => (string)$order->billing_address,
+            'customer_name' => $details['name'] ?? '',
+            'customer_email' => $details['email'] ?? '',
+            'items' => array_map(function($item) {
+                return [
+                    'product_id' => (string)$item->item_id,
+                    'product_name' => (string)$item->description,
+                    'quantity' => (string)$item->quantity,
+                    'unit_price' => (string)$item->unit_price,
+                    'line_total' => (string)$item->line_total,
                 ];
-            }
-            $invoiceModel->addItems($invId, $invoiceItems, 1);
-            $this->orderModel->setInvoiceId($orderId, $invId);
+            }, $items)
+        ]);
+    }
 
-            // If it was already paid (IPG), record payment
-            if ($order->payment_status === 'Paid') {
-                $invoiceModel->addPayment($invId, [
-                    'amount' => $order->total_amount,
-                    'payment_date' => date('Y-m-d'),
-                    'payment_method' => 'IPG',
-                    'reference_no' => $order->payhere_id,
-                    'userId' => 1
-                ]);
-            }
+    /**
+     * GET /api/publicorder/list?customer_email=...
+     */
+    public function list() {
+        $this->handlePublicCors();
+        if ($_SERVER['REQUEST_METHOD'] !== 'GET') {
+            $this->error('Method Not Allowed', 405);
         }
+        $this->validatePublicApiKey();
+
+        $email = $_GET['customer_email'] ?? '';
+        if (empty($email)) {
+            $this->error('Customer email is required', 400);
+        }
+
+        require_once '../app/models/OnlineOrder.php';
+        $orderModel = new OnlineOrder();
+
+        $this->db->query("
+            SELECT o.*, l.name as location_name 
+            FROM online_orders o
+            LEFT JOIN service_locations l ON o.location_id = l.id
+            WHERE o.customer_details_json LIKE :email
+            ORDER BY o.created_at DESC
+        ");
+        $this->db->bind(':email', '%' . $email . '%');
+        $orders = $this->db->resultSet();
+
+        $sanitized = array_map(function($order) {
+            return [
+                'id' => (string)$order->id,
+                'order_no' => (string)$order->order_no,
+                'total_amount' => (string)$order->total_amount,
+                'payment_status' => (string)$order->payment_status,
+                'order_status' => (string)$order->order_status,
+                'created_at' => (string)$order->created_at,
+                'location_name' => (string)$order->location_name
+            ];
+        }, $orders);
+
+        $this->success($sanitized);
     }
 }

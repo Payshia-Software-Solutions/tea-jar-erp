@@ -1,0 +1,6 @@
+[2026-05-10 19:50:28] PayHere Notify Received: {"merchant_id":"1210000","order_id":"WEB-AD747ACF","payhere_amount":"45.00","payhere_currency":"LKR","status_code":"2","payment_id":"PAY-CSB8NU9LN","md5sig":"SIMULATED","simulated":"1"}
+[2026-05-10 19:50:28] SIMULATED Webhook received (Validation Bypassed)
+[2026-05-10 19:50:28] PayHere Validation SUCCESS
+[2026-05-10 21:10:52] PayHere Notify Received: {"merchant_id":"1210000","order_id":"WEB-441EB2C3","payhere_amount":"45.00","payhere_currency":"LKR","status_code":"2","payment_id":"PAY-DBGNCN3GK","md5sig":"SIMULATED","simulated":"1"}
+[2026-05-10 21:10:52] SIMULATED Webhook received (Validation Bypassed)
+[2026-05-10 21:10:52] PayHere Validation SUCCESS

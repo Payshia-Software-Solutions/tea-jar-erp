@@ -70,7 +70,7 @@ export const ManagementModals: React.FC = () => {
     inventory, customers: posCustomers,
     vKeyboardEnabled, setVKeyboardActiveInput,
     pendingInvoicesDialogOpen, setPendingInvoicesDialogOpen,
-    banks, bankBranches
+    banks, bankBranches, setBankBranches
   } = usePOS();
 
   // --- Returns States ---
@@ -114,6 +114,7 @@ export const ManagementModals: React.FC = () => {
   const [chequeNo, setChequeNo] = useState("");
   const [chequeDate, setChequeDate] = useState("");
   const [chequeBank, setChequeBank] = useState("");
+  const [chequeBranchId, setChequeBranchId] = useState("");
   const refreshPendingInvoices = async () => {
     setLoadingPending(true);
     try {
@@ -202,7 +203,7 @@ export const ManagementModals: React.FC = () => {
               setPaymentMethod('Cash');
               setChequeNo("");
               setChequeBank("");
-              setChequeBranch("");
+              setChequeBranchId("");
           }
       }}>
         <DialogContent className="w-full sm:max-w-4xl h-[100dvh] sm:h-[90vh] sm:max-h-[850px] p-0 overflow-hidden border-none shadow-2xl rounded-none sm:rounded-[2rem] flex flex-col bg-white dark:bg-slate-950">

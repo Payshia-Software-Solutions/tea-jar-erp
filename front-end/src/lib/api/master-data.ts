@@ -88,6 +88,13 @@ export const fetchCustomers = async (q: string = '') => {
   return data.status === 'success' ? data.data : data;
 };
 
+export const fetchEcommerceCustomers = async () => {
+  const res = await api('/api/customer/ecommerce');
+  if (!res.ok) throw new Error('Failed to load storefront customers');
+  const data = await res.json();
+  return data.status === 'success' ? data.data : data;
+};
+
 export const createCustomer = async (payload: any) => {
   const res = await api('/api/customer/create', { method: 'POST', body: JSON.stringify(payload) });
   if (!res.ok) throw new Error('Failed to create customer');

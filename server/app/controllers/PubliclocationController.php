@@ -81,6 +81,7 @@ class PubliclocationController extends Controller {
      * Returns analytics and pixel codes for the location associated with the API key.
      */
     public function settings() {
+        $this->handlePublicCors();
         if ($_SERVER['REQUEST_METHOD'] !== 'GET') {
             $this->error('Method Not Allowed', 405);
         }

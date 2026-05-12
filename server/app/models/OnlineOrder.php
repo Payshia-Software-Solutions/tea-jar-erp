@@ -17,10 +17,10 @@ class OnlineOrder extends Model {
         $this->db->query("
             INSERT INTO {$this->table} (
                 order_no, location_id, customer_id, customer_details_json, shipping_address, billing_address, 
-                shipping_fee, shipping_zone_id, district_id, total_amount, payment_method, payment_status, order_status
+                shipping_fee, shipping_zone_id, district_id, total_amount, payment_method, payment_status, order_status, payment_slip
             ) VALUES (
                 :order_no, :location_id, :customer_id, :customer_details, :shipping, :billing, 
-                :shipping_fee, :shipping_zone_id, :district_id, :total, :method, :pay_status, :order_status
+                :shipping_fee, :shipping_zone_id, :district_id, :total, :method, :pay_status, :order_status, :slip
             )
         ");
 
@@ -37,11 +37,61 @@ class OnlineOrder extends Model {
         $this->db->bind(':method', $data['payment_method'] ?? 'COD');
         $this->db->bind(':pay_status', 'Pending');
         $this->db->bind(':order_status', 'Pending');
+        $this->db->bind(':slip', $data['payment_slip'] ?? null);
 
         if ($this->db->execute()) {
             $orderId = $this->db->lastInsertId();
             $this->addItems($orderId, $data['items']);
-            return ['id' => $orderId, 'order_no' => $orderNo];
+            
+            $result = ['id' => $orderId, 'order_no' => $orderNo];
+
+            // If PayHere, generate payment data
+            if (strtoupper($data['payment_method'] ?? '') === 'PAYHERE') {
+                require_once __DIR__ . '/SystemSetting.php';
+                $settingModel = new SystemSetting();
+                $allSettings = $settingModel->getAll();
+
+                $isSandbox = (int)($allSettings['payhere_is_sandbox'] ?? 1) === 1;
+                
+                if ($isSandbox) {
+                    $merchantId = $allSettings['payhere_merchant_id_sandbox'] ?? $allSettings['payhere_merchant_id'] ?? '';
+                    $merchantSecret = $allSettings['payhere_merchant_secret_sandbox'] ?? $allSettings['payhere_merchant_secret'] ?? $allSettings['payhere_secret_sandbox'] ?? '';
+                } else {
+                    $merchantId = $allSettings['payhere_merchant_id_live'] ?? $allSettings['payhere_merchant_id'] ?? '';
+                    $merchantSecret = $allSettings['payhere_merchant_secret_live'] ?? $allSettings['payhere_merchant_secret'] ?? $allSettings['payhere_secret_live'] ?? '';
+                }
+
+                $currency = $allSettings['currency_code'] ?? 'LKR';
+
+                $amount = number_format($data['total_amount'], 2, '.', '');
+                
+                $hash = strtoupper(md5(
+                    $merchantId . 
+                    $orderNo . 
+                    $amount . 
+                    $currency . 
+                    strtoupper(md5($merchantSecret))
+                ));
+
+                $result['payhere'] = [
+                    'merchant_id' => $merchantId,
+                    'order_id' => $orderNo,
+                    'items' => 'Order ' . $orderNo,
+                    'amount' => $amount,
+                    'currency' => $currency,
+                    'hash' => $hash,
+                    'first_name' => $data['customer_details']['name'] ?? 'Customer',
+                    'last_name' => '',
+                    'email' => $data['customer_details']['email'] ?? '',
+                    'phone' => $data['customer_details']['phone'] ?? '',
+                    'address' => $data['shipping_address'] ?? '',
+                    'city' => $data['customer_details']['city'] ?? '',
+                    'country' => 'Sri Lanka',
+                    'is_sandbox' => $isSandbox
+                ];
+            }
+
+            return $result;
         }
         return false;
     }

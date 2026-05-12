@@ -10,8 +10,8 @@ import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { contentUrl, fetchParts, type PartRow } from "@/lib/api";
-import { Boxes, Grid3X3, LayoutList, Loader2, Plus, Search, Image as ImageIcon } from "lucide-react";
+import { contentUrl, fetchParts, type PartRow, fetchItemSections, fetchItemDepartments, fetchItemCategories, type ItemSection, type ItemDepartment, type ItemCategory } from "@/lib/api";
+import { Boxes, Grid3X3, LayoutList, Loader2, Plus, Search, Image as ImageIcon, Filter, X } from "lucide-react";
 
 type ViewMode = "table" | "grid";
 
@@ -26,12 +26,30 @@ export default function InventoryItemsListPage() {
   const [view, setView] = useState<ViewMode>("table");
   const [pageSize, setPageSize] = useState<number>(12);
   const [page, setPage] = useState<number>(1);
+  
+  // Filter options
+  const [sections, setSections] = useState<ItemSection[]>([]);
+  const [departments, setDepartments] = useState<ItemDepartment[]>([]);
+  const [categories, setCategories] = useState<ItemCategory[]>([]);
+
+  // Filter selections
+  const [selectedSectionId, setSelectedSectionId] = useState<string>("all");
+  const [selectedDeptId, setSelectedDeptId] = useState<string>("all");
+  const [selectedCatId, setSelectedCatId] = useState<string>("all");
 
   const load = async () => {
     setLoading(true);
     try {
-      const data = await fetchParts("");
+      const [data, s, d, c] = await Promise.all([
+        fetchParts(""),
+        fetchItemSections(),
+        fetchItemDepartments(),
+        fetchItemCategories()
+      ]);
       setItems(Array.isArray(data) ? data : []);
+      setSections(Array.isArray(s) ? s : []);
+      setDepartments(Array.isArray(d) ? d : []);
+      setCategories(Array.isArray(c) ? c : []);
     } catch (e: any) {
       toast({ title: "Error", description: e?.message || "Failed to load items", variant: "destructive" });
     } finally {
@@ -65,11 +83,40 @@ export default function InventoryItemsListPage() {
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
-    const rows = !q
-      ? items
-      : items.filter((p) => (p.part_name ?? "").toLowerCase().includes(q) || (p.sku ?? "").toLowerCase().includes(q));
+    let rows = items;
+    
+    if (q) {
+      rows = rows.filter((p) => (p.part_name ?? "").toLowerCase().includes(q) || (p.sku ?? "").toLowerCase().includes(q));
+    }
+
+    if (selectedSectionId !== "all") {
+      rows = rows.filter(p => p.item_section_id === parseInt(selectedSectionId));
+    }
+
+    if (selectedDeptId !== "all") {
+      rows = rows.filter(p => p.item_department_id === parseInt(selectedDeptId));
+    }
+
+    if (selectedCatId !== "all") {
+      rows = rows.filter(p => p.item_category_id === parseInt(selectedCatId));
+    }
+
     return [...rows].sort((a, b) => String(a.part_name ?? "").localeCompare(String(b.part_name ?? "")));
-  }, [items, query]);
+  }, [items, query, selectedSectionId, selectedDeptId, selectedCatId]);
+
+  const filteredDepts = useMemo(() => {
+    if (selectedSectionId === "all") return departments;
+    return departments.filter(d => d.section_id === parseInt(selectedSectionId));
+  }, [departments, selectedSectionId]);
+
+  useEffect(() => {
+     // Clear department if not in filtered list
+     if (selectedDeptId !== "all") {
+        if (!filteredDepts.some(d => String(d.id) === selectedDeptId)) {
+          setSelectedDeptId("all");
+        }
+     }
+  }, [filteredDepts, selectedDeptId]);
 
   const pageCount = useMemo(() => {
     const c = Math.ceil(filtered.length / pageSize);
@@ -172,10 +219,74 @@ export default function InventoryItemsListPage() {
           </div>
         </div>
 
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <Badge variant="outline" className="px-3 py-1 bg-primary/10 text-primary border-primary/20">
-            {items.length} Items
-          </Badge>
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <div className="flex flex-wrap items-center gap-2">
+            <Badge variant="outline" className="px-3 py-1 bg-primary/10 text-primary border-primary/20">
+              {filtered.length} of {items.length} Items
+            </Badge>
+            {(selectedSectionId !== 'all' || selectedDeptId !== 'all' || selectedCatId !== 'all') && (
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                className="h-8 text-xs gap-2"
+                onClick={() => {
+                  setSelectedSectionId('all');
+                  setSelectedDeptId('all');
+                  setSelectedCatId('all');
+                }}
+              >
+                <X className="w-3 h-3" /> Clear Filters
+              </Button>
+            )}
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 bg-muted/20 p-3 rounded-xl border border-dashed">
+          <div className="space-y-1.5">
+            <div className="text-[10px] font-bold uppercase text-muted-foreground ml-1">Section</div>
+            <Select value={selectedSectionId} onValueChange={setSelectedSectionId}>
+              <SelectTrigger className="h-9 bg-background">
+                <SelectValue placeholder="All Sections" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Sections</SelectItem>
+                {sections.map(s => <SelectItem key={s.id} value={String(s.id)}>{s.name}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-1.5">
+            <div className="text-[10px] font-bold uppercase text-muted-foreground ml-1">Department</div>
+            <Select value={selectedDeptId} onValueChange={setSelectedDeptId}>
+              <SelectTrigger className="h-9 bg-background">
+                <SelectValue placeholder="All Departments" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Departments</SelectItem>
+                {filteredDepts.map(d => <SelectItem key={d.id} value={String(d.id)}>{d.name}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-1.5">
+            <div className="text-[10px] font-bold uppercase text-muted-foreground ml-1">Category</div>
+            <Select value={selectedCatId} onValueChange={setSelectedCatId}>
+              <SelectTrigger className="h-9 bg-background">
+                <SelectValue placeholder="All Categories" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Categories</SelectItem>
+                {categories.map(c => <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="flex items-end">
+            <Button variant="outline" className="w-full h-9 gap-2" onClick={() => void load()}>
+               <Loader2 className={`w-3 h-3 ${loading ? 'animate-spin' : ''}`} />
+               Refresh
+            </Button>
+          </div>
         </div>
 
         <Card className="border-none shadow-md overflow-hidden">

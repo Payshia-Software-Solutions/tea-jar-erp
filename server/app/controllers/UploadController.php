@@ -264,4 +264,36 @@ class UploadController extends Controller {
             'url' => rtrim(CONTENT_BASE_URL, '/') . '/' . trim(CONTENT_ITEMS_DIR, '/') . '/' . $filename,
         ], 'Uploaded to gallery');
     }
+
+    // POST /api/upload/storefront_asset
+    public function storefront_asset() {
+        $u = $this->requireAuth();
+        if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') {
+            $this->error('Method Not Allowed', 405);
+        }
+
+        $f = $this->requireFile('file');
+        $allowed = ['jpg','jpeg','png','webp','gif','mp4','webm','mov','svg'];
+        $ext = strtolower($this->extFromName($f['name'] ?? ''));
+        if ($ext && !in_array($ext, $allowed, true)) {
+            $this->error('Unsupported file type', 400);
+        }
+
+        $filename = $this->safeFilename('stf', $f['name'] ?? 'file');
+        $dir = 'storefront'; 
+
+        try {
+            $ftp = new FtpStorage();
+            $ftp->upload($f['tmp_name'], $dir, $filename);
+        } catch (Exception $e) {
+            $this->error('FTP upload failed', 500);
+        }
+
+        $url = rtrim(CONTENT_BASE_URL ?? 'https://content-provider.payshia.com', '/') . '/' . $dir . '/' . $filename;
+
+        $this->success([
+            'filename' => $filename,
+            'url' => $url,
+        ], 'Uploaded successfully');
+    }
 }

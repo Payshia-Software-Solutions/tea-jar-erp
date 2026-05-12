@@ -118,46 +118,50 @@ class PartController extends Controller {
         if (!$id) $this->error('Part ID required', 400);
         $data = json_decode(file_get_contents('php://input'), true) ?: [];
 
-        $name = isset($data['part_name']) ? trim((string)$data['part_name']) : trim((string)($data['name'] ?? ''));
-        $price = $data['price'] ?? null;
+        $existing = $this->partModel->getById($id);
+        if (!$existing) $this->error('Part not found', 404);
+
+        $name = isset($data['part_name']) ? trim((string)$data['part_name']) : (isset($data['name']) ? trim((string)$data['name']) : $existing->part_name);
+        $price = $data['price'] ?? $existing->price;
         if ($name === '' || $price === null) $this->error('Missing required fields', 400);
 
-        $supplierIds = isset($data['supplier_ids']) && is_array($data['supplier_ids']) ? $data['supplier_ids'] : [];
+        $supplierIds = isset($data['supplier_ids']) && is_array($data['supplier_ids']) ? $data['supplier_ids'] : (isset($existing->supplier_ids) ? $existing->supplier_ids : []);
 
         $payload = [
-            'sku' => isset($data['sku']) && trim((string)$data['sku']) !== '' ? trim((string)$data['sku']) : null,
-            'part_number' => isset($data['part_number']) && trim((string)$data['part_number']) !== '' ? trim((string)$data['part_number']) : null,
-            'barcode_number' => isset($data['barcode_number']) && trim((string)$data['barcode_number']) !== '' ? trim((string)$data['barcode_number']) : null,
+            'sku' => isset($data['sku']) ? (trim((string)$data['sku']) !== '' ? trim((string)$data['sku']) : null) : $existing->sku,
+            'part_number' => isset($data['part_number']) ? (trim((string)$data['part_number']) !== '' ? trim((string)$data['part_number']) : null) : $existing->part_number,
+            'barcode_number' => isset($data['barcode_number']) ? (trim((string)$data['barcode_number']) !== '' ? trim((string)$data['barcode_number']) : null) : $existing->barcode_number,
             'part_name' => $name,
-            'unit' => isset($data['unit']) ? trim((string)$data['unit']) : null,
-            'brand_id' => $data['brand_id'] ?? null,
-            'cost_price' => $data['cost_price'] ?? null,
+            'unit' => isset($data['unit']) ? trim((string)$data['unit']) : $existing->unit,
+            'brand_id' => array_key_exists('brand_id', $data) ? $data['brand_id'] : $existing->brand_id,
+            'cost_price' => array_key_exists('cost_price', $data) ? $data['cost_price'] : $existing->cost_price,
             'price' => $price,
-            'reorder_level' => $data['reorder_level'] ?? null,
-            'is_active' => $data['is_active'] ?? 1,
-            'is_fifo' => $data['is_fifo'] ?? 0,
-            'is_expiry' => $data['is_expiry'] ?? 0,
-            'image_filename' => $data['image_filename'] ?? null,
-            'item_type' => $data['item_type'] ?? 'Part',
-            'recipe_type' => $data['recipe_type'] ?? 'Standard',
-            'default_location_id' => $data['default_location_id'] ?? null,
-            'allowed_locations' => $data['allowed_locations'] ?? null,
-            'collection_ids' => $data['collection_ids'] ?? [],
-            'wholesale_price' => $data['wholesale_price'] ?? null,
-            'min_selling_price' => $data['min_selling_price'] ?? null,
-            'price_2' => $data['price_2'] ?? null,
-            'net_weight_kg' => $data['net_weight_kg'] ?? 0,
-            'gross_weight_kg' => $data['gross_weight_kg'] ?? 0,
-            'units_per_carton' => $data['units_per_carton'] ?? 1,
-            'packing_type' => $data['packing_type'] ?? null,
-            'hs_code' => $data['hs_code'] ?? null,
-            'carton_length_cm' => $data['carton_length_cm'] ?? 0,
-            'carton_width_cm' => $data['carton_width_cm'] ?? 0,
-            'carton_height_cm' => $data['carton_height_cm'] ?? 0,
-            'volume_cbm' => $data['volume_cbm'] ?? 0,
-            'carton_tare_weight_kg' => $data['carton_tare_weight_kg'] ?? 0,
-            'is_online' => $data['is_online'] ?? 0,
-            'public_description' => $data['public_description'] ?? null,
+            'reorder_level' => array_key_exists('reorder_level', $data) ? $data['reorder_level'] : $existing->reorder_level,
+            'is_active' => isset($data['is_active']) ? $data['is_active'] : $existing->is_active,
+            'is_fifo' => isset($data['is_fifo']) ? $data['is_fifo'] : $existing->is_fifo,
+            'is_expiry' => isset($data['is_expiry']) ? $data['is_expiry'] : $existing->is_expiry,
+            'image_filename' => array_key_exists('image_filename', $data) ? $data['image_filename'] : $existing->image_filename,
+            'item_type' => $data['item_type'] ?? $existing->item_type,
+            'recipe_type' => $data['recipe_type'] ?? $existing->recipe_type,
+            'default_location_id' => array_key_exists('default_location_id', $data) ? $data['default_location_id'] : $existing->default_location_id,
+            'allowed_locations' => array_key_exists('allowed_locations', $data) ? $data['allowed_locations'] : $existing->allowed_locations,
+            'collection_ids' => $data['collection_ids'] ?? ($existing->collection_ids ?? []),
+            'wholesale_price' => array_key_exists('wholesale_price', $data) ? $data['wholesale_price'] : $existing->wholesale_price,
+            'min_selling_price' => array_key_exists('min_selling_price', $data) ? $data['min_selling_price'] : $existing->min_selling_price,
+            'price_2' => array_key_exists('price_2', $data) ? $data['price_2'] : $existing->price_2,
+            'net_weight_kg' => $data['net_weight_kg'] ?? $existing->net_weight_kg,
+            'gross_weight_kg' => $data['gross_weight_kg'] ?? $existing->gross_weight_kg,
+            'units_per_carton' => $data['units_per_carton'] ?? $existing->units_per_carton,
+            'packing_type' => array_key_exists('packing_type', $data) ? $data['packing_type'] : $existing->packing_type,
+            'hs_code' => array_key_exists('hs_code', $data) ? $data['hs_code'] : $existing->hs_code,
+            'carton_length_cm' => $data['carton_length_cm'] ?? $existing->carton_length_cm,
+            'carton_width_cm' => $data['carton_width_cm'] ?? $existing->carton_width_cm,
+            'carton_height_cm' => $data['carton_height_cm'] ?? $existing->carton_height_cm,
+            'volume_cbm' => $data['volume_cbm'] ?? $existing->volume_cbm,
+            'carton_tare_weight_kg' => $data['carton_tare_weight_kg'] ?? $existing->carton_tare_weight_kg,
+            'is_online' => isset($data['is_online']) ? $data['is_online'] : $existing->is_online,
+            'out_of_stock' => isset($data['out_of_stock']) ? $data['out_of_stock'] : ($existing->out_of_stock ?? 0),
+            'public_description' => array_key_exists('public_description', $data) ? $data['public_description'] : $existing->public_description,
         ];
 
         if ($this->partModel->update($id, $payload, (int)$u['sub'])) {
@@ -366,5 +370,35 @@ class PartController extends Controller {
             $this->success(null, 'Image deleted');
         }
         $this->error('Failed to delete image');
+    }
+
+    // POST /api/part/bulk_update_discount
+    public function bulk_update_discount() {
+        $u = $this->requirePermission('parts.write');
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') $this->error('Method Not Allowed', 405);
+        $data = json_decode(file_get_contents('php://input'), true) ?: [];
+        
+        $ids = $data['ids'] ?? [];
+        $type = $data['discount_type'] ?? 'None';
+        $value = $data['discount_value'] ?? 0;
+        
+        if (empty($ids)) $this->error('Product IDs are required', 400);
+        
+        if ($this->partModel->bulkUpdateDiscount($ids, $type, $value)) {
+            $this->auditModel->write([
+                'user_id' => (int)$u['sub'],
+                'location_id' => $this->currentLocationId($u),
+                'action' => 'bulk_update_discount',
+                'entity' => 'part',
+                'entity_id' => null,
+                'method' => $_SERVER['REQUEST_METHOD'] ?? '',
+                'path' => $_SERVER['REQUEST_URI'] ?? '',
+                'ip' => $_SERVER['REMOTE_ADDR'] ?? '',
+                'user_agent' => $_SERVER['HTTP_USER_AGENT'] ?? '',
+                'details' => json_encode(['count' => count($ids), 'type' => $type, 'value' => $value]),
+            ]);
+            $this->success(null, 'Discounts updated for ' . count($ids) . ' products');
+        }
+        $this->error('Failed to update discounts');
     }
 }

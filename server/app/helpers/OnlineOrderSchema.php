@@ -17,8 +17,11 @@ class OnlineOrderSchema {
                 customer_details_json TEXT NULL,
                 shipping_address TEXT NULL,
                 billing_address TEXT NULL,
+                shipping_fee DECIMAL(15,2) NOT NULL DEFAULT 0.00,
+                shipping_zone_id INT NULL,
+                district_id INT NULL,
                 total_amount DECIMAL(15,2) NOT NULL DEFAULT 0.00,
-                payment_method ENUM('COD', 'IPG') NOT NULL DEFAULT 'COD',
+                payment_method VARCHAR(20) NOT NULL DEFAULT 'COD',
                 payment_status ENUM('Pending', 'Paid', 'Failed') NOT NULL DEFAULT 'Pending',
                 order_status ENUM('Pending', 'Processing', 'Shipped', 'Completed', 'Cancelled') NOT NULL DEFAULT 'Pending',
                 payhere_id VARCHAR(100) NULL,
@@ -47,5 +50,29 @@ class OnlineOrderSchema {
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
         ");
         $db->execute();
+
+        // Migration: Add missing columns and fix payment_method type
+        $db->query("ALTER TABLE online_orders MODIFY COLUMN payment_method VARCHAR(20) NOT NULL DEFAULT 'COD'");
+        $db->execute();
+        
+        try {
+            $db->query("ALTER TABLE online_orders ADD COLUMN shipping_fee DECIMAL(15,2) NOT NULL DEFAULT 0.00 AFTER billing_address");
+            $db->execute();
+        } catch (Exception $e) {}
+
+        try {
+            $db->query("ALTER TABLE online_orders ADD COLUMN shipping_zone_id INT NULL AFTER shipping_fee");
+            $db->execute();
+        } catch (Exception $e) {}
+
+        try {
+            $db->query("ALTER TABLE online_orders ADD COLUMN district_id INT NULL AFTER shipping_zone_id");
+            $db->execute();
+        } catch (Exception $e) {}
+
+        try {
+            $db->query("ALTER TABLE online_orders ADD COLUMN payment_slip VARCHAR(255) NULL AFTER payhere_id");
+            $db->execute();
+        } catch (Exception $e) {}
     }
 }

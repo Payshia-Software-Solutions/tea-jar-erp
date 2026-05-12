@@ -9,7 +9,9 @@ import {
   Key,
   RefreshCcw,
   ShieldCheck,
-  Globe
+  Globe,
+  Plus,
+  Trash2
 } from 'lucide-react';
 import { useRouter, useParams } from 'next/navigation';
 import { motion } from 'framer-motion';
@@ -31,7 +33,10 @@ export default function TenantEditPage() {
     license_key: '',
     api_key: '',
     trial_expiry: '',
-    currency: 'USD'
+    currency: 'USD',
+    billing_cc_email: '',
+    admin_email: '',
+    contact_number: ''
   });
 
   const API_BASE = 'http://localhost/rapair-management/nexus-portal-server/public/api';
@@ -48,8 +53,21 @@ export default function TenantEditPage() {
         const tenantData = await tenantRes.json();
         
         setPackages(packagesData.data || []);
+        setPackages(packagesData.data || []);
         if (tenantData.status === 'success') {
-          setFormData(tenantData.data);
+          const tenant = tenantData.data;
+          let ccEmails: string[] = [];
+          try {
+            const decoded = JSON.parse(tenant.billing_cc_email);
+            if (Array.isArray(decoded)) ccEmails = decoded;
+            else if (tenant.billing_cc_email) ccEmails = [tenant.billing_cc_email];
+          } catch (e) {
+            if (tenant.billing_cc_email) ccEmails = tenant.billing_cc_email.split(',').map((e: string) => e.trim());
+          }
+          setFormData({
+            ...tenant,
+            billing_cc_email: ccEmails
+          });
         }
       } catch (err) {
         console.error(err);
@@ -64,11 +82,15 @@ export default function TenantEditPage() {
     e.preventDefault();
     setSaving(true);
     try {
+      const payload = {
+        ...formData,
+        billing_cc_email: JSON.stringify(formData.billing_cc_email)
+      };
       const res = await fetch(`${API_BASE}/admin/tenants/update`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify(formData)
+        body: JSON.stringify(payload)
       });
       if (res.ok) {
         router.push('/admin/tenants');
@@ -148,6 +170,27 @@ export default function TenantEditPage() {
                 </div>
              </div>
 
+              <div className="grid md:grid-cols-2 gap-6">
+                 <div className="space-y-2">
+                   <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Administrative Email</label>
+                   <input 
+                     required
+                     type="email"
+                     value={formData.admin_email}
+                     onChange={(e) => setFormData({...formData, admin_email: e.target.value})}
+                     className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-3.5 text-sm text-slate-900 dark:text-white outline-none focus:border-indigo-500 transition-all" 
+                   />
+                 </div>
+                 <div className="space-y-2">
+                   <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Contact Number</label>
+                   <input 
+                     value={formData.contact_number || ''}
+                     onChange={(e) => setFormData({...formData, contact_number: e.target.value})}
+                     className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-3.5 text-sm text-slate-900 dark:text-white outline-none focus:border-indigo-500 transition-all" 
+                   />
+                 </div>
+              </div>
+
              <div className="grid md:grid-cols-3 gap-6 pt-6 border-t border-slate-100 dark:border-white/5">
                 <div className="space-y-2">
                   <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Plan Tier</label>
@@ -172,20 +215,60 @@ export default function TenantEditPage() {
                     <option value="Expired">Expired</option>
                   </select>
                 </div>
-                <div className="space-y-2">
-                  <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Billing Currency</label>
-                  <select 
-                    value={formData.currency}
-                    onChange={(e) => setFormData({...formData, currency: e.target.value})}
-                    className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-3.5 text-sm text-slate-900 dark:text-white outline-none focus:border-indigo-500 transition-all appearance-none"
-                  >
-                    <option value="USD">USD - US Dollar</option>
-                    <option value="LKR">LKR - Sri Lankan Rupee</option>
-                    <option value="EUR">EUR - Euro</option>
-                    <option value="GBP">GBP - British Pound</option>
-                  </select>
-                </div>
-             </div>
+                 <div className="space-y-2">
+                   <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Billing Currency</label>
+                   <select 
+                     value={formData.currency}
+                     onChange={(e) => setFormData({...formData, currency: e.target.value})}
+                     className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-3.5 text-sm text-slate-900 dark:text-white outline-none focus:border-indigo-500 transition-all appearance-none"
+                   >
+                     <option value="USD">USD - US Dollar</option>
+                     <option value="LKR">LKR - Sri Lankan Rupee</option>
+                     <option value="EUR">EUR - Euro</option>
+                     <option value="GBP">GBP - British Pound</option>
+                   </select>
+                 </div>
+                 <div className="space-y-4">
+                   <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Billing CC Recipients</label>
+                   <div className="space-y-3">
+                     {(Array.isArray(formData.billing_cc_email) ? formData.billing_cc_email : []).map((email: string, idx: number) => (
+                       <div key={idx} className="flex gap-2">
+                         <input 
+                           type="email"
+                           placeholder="accounts@enterprise.com"
+                           value={email}
+                           onChange={(e) => {
+                             const newCcs = [...(formData.billing_cc_email as unknown as string[])];
+                             newCcs[idx] = e.target.value;
+                             setFormData({...formData, billing_cc_email: newCcs});
+                           }}
+                           className="flex-1 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-3 text-sm text-slate-900 dark:text-white outline-none focus:border-indigo-500 transition-all" 
+                         />
+                         <button 
+                           type="button"
+                           onClick={() => {
+                             const newCcs = (formData.billing_cc_email as unknown as string[]).filter((_, i) => i !== idx);
+                             setFormData({...formData, billing_cc_email: newCcs});
+                           }}
+                           className="p-3 hover:bg-rose-500/10 text-slate-400 hover:text-rose-500 rounded-xl transition-all"
+                         >
+                           <Trash2 size={18} />
+                         </button>
+                       </div>
+                     ))}
+                     <button 
+                       type="button"
+                       onClick={() => {
+                         const current = Array.isArray(formData.billing_cc_email) ? formData.billing_cc_email : [];
+                         setFormData({...formData, billing_cc_email: [...current, '']});
+                       }}
+                       className="w-full py-3 border border-dashed border-slate-200 dark:border-white/10 rounded-xl text-slate-400 hover:text-indigo-500 hover:border-indigo-500/50 transition-all text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2"
+                     >
+                       <Plus size={14} /> Add Recipient
+                     </button>
+                   </div>
+                 </div>
+              </div>
           </div>
 
           <div className="glass p-8 space-y-6">

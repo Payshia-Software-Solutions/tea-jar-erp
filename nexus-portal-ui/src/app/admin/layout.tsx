@@ -16,6 +16,7 @@ export default function AdminLayout({
   const [userRole, setUserRole] = useState('');
   const [loading, setLoading] = useState(true);
   const [theme, setTheme] = useState<'light' | 'dark'>('dark');
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   const API_BASE = 'http://localhost/rapair-management/nexus-portal-server/public/api';
 
@@ -61,6 +62,9 @@ export default function AdminLayout({
     document.documentElement.classList.toggle('dark', newTheme === 'dark');
   };
 
+  const toggleSidebar = () => setIsSidebarOpen(!isSidebarOpen);
+  const closeSidebar = () => setIsSidebarOpen(false);
+
   const isLoginPage = pathname === '/admin' || pathname === '/admin/login';
 
   if (isLoginPage) {
@@ -86,6 +90,8 @@ export default function AdminLayout({
         activeTab={activeTab} 
         theme={theme} 
         onToggleTheme={toggleTheme} 
+        isOpen={isSidebarOpen}
+        onClose={closeSidebar}
       />
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
         <AdminTopBar 
@@ -93,6 +99,7 @@ export default function AdminLayout({
           role={userRole}
           theme={theme}
           onToggleTheme={toggleTheme}
+          onToggleSidebar={toggleSidebar}
         />
         <main className="flex-1 overflow-y-auto relative">
           {children}

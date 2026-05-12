@@ -68,73 +68,153 @@ class PublicitemController extends Controller {
     }
 
     /**
-     * GET /api/public/inventory
-     * Lists active products with sanitized data.
+     * GET /api/publicitem/inventory
+     * Lists active products for a specific location.
      */
     public function inventory() {
+        $this->handlePublicCors();
         if ($_SERVER['REQUEST_METHOD'] !== 'GET') {
             $this->error('Method Not Allowed', 405);
         }
 
         $this->validatePublicApiKey();
 
-        // Fetch all active items
-        $items = $this->itemModel->list();
+        $locationId = isset($_GET['location_id']) ? (int)$_GET['location_id'] : 0;
+        if ($locationId <= 0) $this->error('Location ID is required', 400);
+
+        $collectionId = isset($_GET['collection_id']) ? (int)$_GET['collection_id'] : null;
+        $categoryId = isset($_GET['category_id']) ? (int)$_GET['category_id'] : null;
+
+        // Fetch items for this location
+        $items = $this->itemModel->listLocationBalances($locationId);
         
-        $sanitized = array_map(function($item) {
-            return [
+        require_once '../app/models/PartAttribute.php';
+        $attrModel = new PartAttribute();
+
+        $contentUrl = defined('CONTENT_BASE_URL') ? CONTENT_BASE_URL : 'https://content-provider.payshia.com/service-center-system/';
+        $itemsDir = defined('CONTENT_ITEMS_DIR') ? CONTENT_ITEMS_DIR : 'items';
+        $imageBaseUrl = rtrim($contentUrl, '/') . '/' . trim($itemsDir, '/') . '/';
+
+        $sanitized = [];
+        foreach ($items as $item) {
+            // Only online enabled items
+            if ((int)($item->is_online ?? 0) !== 1) continue;
+            if ((int)$item->is_active !== 1) continue;
+
+            // Optional collection filtering
+            if ($collectionId !== null) {
+                if (!in_array($collectionId, $item->collection_ids ?? [])) continue;
+            }
+
+            // Optional category filtering
+            if ($categoryId !== null && (int)$item->item_category_id !== $categoryId) continue;
+
+            $sanitizedGallery = array_map(function($img) use ($imageBaseUrl) {
+                return [
+                    'id' => (int)$img->id,
+                    'image_url' => $imageBaseUrl . $img->filename,
+                    'label' => (string)($img->label ?? '')
+                ];
+            }, $item->gallery ?: []);
+
+            $sanitized[] = [
                 'id' => (int)$item->id,
                 'name' => (string)$item->part_name,
+                'slug' => (string)($item->slug ?? ''),
                 'sku' => (string)$item->sku,
                 'price' => (float)$item->price,
+                'discount_type' => (string)($item->discount_type ?? 'None'),
+                'discount_value' => (float)($item->discount_value ?? 0),
                 'brand' => (string)($item->brand_name ?? 'Generic'),
                 'item_type' => (string)$item->item_type,
                 'is_in_stock' => (float)$item->stock_quantity > 0,
                 'stock_qty' => (float)$item->stock_quantity,
-                'image_url' => !empty($item->image_filename) ? '/uploads/parts/' . $item->image_filename : null,
-                'category_ids' => $item->collection_ids ?? []
+                'image_url' => !empty($item->image_filename) ? $imageBaseUrl . $item->image_filename : null,
+                'gallery' => $sanitizedGallery,
+                'category_ids' => $item->collection_ids ?? [],
+                'attributes' => $attrModel->getPartAttributesGrouped($item->id)
             ];
-        }, array_filter($rows = $items, function($i) {
-            return (int)$i->is_active === 1;
-        }));
+        }
 
         $this->success(array_values($sanitized));
     }
 
     /**
-     * GET /api/public/inventory/{id}
+     * GET /api/publicitem/get/{id}
      * Returns detailed sanitized data for one product.
      */
     public function get($id) {
+        $this->handlePublicCors();
         if ($_SERVER['REQUEST_METHOD'] !== 'GET') {
             $this->error('Method Not Allowed', 405);
         }
 
         $this->validatePublicApiKey();
 
-        $item = $this->itemModel->getById($id);
-        if (!$item || (int)$item->is_active === 0) {
+        $locationId = isset($_GET['location_id']) ? (int)$_GET['location_id'] : 0;
+        // Optional for single item but recommended
+        
+        if (is_numeric($id)) {
+            $item = $this->itemModel->getById($id);
+        } else {
+            $item = $this->itemModel->getBySlug($id);
+        }
+        if (!$item || (int)$item->is_active === 0 || (isset($item->is_online) && (int)$item->is_online !== 1)) {
             $this->error('Product not found', 404);
         }
+
+        // If location provided, get location-specific stock
+        if ($locationId > 0) {
+            $balance = $this->itemModel->getLocationStock($item->id, $locationId);
+            $item->stock_quantity = $balance ? $balance->available : 0;
+        }
+
+        $contentUrl = defined('CONTENT_BASE_URL') ? CONTENT_BASE_URL : 'https://content-provider.payshia.com/service-center-system/';
+        $itemsDir = defined('CONTENT_ITEMS_DIR') ? CONTENT_ITEMS_DIR : 'items';
+        $imageBaseUrl = rtrim($contentUrl, '/') . '/' . trim($itemsDir, '/') . '/';
+
+        require_once '../app/models/PartAttribute.php';
+        $attrModel = new PartAttribute();
 
         $sanitized = [
             'id' => (int)$item->id,
             'name' => (string)$item->part_name,
+            'slug' => (string)($item->slug ?? ''),
             'sku' => (string)$item->sku,
             'part_number' => (string)$item->part_number,
-            'description' => (string)$item->part_name, // Fallback if no full description field
+            'description' => (string)$item->public_description, 
             'price' => (float)$item->price,
+            'discount_type' => (string)($item->discount_type ?? 'None'),
+            'discount_value' => (float)($item->discount_value ?? 0),
             'brand' => (string)($item->brand_name ?? 'Generic'),
             'item_type' => (string)$item->item_type,
             'unit' => (string)$item->unit,
             'is_in_stock' => (float)$item->stock_quantity > 0,
             'stock_qty' => (float)$item->stock_quantity,
-            'image_url' => !empty($item->image_filename) ? '/uploads/parts/' . $item->image_filename : null,
+            'image_url' => !empty($item->image_filename) ? $imageBaseUrl . $item->image_filename : null,
+            'gallery' => array_map(function($img) use ($imageBaseUrl) {
+                return [
+                    'id' => (int)$img->id,
+                    'image_url' => $imageBaseUrl . $img->filename,
+                    'label' => (string)$img->label
+                ];
+            }, $item->gallery ?: []),
             'collections' => array_map(function($c) {
                 return ['id' => $c->id, 'name' => $c->name];
-            }, $item->collections ?: [])
+            }, $item->collections ?: []),
+            'attributes' => $attrModel->getPartAttributesGrouped($item->id)
         ];
 
         $this->success($sanitized);
+    }
+
+    /**
+     * GET /api/publicitem/sync_slugs
+     * Maintenance tool to initialize slugs for existing products.
+     */
+    public function sync_slugs() {
+        $this->handlePublicCors();
+        $count = $this->itemModel->syncSlugs();
+        $this->success(['count' => $count], "Slugs synced");
     }
 }

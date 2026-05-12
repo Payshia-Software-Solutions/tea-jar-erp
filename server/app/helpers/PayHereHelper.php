@@ -50,9 +50,9 @@ class PayHereHelper implements PaymentGatewayInterface {
         $isSandbox = (int)($settings['payhere_is_sandbox'] ?? 1) === 1;
         
         if ($isSandbox) {
-            $mSecret = $settings['payhere_secret_sandbox'] ?? $settings['payhere_secret'] ?? '';
+            $mSecret = $settings['payhere_merchant_secret_sandbox'] ?? $settings['payhere_secret_sandbox'] ?? $settings['payhere_merchant_secret'] ?? $settings['payhere_secret'] ?? '';
         } else {
-            $mSecret = $settings['payhere_secret_live'] ?? $settings['payhere_secret'] ?? '';
+            $mSecret = $settings['payhere_merchant_secret_live'] ?? $settings['payhere_secret_live'] ?? $settings['payhere_merchant_secret'] ?? $settings['payhere_secret'] ?? '';
         }
 
         $merchantId = $data['merchant_id'] ?? '';
@@ -62,11 +62,14 @@ class PayHereHelper implements PaymentGatewayInterface {
         $statusCode = $data['status_code'] ?? '';
         $md5sig = $data['md5sig'] ?? '';
 
+        // PayHere requires amount to be formatted to 2 decimal places for the hash
+        $formattedAmount = number_format((float)$payhereAmount, 2, '.', '');
+
         $localHash = strtoupper(
             md5(
                 $merchantId . 
                 $orderId . 
-                $payhereAmount . 
+                $formattedAmount . 
                 $payhereCurrency . 
                 $statusCode . 
                 strtoupper(md5($mSecret))

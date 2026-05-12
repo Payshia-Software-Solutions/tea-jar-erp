@@ -24,7 +24,8 @@ export default function TenantCreatePage() {
     admin_email: '',
     business_type: '',
     address: '',
-    currency: 'USD'
+    currency: 'USD',
+    billing_cc_email: ''
   });
 
   const API_BASE = 'http://localhost/rapair-management/nexus-portal-server/public/api';
@@ -147,6 +148,19 @@ export default function TenantCreatePage() {
                   <option value="EUR">EUR - Euro</option>
                   <option value="GBP">GBP - British Pound</option>
                 </select>
+              </div>
+              <div className="space-y-2">
+                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Billing CC Email (Optional)</label>
+                <div className="relative">
+                  <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+                  <input 
+                    type="email"
+                    placeholder="accounts@enterprise.com"
+                    value={formData.billing_cc_email}
+                    onChange={(e) => setFormData({...formData, billing_cc_email: e.target.value})}
+                    className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-white/10 rounded-xl pl-12 pr-4 py-3.5 text-sm text-slate-900 dark:text-white outline-none focus:border-indigo-500 transition-all" 
+                  />
+                </div>
               </div>
            </div>
         </div>

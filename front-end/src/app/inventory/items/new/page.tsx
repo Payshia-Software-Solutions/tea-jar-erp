@@ -14,7 +14,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
-import { createPart, fetchBrands, fetchInventoryCollections, fetchLocations, fetchParts, fetchSuppliers, fetchUnits, uploadPartImage, type BrandRow, type ServiceLocation, type SupplierRow, type UnitRow } from "@/lib/api";
+import { createPart, fetchBrands, fetchInventoryCollections, fetchLocations, fetchParts, fetchSuppliers, fetchUnits, uploadPartImage, fetchItemSections, fetchItemDepartments, fetchItemCategories, type BrandRow, type ServiceLocation, type SupplierRow, type UnitRow, type ItemSection, type ItemDepartment, type ItemCategory } from "@/lib/api";
 import { ArrowLeft, ChevronDown, LayoutGrid, Loader2, Plus, Sparkles, Upload } from "lucide-react";
 
 function asNumOrNull(v: any) {
@@ -52,11 +52,15 @@ export default function NewItemPage() {
   const [suppliers, setSuppliers] = useState<SupplierRow[]>([]);
   const [collections, setCollections] = useState<any[]>([]);
   const [locations, setLocations] = useState<ServiceLocation[]>([]);
+  const [sections, setSections] = useState<ItemSection[]>([]);
+  const [departments, setDepartments] = useState<ItemDepartment[]>([]);
+  const [categories, setCategories] = useState<ItemCategory[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
   const [form, setForm] = useState({
     sku: "",
+    slug: "",
     part_number: "",
     barcode_number: "",
     part_name: "",
@@ -84,6 +88,9 @@ export default function NewItemPage() {
     volume_cbm: "",
     carton_tare_weight_kg: "",
     hs_code: "",
+    item_section_id: "",
+    item_department_id: "",
+    item_category_id: "",
   });
 
   const [supplierIds, setSupplierIds] = useState<number[]>([]);
@@ -100,18 +107,24 @@ export default function NewItemPage() {
     const run = async () => {
       setLoading(true);
       try {
-        const [u, b, s, c, locationsRes] = await Promise.all([
+        const [u, b, s, c, locationsRes, sRes, dRes, cRes] = await Promise.all([
           fetchUnits(""), 
           fetchBrands(""), 
           fetchSuppliers(""),
           fetchInventoryCollections(),
-          fetchLocations()
+          fetchLocations(),
+          fetchItemSections(),
+          fetchItemDepartments(),
+          fetchItemCategories()
         ]);
         setUnits(Array.isArray(u) ? u : []);
         setBrands(Array.isArray(b) ? b : []);
         setSuppliers(Array.isArray(s) ? s : []);
         setCollections(Array.isArray(c) ? c : []);
         setLocations(Array.isArray(locationsRes) ? locationsRes : []);
+        setSections(Array.isArray(sRes) ? sRes : []);
+        setDepartments(Array.isArray(dRes) ? dRes : []);
+        setCategories(Array.isArray(cRes) ? cRes : []);
       } catch (e: any) {
         toast({ title: "Error", description: e?.message || "Failed to load master data", variant: "destructive" });
       } finally {
@@ -159,6 +172,7 @@ export default function NewItemPage() {
 
       await createPart({
         sku: (form.sku || "").trim() ? form.sku.trim() : null,
+        slug: (form.slug || "").trim() ? form.slug.trim() : null,
         part_number: (form.part_number || "").trim() ? form.part_number.trim() : null,
         barcode_number: (form.barcode_number || "").trim() ? form.barcode_number.trim() : null,
         part_name: (form.part_name || "").trim(),
@@ -191,6 +205,9 @@ export default function NewItemPage() {
         volume_cbm: asNumOrNull(form.volume_cbm),
         carton_tare_weight_kg: asNumOrNull(form.carton_tare_weight_kg),
         hs_code: (form.hs_code || "").trim() || null,
+        item_section_id: form.item_section_id ? parseInt(form.item_section_id) : null,
+        item_department_id: form.item_department_id ? parseInt(form.item_department_id) : null,
+        item_category_id: form.item_category_id ? parseInt(form.item_category_id) : null,
       });
 
       toast({ title: "Created", description: "Product created" });
@@ -307,6 +324,26 @@ export default function NewItemPage() {
 	                  <div className="space-y-2">
 	                    <Label>Name</Label>
 	                    <Input value={form.part_name} onChange={(e) => setForm((p) => ({ ...p, part_name: e.target.value }))} required />
+	                  </div>
+	                  <div className="space-y-2">
+	                    <Label>URL Slug</Label>
+                      <div className="flex gap-2">
+	                      <Input value={form.slug} onChange={(e) => setForm((p) => ({ ...p, slug: e.target.value }))} placeholder="e.g. classic-earl-grey" />
+                        <Button 
+                          type="button"
+                          variant="outline" 
+                          size="icon"
+                          className="shrink-0"
+                          onClick={() => setForm(p => ({ 
+                            ...p, 
+                            slug: p.part_name.toLowerCase().trim().replace(/[^a-z0-9-]+/g, '-').replace(/^-+|-+$/g, '') 
+                          }))}
+                          title="Regenerate from Name"
+                        >
+                          <Sparkles className="w-4 h-4" />
+                        </Button>
+                      </div>
+                      <div className="text-[11px] text-muted-foreground">Optional. Auto-generated if left blank.</div>
 	                  </div>
 	                  <div className="space-y-2">
 	                    <Label>Brand</Label>
@@ -545,6 +582,38 @@ export default function NewItemPage() {
                     <Input type="file" accept="image/*" onChange={(e) => setImageFile(e.target.files?.[0] ?? null)} />
                     <div className="text-[11px] text-muted-foreground">Optional</div>
                   </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-5 border-t pt-5 mt-2">
+                   <div className="space-y-2">
+                      <Label>Item Section</Label>
+                      <Select value={form.item_section_id} onValueChange={(v) => setForm(p => ({ ...p, item_section_id: v, item_department_id: "" }))}>
+                        <SelectTrigger><SelectValue placeholder="Select Section" /></SelectTrigger>
+                        <SelectContent>
+                          {sections.map(s => <SelectItem key={s.id} value={String(s.id)}>{s.name}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                   </div>
+                   <div className="space-y-2">
+                      <Label>Item Department</Label>
+                      <Select value={form.item_department_id} onValueChange={(v) => setForm(p => ({ ...p, item_department_id: v }))}>
+                        <SelectTrigger><SelectValue placeholder="Select Department" /></SelectTrigger>
+                        <SelectContent>
+                          {departments.filter(d => !form.item_section_id || d.section_id === parseInt(form.item_section_id)).map(d => (
+                            <SelectItem key={d.id} value={String(d.id)}>{d.name}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                   </div>
+                   <div className="space-y-2">
+                      <Label>Item Category</Label>
+                      <Select value={form.item_category_id} onValueChange={(v) => setForm(p => ({ ...p, item_category_id: v }))}>
+                        <SelectTrigger><SelectValue placeholder="Select Category" /></SelectTrigger>
+                        <SelectContent>
+                          {categories.map(c => <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                   </div>
                 </div>
                 
                 {form.item_type === "Part" && (

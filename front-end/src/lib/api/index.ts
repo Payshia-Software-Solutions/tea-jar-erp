@@ -13,6 +13,7 @@ export * from './reports';
 export * from './dashboard';
 export * from './master-data';
 export * from './promotions';
+export * from './storefront';
 export * from './production';
 export * from './marketing';
 export * from './email-marketing';

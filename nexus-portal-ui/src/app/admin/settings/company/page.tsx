@@ -15,6 +15,7 @@ export default function CompanySettingsPage() {
     company_website: '',
     company_logo: ''
   });
+  const [availableLogos, setAvailableLogos] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
@@ -28,13 +29,23 @@ export default function CompanySettingsPage() {
       }
     } catch (err) {
       console.error(err);
-    } finally {
-      setLoading(false);
+    }
+  };
+
+  const fetchLogos = async () => {
+    try {
+      const res = await fetch(`${API_BASE}/admin/settings/company/logos`, { credentials: 'include' });
+      const data = await res.json();
+      if (data.status === 'success') {
+        setAvailableLogos(data.data);
+      }
+    } catch (err) {
+      console.error(err);
     }
   };
 
   useEffect(() => {
-    fetchSettings();
+    Promise.all([fetchSettings(), fetchLogos()]).finally(() => setLoading(false));
   }, []);
 
   const handleSave = async (e: React.FormEvent) => {
@@ -68,191 +79,225 @@ export default function CompanySettingsPage() {
     );
   }
 
+  const getLogoUrl = (logo: string) => {
+    if (!logo) return '';
+    if (logo.startsWith('ui/')) {
+      return `/${logo.substring(3)}`;
+    }
+    return `http://localhost/rapair-management/nexus-portal-server/public/${logo}`;
+  };
+
   return (
-    <div className="w-full py-8 px-8 min-h-screen bg-slate-50/50 dark:bg-slate-950/50">
-      <div className="mb-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
+    <div className="p-6 space-y-6">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-200 dark:border-white/5 pb-4">
         <div>
-          <h1 className="text-3xl font-black text-slate-900 dark:text-white flex items-center gap-4">
-            <div className="p-3 bg-indigo-500/10 rounded-2xl">
-              <Building2 size={32} className="text-indigo-500" />
+          <h1 className="text-2xl font-black text-slate-900 dark:text-white flex items-center gap-2">
+            <div className="p-2.5 bg-indigo-500/10 rounded-lg text-indigo-500">
+              <Building2 size={20} />
             </div>
-            Company Branding & Profile
+            Company Branding
           </h1>
-          <p className="text-slate-500 mt-2 font-medium">Manage your corporate identity for official documents and system communication.</p>
+          <p className="text-[11px] text-slate-500 font-bold uppercase tracking-widest mt-1">Manage corporate identity & assets</p>
         </div>
         
         {message && (
           <motion.div 
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
-            className={`px-6 py-3 rounded-2xl flex items-center gap-3 shadow-sm border ${
+            className={`px-3 py-1.5 rounded-lg flex items-center gap-2 shadow-sm border ${
               message.type === 'success' ? 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20' : 'bg-rose-500/10 text-rose-600 border-rose-500/20'
             }`}
           >
-            {message.type === 'success' ? <CheckCircle size={18} /> : <ImageIcon size={18} />}
-            <span className="text-sm font-black uppercase tracking-tight">{message.text}</span>
+            {message.type === 'success' ? <CheckCircle size={14} /> : <ImageIcon size={14} />}
+            <span className="text-[10px] font-black uppercase tracking-widest">{message.text}</span>
           </motion.div>
         )}
       </div>
 
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         {/* Configuration Form */}
-        <div className="xl:col-span-2 space-y-8">
-          <form onSubmit={handleSave} className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="md:col-span-2 premium-card p-8">
-              <label className="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-4">Official Entity Name</label>
+        <div className="lg:col-span-2 space-y-4">
+          <form onSubmit={handleSave} className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div className="glass p-3">
+              <label className="block text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1.5">Entity Name</label>
               <div className="relative group">
-                <Building2 className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-indigo-500 transition-colors" size={20} />
+                <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={14} />
                 <input 
                   type="text"
                   value={settings.company_name}
                   onChange={e => setSettings({...settings, company_name: e.target.value})}
-                  className="w-full bg-slate-100/50 dark:bg-slate-900/50 border-2 border-transparent rounded-2xl py-4 pl-14 pr-6 text-base font-bold focus:border-indigo-500/50 focus:bg-white dark:focus:bg-slate-900 outline-none transition-all"
-                  placeholder="e.g. Payshia Software Solutions"
+                  className="w-full bg-slate-100/50 dark:bg-slate-900/50 border border-slate-200 dark:border-white/5 rounded-lg py-1.5 pl-9 pr-3 text-xs font-bold outline-none focus:border-indigo-500 transition-all"
+                  placeholder="Official Name"
                   required
                 />
               </div>
             </div>
 
-            <div className="premium-card p-8">
-              <label className="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-4">Contact Email</label>
+            <div className="glass p-3">
+              <label className="block text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1.5">Hotline</label>
               <div className="relative group">
-                <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-indigo-500 transition-colors" size={20} />
-                <input 
-                  type="email"
-                  value={settings.company_email}
-                  onChange={e => setSettings({...settings, company_email: e.target.value})}
-                  className="w-full bg-slate-100/50 dark:bg-slate-900/50 border-2 border-transparent rounded-2xl py-4 pl-14 pr-6 text-sm font-bold focus:border-indigo-500/50 focus:bg-white dark:focus:bg-slate-900 outline-none transition-all"
-                  placeholder="billing@company.com"
-                  required
-                />
-              </div>
-            </div>
-
-            <div className="premium-card p-8">
-              <label className="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-4">Support Hotline</label>
-              <div className="relative group">
-                <Phone className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-indigo-500 transition-colors" size={20} />
+                <Phone className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={14} />
                 <input 
                   type="text"
                   value={settings.company_phone}
                   onChange={e => setSettings({...settings, company_phone: e.target.value})}
-                  className="w-full bg-slate-100/50 dark:bg-slate-900/50 border-2 border-transparent rounded-2xl py-4 pl-14 pr-6 text-sm font-bold focus:border-indigo-500/50 focus:bg-white dark:focus:bg-slate-900 outline-none transition-all"
-                  placeholder="+94 11..."
+                  className="w-full bg-slate-100/50 dark:bg-slate-900/50 border border-slate-200 dark:border-white/5 rounded-lg py-1.5 pl-9 pr-3 text-xs font-bold outline-none focus:border-indigo-500 transition-all"
+                  placeholder="Phone"
                 />
               </div>
             </div>
 
-            <div className="md:col-span-2 premium-card p-8">
-              <label className="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-4">Corporate Address (Displays on Header)</label>
+            <div className="glass p-3">
+              <label className="block text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1.5">Email</label>
               <div className="relative group">
-                <MapPin className="absolute left-4 top-6 text-slate-400 group-focus-within:text-indigo-500 transition-colors" size={20} />
-                <textarea 
-                  rows={4}
-                  value={settings.company_address}
-                  onChange={e => setSettings({...settings, company_address: e.target.value})}
-                  className="w-full bg-slate-100/50 dark:bg-slate-900/50 border-2 border-transparent rounded-2xl py-4 pl-14 pr-6 text-sm font-bold focus:border-indigo-500/50 focus:bg-white dark:focus:bg-slate-900 outline-none transition-all resize-none"
-                  placeholder="Full physical address for legal documents"
+                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={14} />
+                <input 
+                  type="email"
+                  value={settings.company_email}
+                  onChange={e => setSettings({...settings, company_email: e.target.value})}
+                  className="w-full bg-slate-100/50 dark:bg-slate-900/50 border border-slate-200 dark:border-white/5 rounded-lg py-1.5 pl-9 pr-3 text-xs font-bold outline-none focus:border-indigo-500 transition-all"
+                  placeholder="Email"
                   required
                 />
               </div>
             </div>
 
-            <div className="premium-card p-8">
-              <label className="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-4">Official Website</label>
+            <div className="glass p-3">
+              <label className="block text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1.5">Website</label>
               <div className="relative group">
-                <Globe className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-indigo-500 transition-colors" size={20} />
+                <Globe className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={14} />
                 <input 
                   type="text"
                   value={settings.company_website}
                   onChange={e => setSettings({...settings, company_website: e.target.value})}
-                  className="w-full bg-slate-100/50 dark:bg-slate-900/50 border-2 border-transparent rounded-2xl py-4 pl-14 pr-6 text-sm font-bold focus:border-indigo-500/50 focus:bg-white dark:focus:bg-slate-900 outline-none transition-all"
-                  placeholder="www.yourcompany.com"
+                  className="w-full bg-slate-100/50 dark:bg-slate-900/50 border border-slate-200 dark:border-white/5 rounded-lg py-1.5 pl-9 pr-3 text-xs font-bold outline-none focus:border-indigo-500 transition-all"
+                  placeholder="Website"
                 />
               </div>
             </div>
 
-            <div className="premium-card p-8">
-              <label className="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-4">Logo Asset Filename</label>
+            <div className="md:col-span-2 glass p-3">
+              <label className="block text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1.5">Address</label>
               <div className="relative group">
-                <ImageIcon className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-indigo-500 transition-colors" size={20} />
-                <input 
-                  type="text"
-                  value={settings.company_logo}
-                  onChange={e => setSettings({...settings, company_logo: e.target.value})}
-                  className="w-full bg-slate-100/50 dark:bg-slate-900/50 border-2 border-transparent rounded-2xl py-4 pl-14 pr-6 text-sm font-bold focus:border-indigo-500/50 focus:bg-white dark:focus:bg-slate-900 outline-none transition-all"
-                  placeholder="e.g. logo.png"
+                <MapPin className="absolute left-3 top-2.5 text-slate-400" size={14} />
+                <textarea 
+                  rows={2}
+                  value={settings.company_address}
+                  onChange={e => setSettings({...settings, company_address: e.target.value})}
+                  className="w-full bg-slate-100/50 dark:bg-slate-900/50 border border-slate-200 dark:border-white/5 rounded-lg py-1.5 pl-9 pr-3 text-xs font-bold outline-none focus:border-indigo-500 transition-all resize-none"
+                  placeholder="Full Address"
+                  required
                 />
               </div>
             </div>
 
-            <div className="md:col-span-2 flex justify-end gap-4 mt-4">
+            <div className="md:col-span-2 glass p-3">
+              <label className="block text-[9px] font-black uppercase tracking-widest text-slate-400 mb-3 flex items-center gap-2">
+                <ImageIcon size={12} /> Logo Assets
+              </label>
+              <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-2">
+                {availableLogos.map((logo) => (
+                  <button
+                    key={logo}
+                    type="button"
+                    onClick={() => setSettings({...settings, company_logo: logo})}
+                    className={`relative aspect-square rounded-lg border transition-all overflow-hidden flex items-center justify-center p-1.5 group ${
+                      settings.company_logo === logo 
+                        ? 'border-indigo-500 bg-indigo-500/5' 
+                        : 'border-slate-100 dark:border-white/5 bg-slate-50 dark:bg-slate-900/50 hover:border-indigo-500/30'
+                    }`}
+                  >
+                    <img 
+                      src={getLogoUrl(logo)} 
+                      alt={logo} 
+                      className="max-w-full max-h-full object-contain filter drop-shadow-sm group-hover:scale-110 transition-transform"
+                    />
+                    <div className={`absolute bottom-0 left-0 w-full text-[6px] font-black text-center py-0.5 transition-all ${
+                      settings.company_logo === logo 
+                        ? 'bg-indigo-500 text-white' 
+                        : 'bg-black/40 text-white/70 opacity-0 group-hover:opacity-100'
+                    }`}>
+                      {logo.split('/').pop()}
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="md:col-span-2 flex justify-end mt-2">
               <button 
                 type="submit"
                 disabled={saving}
-                className="btn-premium px-12 py-5 rounded-3xl flex items-center gap-3 text-sm font-black uppercase tracking-widest shadow-xl shadow-indigo-500/20"
+                className="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-2 rounded-lg flex items-center gap-2 text-[10px] font-black uppercase tracking-widest shadow-lg shadow-indigo-500/20"
               >
-                {saving ? <Loader2 className="animate-spin" size={20} /> : <Save size={20} />}
-                {saving ? 'Updating Branding...' : 'Apply Corporate Profile'}
+                {saving ? <Loader2 className="animate-spin" size={14} /> : <Save size={14} />}
+                {saving ? 'Saving...' : 'Apply Profile'}
               </button>
             </div>
           </form>
         </div>
 
         {/* Live Branding Preview */}
-        <div className="space-y-6">
-          <div className="premium-card overflow-hidden sticky top-8">
-            <div className="bg-slate-900 p-4 border-b border-white/5 flex items-center justify-between">
-              <span className="text-[10px] font-black uppercase tracking-widest text-white/50">Live Branding Preview</span>
-              <div className="flex gap-1.5">
-                <div className="w-2 h-2 rounded-full bg-rose-500/50" />
-                <div className="w-2 h-2 rounded-full bg-amber-500/50" />
-                <div className="w-2 h-2 rounded-full bg-emerald-500/50" />
+        <div className="space-y-4">
+          <div className="glass overflow-hidden sticky top-4">
+            <div className="bg-slate-900 px-3 py-1.5 border-b border-white/5 flex items-center justify-between">
+              <span className="text-[8px] font-black uppercase tracking-widest text-white/50">Live Preview</span>
+              <div className="flex gap-1">
+                <div className="w-1 h-1 rounded-full bg-rose-500/50" />
+                <div className="w-1 h-1 rounded-full bg-amber-500/50" />
+                <div className="w-1 h-1 rounded-full bg-emerald-500/50" />
               </div>
             </div>
-            <div className="p-10 bg-white dark:bg-white min-h-[400px]">
+            <div className="p-4 bg-white min-h-[250px] scale-90 origin-top">
               {/* Document Header Mockup */}
-              <div className="border-b-2 border-slate-100 pb-8 mb-8">
+              <div className="border-b border-slate-100 pb-3 mb-3">
                 <div className="flex justify-between items-start">
                   <div>
-                    <div className="w-32 h-10 bg-slate-100 rounded-lg mb-4 flex items-center justify-center text-[10px] font-bold text-slate-400">
-                      LOGO: {settings.company_logo || 'default.png'}
-                    </div>
-                    <h2 className="text-xl font-black text-slate-900">{settings.company_name || 'Your Company Name'}</h2>
-                    <p className="text-[10px] text-slate-500 mt-2 whitespace-pre-line leading-relaxed">
-                      {settings.company_address || 'Street Address\nCity, Country'}
+                    {settings.company_logo ? (
+                      <img 
+                        src={getLogoUrl(settings.company_logo)} 
+                        alt="Logo" 
+                        className="h-6 w-auto object-contain mb-2"
+                      />
+                    ) : (
+                      <div className="w-16 h-6 bg-slate-50 border border-dashed border-slate-200 rounded flex items-center justify-center text-[6px] font-bold text-slate-400 mb-2">
+                        NO LOGO
+                      </div>
+                    )}
+                    <h2 className="text-xs font-black text-slate-900 leading-tight">{settings.company_name || 'Organization Name'}</h2>
+                    <p className="text-[6px] text-slate-500 mt-0.5 whitespace-pre-line leading-tight max-w-[120px]">
+                      {settings.company_address || 'Address Placeholder'}
                     </p>
-                    <p className="text-[10px] text-slate-400 mt-2">
-                      {settings.company_email} {settings.company_phone ? `| ${settings.company_phone}` : ''}
+                    <p className="text-[6px] text-slate-400 mt-0.5 font-bold">
+                      {settings.company_email}
                     </p>
                   </div>
                   <div className="text-right">
-                    <h1 className="text-2xl font-black text-slate-900 tracking-tighter opacity-10">INVOICE</h1>
-                    <p className="text-[10px] font-bold text-indigo-600 mt-1">#INV-SAMPLE-101</p>
+                    <h1 className="text-[10px] font-black text-slate-900 tracking-tighter opacity-10">INVOICE</h1>
+                    <p className="text-[6px] font-black text-indigo-600">#INV-101</p>
                   </div>
                 </div>
               </div>
 
               {/* Sample Content */}
-              <div className="space-y-4 opacity-10">
-                <div className="h-4 bg-slate-100 rounded w-full" />
-                <div className="h-4 bg-slate-100 rounded w-5/6" />
-                <div className="h-4 bg-slate-100 rounded w-4/6" />
+              <div className="space-y-2 opacity-10">
+                <div className="h-2 bg-slate-100 rounded w-full" />
+                <div className="h-2 bg-slate-100 rounded w-5/6" />
+                <div className="h-2 bg-slate-100 rounded w-4/6" />
               </div>
 
-              <div className="mt-20 border-t border-slate-100 pt-6">
-                <p className="text-[9px] text-slate-400 text-center font-medium">
-                   &copy; {new Date().getFullYear()} {settings.company_name || 'Your Company'}. All rights reserved.<br/>
-                   Generated by BizzFlow ERP Document Engine
+              <div className="mt-8 border-t border-slate-50 pt-2">
+                <p className="text-[5px] text-slate-400 text-center font-bold uppercase tracking-widest">
+                   &copy; {new Date().getFullYear()} {settings.company_name || 'Organization'}
                 </p>
               </div>
             </div>
           </div>
           
-          <div className="bg-indigo-500/5 border border-indigo-500/10 rounded-3xl p-6">
-            <h4 className="text-xs font-black text-indigo-600 uppercase tracking-widest mb-3">Branding Tip</h4>
-            <p className="text-sm text-slate-500 leading-relaxed italic">
-              "Your company details are synchronized across all PDF engines. Changes saved here will be reflected on next invoice generation."
+          <div className="bg-indigo-500/5 border border-indigo-500/10 rounded-xl p-3">
+            <h4 className="text-[9px] font-black text-indigo-600 uppercase tracking-widest mb-1">Global Branding</h4>
+            <p className="text-[9px] text-slate-500 leading-relaxed font-bold italic">
+              Applied instantly across all generators.
             </p>
           </div>
         </div>

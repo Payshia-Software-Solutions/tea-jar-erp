@@ -46,6 +46,7 @@ const ALL_ERP_MODULES = [
   { id: 'masterData', label: 'Master Data', desc: 'Core system parameters' },
   { id: 'promotions', label: 'Marketing & Promotions', desc: 'Campaigns & BOGO offers' },
   { id: 'production', label: 'Manufacturing & Production', desc: 'BOM & assembly logic' },
+  { id: 'ecommerce', label: 'E-commerce Storefront', desc: 'Online sales & content' },
 ]
 
 export function SaasInfoDialog({ 

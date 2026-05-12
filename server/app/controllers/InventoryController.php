@@ -4,9 +4,11 @@
  */
 class InventoryController extends Controller {
     private $partModel;
+    protected $db;
 
     public function __construct() {
         $this->partModel = $this->model('Part');
+        $this->db = new Database();
     }
 
     /**

@@ -190,7 +190,7 @@ export const uploadOrderAttachment = async (file: File) => {
 
 // POS / Return Specific Operations
 export const fetchPosDayLedger = async (locationId: number) => {
-  const res = await api(`/api/pos/day_ledger/${locationId}`);
+  const res = await api(`/api/pos/day-ledger?location_id=${locationId}`);
   if (!res.ok) throw new Error('Failed to load POS day ledger');
   const data = await res.json();
   return data.status === 'success' ? data.data : data;
@@ -203,7 +203,7 @@ export const holdPOSOrder = async (payload: any) => {
 };
 
 export const loadHeldOrder = async (id: number | string) => {
-  const res = await api(`/api/pos/load_held/${id}`);
+  const res = await api(`/api/pos/load-held-order/${id}`);
   if (!res.ok) throw new Error('Failed to load held order');
   const data = await res.json();
   return data.status === 'success' ? data.data : data;
@@ -211,7 +211,7 @@ export const loadHeldOrder = async (id: number | string) => {
 
 export const fetchHeldOrders = async (locationId?: number) => {
   const qs = locationId ? `?location_id=${locationId}` : '';
-  const res = await api(`/api/pos/held_orders${qs}`);
+  const res = await api(`/api/pos/held-orders${qs}`);
   if (!res.ok) throw new Error('Failed to load held orders');
   const data = await res.json();
   return data.status === 'success' ? (data.data || []) : [];
@@ -227,13 +227,13 @@ export const fetchStewards = async (locationId?: number) => {
 };
 
 export const markKOTPrinted = async (orderId: number) => {
-  const res = await api(`/api/pos/mark_kot/${orderId}`, { method: 'POST' });
+  const res = await api(`/api/pos/mark-kot-printed/${orderId}`, { method: 'POST' });
   if (!res.ok) throw new Error('Failed to mark KOT');
   return res.json();
 };
 
 export const fetchKOTDetails = async (id: string | number) => {
-  const res = await api(`/api/pos/kot_details/${id}`);
+  const res = await api(`/api/pos/kot-details/${id}`);
   if (!res.ok) throw new Error('Failed to load KOT details');
   const data = await res.json();
   return data.status === 'success' ? data.data : data;
@@ -279,14 +279,20 @@ export const fetchReturnPrintData = async (returnId: string | number) => {
 
 // Online Orders
 export const fetchOnlineOrders = async () => {
-  const res = await api('/api/onlineorder/index');
+  const res = await api('/api/online-order/index');
   if (!res.ok) throw new Error('Failed to load online orders');
   return res.json();
 };
 
 export const fetchOnlineOrder = async (id: string | number) => {
-  const res = await api(`/api/onlineorder/show/${id}`);
+  const res = await api(`/api/online-order/show/${id}`);
   if (!res.ok) throw new Error('Failed to load online order');
   const data = await res.json();
   return data;
+};
+
+export const fetchPaymentLogs = async () => {
+  const res = await api('/api/payment/index');
+  if (!res.ok) throw new Error('Failed to load payment logs');
+  return res.json();
 };

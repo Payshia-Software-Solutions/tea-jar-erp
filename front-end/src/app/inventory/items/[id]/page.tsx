@@ -1,4 +1,6 @@
 "use client";
+// Force rebuild 2026-05-07
+
 
 import React, { useState, useEffect, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
@@ -45,15 +47,22 @@ import {
   fetchAttributeGroups,
   assignAttributeGroupToPart,
   unassignAttributeGroupFromPart,
+  fetchItemSections,
+  fetchItemDepartments,
+  fetchItemCategories,
   type BrandRow,
   type ServiceLocation,
   type SupplierRow,
   type UnitRow,
   type PackagingType,
+  type ItemSection,
+  type ItemDepartment,
+  type ItemCategory
 } from "@/lib/api";
 import { 
   ArrowLeft, ChevronDown, LayoutGrid, Image as ImageIcon, Loader2, Save, Sparkles, Trash2, Upload, 
-  Globe, Info, Settings, Package, Truck, ListTree, PlusCircle, XCircle, Plus, LogOut
+  Globe, Info, Settings, Package, Truck, ListTree, PlusCircle, XCircle, Plus, LogOut,
+  Coffee, Droplets, Thermometer, Clock, Users, ShoppingBag
 } from "lucide-react";
 
 function asNumOrNull(v: any) {
@@ -67,6 +76,7 @@ function generateSku() {
 }
 
 export default function ItemDetailPage() {
+  console.log("ItemDetailPage render");
   const { id } = useParams();
   const router = useRouter();
   const { toast } = useToast();
@@ -84,9 +94,13 @@ export default function ItemDetailPage() {
   const [suppliers, setSuppliers] = useState<SupplierRow[]>([]);
   const [collections, setCollections] = useState<any[]>([]);
   const [locations, setLocations] = useState<ServiceLocation[]>([]);
+  const [sections, setSections] = useState<ItemSection[]>([]);
+  const [departments, setDepartments] = useState<ItemDepartment[]>([]);
+  const [categories, setCategories] = useState<ItemCategory[]>([]);
 
   const [form, setForm] = useState({
     part_name: "",
+    slug: "",
     sku: "",
     part_number: "",
     barcode_number: "",
@@ -114,7 +128,13 @@ export default function ItemDetailPage() {
     hs_code: "",
     packing_type: "Carton",
     is_online: true,
+    out_of_stock: false,
     public_description: "",
+    item_section_id: "",
+    item_department_id: "",
+    item_category_id: "",
+    discount_type: "None",
+    discount_value: "0",
   });
 
   const [attrGroups, setAttrGroups] = useState<any[]>([]);
@@ -134,7 +154,7 @@ export default function ItemDetailPage() {
     try {
       const loadData = async () => {
         // Use individual catch blocks to ensure one failing call doesn't block everything
-        const [p, u, b, s, c, locationsRes, batchesRes, attrRes, pkgsRes] = await Promise.all([
+        const [p, u, b, s, c, locationsRes, batchesRes, attrRes, pkgsRes, sectionsRes, deptsRes, catsRes] = await Promise.all([
           fetchPart(String(id)),
           fetchUnits("").catch(() => []),
           fetchBrands("").catch(() => []),
@@ -143,7 +163,10 @@ export default function ItemDetailPage() {
           fetchLocations().catch(() => []),
           api(`/api/part/batches/${id}`).then(res => res.ok ? res.json() : []).catch(() => []),
           fetchAttributeGroups().catch(() => []),
-          fetchPackagingTypes().catch(() => [])
+          fetchPackagingTypes().catch(() => []),
+          fetchItemSections().catch(() => []),
+          fetchItemDepartments().catch(() => []),
+          fetchItemCategories().catch(() => [])
         ]);
 
         if (p?.status === 'error') {
@@ -177,10 +200,14 @@ export default function ItemDetailPage() {
         setCollections(Array.isArray(c) ? c : []);
         setLocations(Array.isArray(locationsRes) ? locationsRes : []);
         setPackagingTypes(pkgsRes?.status === 'success' ? pkgsRes.data : (Array.isArray(pkgsRes) ? pkgsRes : []));
+        setSections(Array.isArray(sectionsRes) ? sectionsRes : []);
+        setDepartments(Array.isArray(deptsRes) ? deptsRes : []);
+        setCategories(Array.isArray(catsRes) ? catsRes : []);
 
         if (p) {
           setForm({
             part_name: p.part_name || "",
+            slug: p.slug || "",
             sku: p.sku || "",
             part_number: p.part_number || "",
             barcode_number: p.barcode_number || "",
@@ -208,7 +235,13 @@ export default function ItemDetailPage() {
             hs_code: p.hs_code ?? "",
             packing_type: p.packing_type ?? "Carton",
             is_online: p.is_online !== undefined ? Boolean(p.is_online) : true,
+            out_of_stock: p.out_of_stock !== undefined ? Boolean(p.out_of_stock) : false,
             public_description: p.public_description ?? "",
+            item_section_id: p.item_section_id ? String(p.item_section_id) : "",
+            item_department_id: p.item_department_id ? String(p.item_department_id) : "",
+            item_category_id: p.item_category_id ? String(p.item_category_id) : "",
+            discount_type: p.discount_type || "None",
+            discount_value: p.discount_value !== null && p.discount_value !== undefined ? String(p.discount_value) : "0",
           });
           const sIds = Array.isArray(p.supplier_ids) ? p.supplier_ids.map(Number) : [];
           setSupplierIds(sIds);
@@ -285,6 +318,7 @@ export default function ItemDetailPage() {
     try {
       const payload: any = {
         ...form,
+        slug: form.slug.trim() || null,
         brand_id: form.brand_id === "" ? null : parseInt(form.brand_id),
         cost_price: asNumOrNull(form.cost_price),
         price: asNumOrNull(form.price),
@@ -306,7 +340,11 @@ export default function ItemDetailPage() {
         carton_tare_weight_kg: asNumOrNull(form.carton_tare_weight_kg),
         hs_code: (form.hs_code || "").trim() || null,
         is_online: form.is_online ? 1 : 0,
+        out_of_stock: form.out_of_stock ? 1 : 0,
         public_description: form.public_description.trim() || null,
+        item_section_id: form.item_section_id ? parseInt(form.item_section_id) : null,
+        item_department_id: form.item_department_id ? parseInt(form.item_department_id) : null,
+        item_category_id: form.item_category_id ? parseInt(form.item_category_id) : null,
         attributes: attrValues
       };
 
@@ -527,6 +565,38 @@ export default function ItemDetailPage() {
                         <Input type="number" value={form.wholesale_price} onChange={(e) => setForm((p) => ({ ...p, wholesale_price: e.target.value }))} />
                       </div>
                     </div>
+
+                    <div className="col-span-full grid grid-cols-1 md:grid-cols-3 gap-5 border-t pt-5 mt-2">
+                       <div className="space-y-2">
+                          <Label>Item Section</Label>
+                          <Select value={form.item_section_id} onValueChange={(v) => setForm(p => ({ ...p, item_section_id: v, item_department_id: "" }))}>
+                            <SelectTrigger><SelectValue placeholder="Select Section" /></SelectTrigger>
+                            <SelectContent>
+                              {sections.map(s => <SelectItem key={s.id} value={String(s.id)}>{s.name}</SelectItem>)}
+                            </SelectContent>
+                          </Select>
+                       </div>
+                       <div className="space-y-2">
+                          <Label>Item Department</Label>
+                          <Select value={form.item_department_id} onValueChange={(v) => setForm(p => ({ ...p, item_department_id: v }))}>
+                            <SelectTrigger><SelectValue placeholder="Select Department" /></SelectTrigger>
+                            <SelectContent>
+                              {departments.filter(d => !form.item_section_id || d.section_id === parseInt(form.item_section_id)).map(d => (
+                                <SelectItem key={d.id} value={String(d.id)}>{d.name}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                       </div>
+                       <div className="space-y-2">
+                          <Label>Item Category</Label>
+                          <Select value={form.item_category_id} onValueChange={(v) => setForm(p => ({ ...p, item_category_id: v }))}>
+                            <SelectTrigger><SelectValue placeholder="Select Category" /></SelectTrigger>
+                            <SelectContent>
+                              {categories.map(c => <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>)}
+                            </SelectContent>
+                          </Select>
+                       </div>
+                    </div>
                   </CardContent>
                 </Card>
               </div>
@@ -696,6 +766,14 @@ export default function ItemDetailPage() {
                         </div>
                         <Switch checked={form.is_online} onCheckedChange={(v) => setForm(p => ({ ...p, is_online: v }))} />
                       </div>
+
+                      <div className="flex items-center justify-between p-4 rounded-xl bg-background shadow-sm border border-destructive/10">
+                        <div className="space-y-1">
+                          <Label className="text-base">Out of Stock</Label>
+                          <p className="text-xs text-muted-foreground">Force out of stock status</p>
+                        </div>
+                        <Switch checked={form.out_of_stock} onCheckedChange={(v) => setForm(p => ({ ...p, out_of_stock: v }))} />
+                      </div>
                       
                       <div className="space-y-2 pt-4">
                         <Label>Collections</Label>
@@ -711,7 +789,7 @@ export default function ItemDetailPage() {
                                <div className="space-y-3">
                                   {collections.map(c => (
                                     <label key={c.id} className="flex items-center gap-3 text-sm cursor-pointer hover:bg-muted/50 p-2 rounded-md transition-colors">
-                                      <Checkbox 
+                              <Checkbox 
                                         checked={collectionIds.includes(c.id)} 
                                         onCheckedChange={(v) => setCollectionIds(prev => v ? [...prev, c.id] : prev.filter(id => id !== c.id))} 
                                       />
@@ -723,6 +801,72 @@ export default function ItemDetailPage() {
                           </PopoverContent>
                         </Popover>
                       </div>
+
+                      <div className="space-y-2 pt-4">
+                        <Label>URL Slug</Label>
+                        <p className="text-xs text-muted-foreground mb-2">SEO-friendly identifier for the storefront link (leave blank to auto-generate from name)</p>
+                        <div className="flex gap-2">
+                          <Input value={form.slug} onChange={(e) => setForm(p => ({ ...p, slug: e.target.value }))} placeholder="e.g. classic-earl-grey" />
+                          <Button 
+                            variant="outline" 
+                            size="icon"
+                            onClick={() => setForm(p => ({ 
+                              ...p, 
+                              slug: p.part_name.toLowerCase().trim().replace(/[^a-z0-9-]+/g, '-').replace(/^-+|-+$/g, '') 
+                            }))}
+                            title="Regenerate from Name"
+                          >
+                            <Sparkles className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      </div>
+
+                    </CardContent>
+                  </Card>
+
+                  <Card className="shadow-sm border-none bg-amber-500/5 border-l-4 border-l-amber-500 mt-6">
+                    <CardHeader>
+                      <CardTitle className="text-base flex items-center gap-2 text-amber-600">
+                         <Sparkles className="w-4 h-4" /> Pricing & Discount
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                       <div className="space-y-2">
+                          <Label>Discount Type</Label>
+                          <Select value={form.discount_type} onValueChange={(v: any) => setForm(p => ({ ...p, discount_type: v }))}>
+                             <SelectTrigger><SelectValue /></SelectTrigger>
+                             <SelectContent>
+                                <SelectItem value="None">No Discount</SelectItem>
+                                <SelectItem value="Percentage">Percentage (%)</SelectItem>
+                                <SelectItem value="Fixed">Fixed Amount</SelectItem>
+                             </SelectContent>
+                          </Select>
+                       </div>
+                       
+                       {form.discount_type !== "None" && (
+                         <div className="space-y-2 animate-in slide-in-from-top-2 duration-300">
+                            <Label>{form.discount_type === "Percentage" ? "Discount Percentage (%)" : "Discount Amount"}</Label>
+                            <Input 
+                              type="number" 
+                              value={form.discount_value} 
+                              onChange={(e) => setForm(p => ({ ...p, discount_value: e.target.value }))}
+                              placeholder={form.discount_type === "Percentage" ? "e.g. 10" : "e.g. 500"}
+                            />
+                         </div>
+                       )}
+
+                       <div className="p-3 rounded-lg bg-background border border-amber-200/50 mt-4">
+                          <div className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider mb-1">Final Storefront Price</div>
+                          <div className="text-xl font-bold text-amber-600">
+                             LKR {(() => {
+                               const base = parseFloat(form.price) || 0;
+                               const val = parseFloat(form.discount_value) || 0;
+                               if (form.discount_type === "Percentage") return (base * (1 - val / 100)).toLocaleString();
+                               if (form.discount_type === "Fixed") return (base - val).toLocaleString();
+                               return base.toLocaleString();
+                             })()}
+                          </div>
+                       </div>
                     </CardContent>
                   </Card>
                 </div>
@@ -824,16 +968,34 @@ export default function ItemDetailPage() {
                               <div className="p-3 space-y-2 bg-muted/30">
                                  <div className="space-y-1">
                                     <Label className="text-[10px] uppercase text-muted-foreground font-bold">Label</Label>
-                                    <Input 
-                                      className="h-8 text-xs bg-background" 
-                                      placeholder="e.g. Front View" 
+                                    <Select 
                                       value={img.label || ""} 
-                                      onChange={(e) => {
+                                      onValueChange={(val) => {
                                         const newGal = [...gallery];
-                                        newGal[idx].label = e.target.value;
+                                        newGal[idx].label = val;
                                         setGallery(newGal);
                                       }}
-                                    />
+                                    >
+                                      <SelectTrigger className="h-8 text-xs bg-background">
+                                        <SelectValue placeholder="Select View" />
+                                      </SelectTrigger>
+                                      <SelectContent>
+                                        {[
+                                          "Front View", "Back View", "Side View", "Top View", 
+                                          "Bottom View", "Inner View", "Technical Diagram", 
+                                          "Packaging", "Other"
+                                        ].map(opt => (
+                                          <SelectItem key={opt} value={opt}>{opt}</SelectItem>
+                                        ))}
+                                        {img.label && ![
+                                          "Front View", "Back View", "Side View", "Top View", 
+                                          "Bottom View", "Inner View", "Technical Diagram", 
+                                          "Packaging", "Other"
+                                        ].includes(img.label) && (
+                                          <SelectItem value={img.label}>{img.label}</SelectItem>
+                                        )}
+                                      </SelectContent>
+                                    </Select>
                                  </div>
                                  <div className="space-y-1">
                                     <Label className="text-[10px] uppercase text-muted-foreground font-bold">Sort Order</Label>
@@ -926,12 +1088,70 @@ export default function ItemDetailPage() {
                           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
                              {(group.attributes || []).map((attr: any) => (
                                <div key={attr.id} className="space-y-1.5">
-                                  <Label className="text-xs">{attr.name}</Label>
-                                  <Input 
-                                    placeholder={`Enter ${attr.name}...`} 
-                                    value={attrValues[attr.id] || ""} 
-                                    onChange={(e) => setAttrValues(prev => ({ ...prev, [attr.id]: e.target.value }))}
-                                  />
+                                  <Label className="text-xs">{attr.name} {attr.type === 'list' || attr.type === 'badge' ? '(Comma separated)' : ''}</Label>
+                                  {attr.type === 'textarea' || attr.type === 'para' ? (
+                                    <Textarea 
+                                      placeholder={`Enter ${attr.name}...`} 
+                                      value={attrValues[attr.id] || ""} 
+                                      onChange={(e) => setAttrValues(prev => ({ ...prev, [attr.id]: e.target.value }))}
+                                      className="min-h-[100px]"
+                                    />
+                                  ) : attr.type === 'icon-text' ? (
+                                    <div className="flex gap-2">
+                                       <Select 
+                                          value={(attrValues[attr.id] || "").split('|')[0] || "Coffee"} 
+                                          onValueChange={(v) => {
+                                             const oldText = (attrValues[attr.id] || "").split('|')[1] || "";
+                                             setAttrValues(prev => ({ ...prev, [attr.id]: `${v}|${oldText}` }));
+                                          }}
+                                       >
+                                          <SelectTrigger className="w-12 px-2">
+                                             <SelectValue />
+                                          </SelectTrigger>
+                                          <SelectContent>
+                                             <SelectItem value="Coffee"><Coffee className="w-4 h-4" /></SelectItem>
+                                             <SelectItem value="Droplets"><Droplets className="w-4 h-4" /></SelectItem>
+                                             <SelectItem value="Thermometer"><Thermometer className="w-4 h-4" /></SelectItem>
+                                             <SelectItem value="Clock"><Clock className="w-4 h-4" /></SelectItem>
+                                             <SelectItem value="Users"><Users className="w-4 h-4" /></SelectItem>
+                                             <SelectItem value="ShoppingBag"><ShoppingBag className="w-4 h-4" /></SelectItem>
+                                             <SelectItem value="Package"><Package className="w-4 h-4" /></SelectItem>
+                                             <SelectItem value="Info"><Info className="w-4 h-4" /></SelectItem>
+                                          </SelectContent>
+                                       </Select>
+                                       <Input 
+                                          placeholder={`Enter ${attr.name}...`} 
+                                          value={(attrValues[attr.id] || "").split('|')[1] || ""} 
+                                          onChange={(e) => {
+                                             const oldIcon = (attrValues[attr.id] || "").split('|')[0] || "Coffee";
+                                             setAttrValues(prev => ({ ...prev, [attr.id]: `${oldIcon}|${e.target.value}` }));
+                                          }}
+                                       />
+                                    </div>
+                                  ) : attr.type === 'boolean' ? (
+                                    <div className="flex items-center gap-2 h-10 px-3 border rounded-md bg-background">
+                                       <Switch 
+                                          checked={attrValues[attr.id] === '1' || attrValues[attr.id] === 'true' || attrValues[attr.id] === 'Yes'} 
+                                          onCheckedChange={(v) => setAttrValues(prev => ({ ...prev, [attr.id]: v ? '1' : '0' }))} 
+                                       />
+                                       <span className="text-xs text-muted-foreground">{attrValues[attr.id] === '1' ? 'Yes' : 'No'}</span>
+                                    </div>
+                                  ) : (
+                                    <Input 
+                                      placeholder={
+                                        attr.type === 'list' || attr.type === 'badge' 
+                                          ? "Item 1, Item 2, Item 3" 
+                                          : `Enter ${attr.name}...`
+                                      } 
+                                      value={attrValues[attr.id] || ""} 
+                                      onChange={(e) => setAttrValues(prev => ({ ...prev, [attr.id]: e.target.value }))}
+                                    />
+                                  )}
+                                  {(attr.type === 'list' || attr.type === 'badge') && (
+                                     <p className="text-[10px] text-muted-foreground italic">
+                                        Format: Item 1, Item 2, Item 3
+                                     </p>
+                                  )}
                                </div>
                              ))}
                           </div>

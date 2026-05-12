@@ -9,7 +9,8 @@ import {
   ChevronRight,
   Sun,
   Moon,
-  Zap
+  Zap,
+  Menu
 } from 'lucide-react';
 import { usePathname } from 'next/navigation';
 
@@ -18,9 +19,10 @@ type AdminTopBarProps = {
   role?: string;
   theme: 'light' | 'dark';
   onToggleTheme: () => void;
+  onToggleSidebar: () => void;
 };
 
-export default function AdminTopBar({ currentUser, role, theme, onToggleTheme }: AdminTopBarProps) {
+export default function AdminTopBar({ currentUser, role, theme, onToggleTheme, onToggleSidebar }: AdminTopBarProps) {
   const pathname = usePathname();
   
   // Format pathname to breadcrumbs/title
@@ -30,13 +32,22 @@ export default function AdminTopBar({ currentUser, role, theme, onToggleTheme }:
     : 'Dashboard';
 
   return (
-    <header className="h-20 bg-white dark:bg-slate-950 border-b border-slate-200 dark:border-white/5 px-8 flex items-center justify-between sticky top-0 z-40 transition-colors duration-300">
-      <div className="flex items-center gap-8">
+    <header className="h-20 bg-white dark:bg-slate-950 border-b border-slate-200 dark:border-white/5 px-4 lg:px-8 flex items-center justify-between sticky top-0 z-40 transition-colors duration-300">
+      <div className="flex items-center gap-4 lg:gap-8">
+        <button 
+          onClick={onToggleSidebar}
+          className="lg:hidden p-2 text-slate-500 hover:bg-slate-100 dark:hover:bg-white/5 rounded-lg transition-all"
+        >
+          <Menu size={20} />
+        </button>
         {/* Page Identity */}
-        <div className="flex items-center gap-3">
+        <div className="hidden sm:flex items-center gap-3">
           <div className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Management</div>
           <ChevronRight size={14} className="text-slate-300" />
           <h2 className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-widest">{pageTitle}</h2>
+        </div>
+        <div className="sm:hidden flex items-center">
+           <h2 className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-widest">{pageTitle}</h2>
         </div>
 
         {/* Global Search */}
@@ -52,19 +63,19 @@ export default function AdminTopBar({ currentUser, role, theme, onToggleTheme }:
 
       <div className="flex items-center gap-4">
         {/* Actions */}
-        <div className="flex items-center gap-2 pr-4 border-r border-slate-200 dark:border-white/5">
+        <div className="flex items-center gap-1 sm:gap-2 pr-2 sm:pr-4 border-r border-slate-200 dark:border-white/5">
           <button 
             onClick={onToggleTheme}
-            className="p-2.5 text-slate-500 hover:text-indigo-500 hover:bg-indigo-500/10 rounded-xl transition-all"
+            className="p-2 sm:p-2.5 text-slate-500 hover:text-indigo-500 hover:bg-indigo-500/10 rounded-xl transition-all"
             title="Toggle Theme"
           >
-            {theme === 'dark' ? <Sun size={20} /> : <Moon size={20} />}
+            {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
           </button>
-          <button className="p-2.5 text-slate-500 hover:text-indigo-500 hover:bg-indigo-500/10 rounded-xl transition-all relative">
+          <button className="hidden sm:block p-2.5 text-slate-500 hover:text-indigo-500 hover:bg-indigo-500/10 rounded-xl transition-all relative">
             <Bell size={20} />
             <span className="absolute top-2.5 right-2.5 w-2 h-2 bg-rose-500 rounded-full border-2 border-white dark:border-slate-950"></span>
           </button>
-          <button className="p-2.5 text-slate-500 hover:text-indigo-500 hover:bg-indigo-500/10 rounded-xl transition-all">
+          <button className="hidden sm:block p-2.5 text-slate-500 hover:text-indigo-500 hover:bg-indigo-500/10 rounded-xl transition-all">
             <HelpCircle size={20} />
           </button>
         </div>

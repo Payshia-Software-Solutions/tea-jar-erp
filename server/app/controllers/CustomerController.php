@@ -20,6 +20,12 @@ class CustomerController extends Controller {
         $this->success($customers);
     }
 
+    public function ecommerce() {
+        $this->requirePermission('customers.read');
+        $customers = $this->customerModel->getEcommerceCustomers();
+        $this->success($customers);
+    }
+
     public function get($id) {
         $this->requirePermission('customers.read');
         $customer = $this->customerModel->getById($id);

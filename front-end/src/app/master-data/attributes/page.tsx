@@ -354,6 +354,10 @@ export default function AttributesPage() {
                         <SelectContent>
                            <SelectItem value="text">Text</SelectItem>
                            <SelectItem value="number">Number</SelectItem>
+                           <SelectItem value="textarea">Para (Textarea)</SelectItem>
+                           <SelectItem value="list">List (Comma separated)</SelectItem>
+                           <SelectItem value="icon-text">Icon Text</SelectItem>
+                           <SelectItem value="badge">Badge (Comma separated)</SelectItem>
                            <SelectItem value="boolean">Yes/No (Boolean)</SelectItem>
                            <SelectItem value="selection">Selection List</SelectItem>
                         </SelectContent>

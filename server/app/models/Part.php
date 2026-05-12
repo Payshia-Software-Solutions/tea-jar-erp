@@ -72,10 +72,17 @@ class Part extends Model {
         $sql = "
             SELECT p.*, 
                    b.name AS brand_name,
+                   s.name AS section_name,
+                   d.name AS department_name,
+                   c.name AS category_name,
                    (SELECT COALESCE(SUM(qty_change), 0) FROM stock_movements WHERE part_id = p.id) AS stock_quantity,
-                   (SELECT GROUP_CONCAT(collection_id) FROM parts_collections WHERE part_id = p.id) as collection_ids_raw
+                   (SELECT GROUP_CONCAT(collection_id) FROM parts_collections WHERE part_id = p.id) as collection_ids_raw,
+                   (SELECT GROUP_CONCAT(CONCAT(id, ':', filename) ORDER BY sort_order ASC, id ASC) FROM part_images WHERE part_id = p.id) as gallery_raw
             FROM {$from}
             LEFT JOIN brands b ON b.id = p.brand_id
+            LEFT JOIN item_sections s ON s.id = p.item_section_id
+            LEFT JOIN item_departments d ON d.id = p.item_department_id
+            LEFT JOIN item_categories c ON c.id = p.item_category_id
         ";
 
         if ($q !== '') {
@@ -90,6 +97,17 @@ class Part extends Model {
         $rows = $this->db->resultSet();
         foreach ($rows as $row) {
             $row->collection_ids = !empty($row->collection_ids_raw) ? array_map('intval', explode(',', $row->collection_ids_raw)) : [];
+            $gallery = [];
+            if (!empty($row->gallery_raw)) {
+                $parts = explode(',', $row->gallery_raw);
+                foreach ($parts as $p_str) {
+                    $bits = explode(':', $p_str, 2);
+                    if (count($bits) === 2) {
+                        $gallery[] = (object)['id' => (int)$bits[0], 'filename' => $bits[1]];
+                    }
+                }
+            }
+            $row->gallery = $gallery;
         }
         return $rows;
     }
@@ -108,20 +126,36 @@ class Part extends Model {
                    p.unit,
                    p.brand_id,
                    b.name AS brand_name,
+                   p.item_section_id,
+                   s.name AS section_name,
+                   p.item_department_id,
+                   d.name AS department_name,
+                   p.item_category_id,
+                   c.name AS category_name,
                    p.cost_price,
                    p.price,
                    p.reorder_level,
                    p.is_active,
+                   p.is_online,
+                   p.public_description,
+                   p.image_filename,
                    p.item_type,
+                   p.slug,
                    p.is_fifo,
                    p.is_expiry,
                    p.recipe_type,
+                   p.discount_type,
+                   p.discount_value,
                    (SELECT COALESCE(SUM(qty_change), 0) FROM stock_movements WHERE part_id = p.id) AS system_stock_quantity,
                    (SELECT GROUP_CONCAT(collection_id) FROM parts_collections WHERE part_id = p.id) as collection_ids_raw,
+                   (SELECT GROUP_CONCAT(CONCAT(id, ':', filename) ORDER BY sort_order ASC, id ASC) FROM part_images WHERE part_id = p.id) as gallery_raw,
                    COALESCE(SUM(sm.qty_change), 0) AS location_stock_quantity,
                    COALESCE(SUM(sm.qty_change), 0) AS stock_quantity
             FROM {$this->table} p
             LEFT JOIN brands b ON b.id = p.brand_id
+            LEFT JOIN item_sections s ON s.id = p.item_section_id
+            LEFT JOIN item_departments d ON d.id = p.item_department_id
+            LEFT JOIN item_categories c ON c.id = p.item_category_id
             LEFT JOIN stock_movements sm ON sm.part_id = p.id AND sm.location_id = :loc
         ";
 
@@ -144,6 +178,17 @@ class Part extends Model {
         $rows = $this->db->resultSet();
         foreach ($rows as $row) {
             $row->collection_ids = !empty($row->collection_ids_raw) ? array_map('intval', explode(',', $row->collection_ids_raw)) : [];
+            $gallery = [];
+            if (!empty($row->gallery_raw)) {
+                $parts = explode(',', $row->gallery_raw);
+                foreach ($parts as $p_str) {
+                    $bits = explode(':', $p_str, 2);
+                    if (count($bits) === 2) {
+                        $gallery[] = (object)['id' => (int)$bits[0], 'filename' => $bits[1]];
+                    }
+                }
+            }
+            $row->gallery = $gallery;
         }
         return $rows;
     }
@@ -152,9 +197,15 @@ class Part extends Model {
         $this->ensureSchema();
         $this->db->query("
             SELECT p.*, b.name AS brand_name,
+                   s.name AS section_name,
+                   d.name AS department_name,
+                   c.name AS category_name,
                    (SELECT COALESCE(SUM(qty_change), 0) FROM stock_movements WHERE part_id = p.id) AS stock_quantity
             FROM {$this->table} p
             LEFT JOIN brands b ON b.id = p.brand_id
+            LEFT JOIN item_sections s ON s.id = p.item_section_id
+            LEFT JOIN item_departments d ON d.id = p.item_department_id
+            LEFT JOIN item_categories c ON c.id = p.item_category_id
             WHERE p.id = :id
             LIMIT 1
         ");
@@ -239,21 +290,33 @@ class Part extends Model {
 
     public function create($data, $userId = null) {
         $this->ensureSchema();
+        
+        $finalSlug = $data['slug'] ?? null;
+        if (!$finalSlug) {
+            $finalSlug = $this->generateSlug($data['part_name']);
+        }
+
         $this->db->query("
             INSERT INTO {$this->table}
-            (sku, part_number, barcode_number, part_name, unit, brand_id, stock_quantity, cost_price, price, wholesale_price, min_selling_price, price_2, reorder_level, is_active, is_fifo, is_expiry, image_filename, item_type, recipe_type, default_location_id, allowed_locations, created_by, updated_by, net_weight_kg, gross_weight_kg, units_per_carton, packing_type, hs_code, carton_length_cm, carton_width_cm, carton_height_cm, volume_cbm, carton_tare_weight_kg, is_online, public_description)
+            (sku, part_number, barcode_number, part_name, slug, unit, brand_id, item_section_id, item_department_id, item_category_id, stock_quantity, cost_price, price, discount_type, discount_value, wholesale_price, min_selling_price, price_2, reorder_level, is_active, is_fifo, is_expiry, image_filename, item_type, recipe_type, default_location_id, allowed_locations, created_by, updated_by, net_weight_kg, gross_weight_kg, units_per_carton, packing_type, hs_code, carton_length_cm, carton_width_cm, carton_height_cm, volume_cbm, carton_tare_weight_kg, is_online, out_of_stock, public_description)
             VALUES
-            (:sku, :part_number, :barcode_number, :part_name, :unit, :brand_id, :stock_quantity, :cost_price, :price, :wholesale_price, :min_selling_price, :price_2, :reorder_level, :is_active, :is_fifo, :is_expiry, :image_filename, :item_type, :recipe_type, :default_location_id, :allowed_locations, :created_by, :updated_by, :net_weight_kg, :gross_weight_kg, :units_per_carton, :packing_type, :hs_code, :carton_length_cm, :carton_width_cm, :carton_height_cm, :volume_cbm, :carton_tare_weight_kg, :is_online, :public_description)
+            (:sku, :part_number, :barcode_number, :part_name, :slug, :unit, :brand_id, :item_section_id, :item_department_id, :item_category_id, :stock_quantity, :cost_price, :price, :discount_type, :discount_value, :wholesale_price, :min_selling_price, :price_2, :reorder_level, :is_active, :is_fifo, :is_expiry, :image_filename, :item_type, :recipe_type, :default_location_id, :allowed_locations, :created_by, :updated_by, :net_weight_kg, :gross_weight_kg, :units_per_carton, :packing_type, :hs_code, :carton_length_cm, :carton_width_cm, :carton_height_cm, :volume_cbm, :carton_tare_weight_kg, :is_online, :out_of_stock, :public_description)
         ");
         $this->db->bind(':sku', $data['sku'] ?? null);
         $this->db->bind(':part_number', $data['part_number'] ?? null);
         $this->db->bind(':barcode_number', $data['barcode_number'] ?? null);
         $this->db->bind(':part_name', $data['part_name']);
+        $this->db->bind(':slug', $finalSlug);
         $this->db->bind(':unit', $data['unit'] ?? null);
         $this->db->bind(':brand_id', isset($data['brand_id']) && (int)$data['brand_id'] > 0 ? (int)$data['brand_id'] : null);
+        $this->db->bind(':item_section_id', isset($data['item_section_id']) && (int)$data['item_section_id'] > 0 ? (int)$data['item_section_id'] : null);
+        $this->db->bind(':item_department_id', isset($data['item_department_id']) && (int)$data['item_department_id'] > 0 ? (int)$data['item_department_id'] : null);
+        $this->db->bind(':item_category_id', isset($data['item_category_id']) && (int)$data['item_category_id'] > 0 ? (int)$data['item_category_id'] : null);
         $this->db->bind(':stock_quantity', isset($data['stock_quantity']) ? round((float)$data['stock_quantity'], 3) : 0.000);
         $this->db->bind(':cost_price', $data['cost_price'] ?? null);
         $this->db->bind(':price', $data['price']);
+        $this->db->bind(':discount_type', $data['discount_type'] ?? 'None');
+        $this->db->bind(':discount_value', $data['discount_value'] ?? 0);
         $this->db->bind(':wholesale_price', $data['wholesale_price'] ?? null);
         $this->db->bind(':min_selling_price', $data['min_selling_price'] ?? null);
         $this->db->bind(':price_2', $data['price_2'] ?? null);
@@ -279,6 +342,7 @@ class Part extends Model {
         $this->db->bind(':volume_cbm', isset($data['volume_cbm']) ? (float)$data['volume_cbm'] : 0);
         $this->db->bind(':carton_tare_weight_kg', isset($data['carton_tare_weight_kg']) ? (float)$data['carton_tare_weight_kg'] : 0);
         $this->db->bind(':is_online', isset($data['is_online']) ? (int)(bool)$data['is_online'] : 1);
+        $this->db->bind(':out_of_stock', isset($data['out_of_stock']) ? (int)(bool)$data['out_of_stock'] : 0);
         $this->db->bind(':public_description', $data['public_description'] ?? null);
         $ok = $this->db->execute();
         if (!$ok) return false;
@@ -302,16 +366,28 @@ class Part extends Model {
 
     public function update($id, $data, $userId = null) {
         $this->ensureSchema();
+        
+        $finalSlug = $data['slug'] ?? null;
+        if (!$finalSlug) {
+            $finalSlug = $this->generateSlug($data['part_name'], $id);
+        }
+
         $this->db->query("
             UPDATE {$this->table}
             SET sku = :sku,
                 part_number = :part_number,
                 barcode_number = :barcode_number,
                 part_name = :part_name,
+                slug = :slug,
                 unit = :unit,
                 brand_id = :brand_id,
+                item_section_id = :item_section_id,
+                item_department_id = :item_department_id,
+                item_category_id = :item_category_id,
                 cost_price = :cost_price,
                 price = :price,
+                discount_type = :discount_type,
+                discount_value = :discount_value,
                 wholesale_price = :wholesale_price,
                 min_selling_price = :min_selling_price,
                 price_2 = :price_2,
@@ -335,6 +411,7 @@ class Part extends Model {
                 volume_cbm = :volume_cbm,
                 carton_tare_weight_kg = :carton_tare_weight_kg,
                 is_online = :is_online,
+                out_of_stock = :out_of_stock,
                 public_description = :public_description,
                 updated_by = :updated_by
             WHERE id = :id
@@ -343,10 +420,16 @@ class Part extends Model {
         $this->db->bind(':part_number', $data['part_number'] ?? null);
         $this->db->bind(':barcode_number', $data['barcode_number'] ?? null);
         $this->db->bind(':part_name', $data['part_name']);
+        $this->db->bind(':slug', $finalSlug);
         $this->db->bind(':unit', $data['unit'] ?? null);
         $this->db->bind(':brand_id', isset($data['brand_id']) && (int)$data['brand_id'] > 0 ? (int)$data['brand_id'] : null);
+        $this->db->bind(':item_section_id', isset($data['item_section_id']) && (int)$data['item_section_id'] > 0 ? (int)$data['item_section_id'] : null);
+        $this->db->bind(':item_department_id', isset($data['item_department_id']) && (int)$data['item_department_id'] > 0 ? (int)$data['item_department_id'] : null);
+        $this->db->bind(':item_category_id', isset($data['item_category_id']) && (int)$data['item_category_id'] > 0 ? (int)$data['item_category_id'] : null);
         $this->db->bind(':cost_price', $data['cost_price'] ?? null);
         $this->db->bind(':price', $data['price']);
+        $this->db->bind(':discount_type', $data['discount_type'] ?? 'None');
+        $this->db->bind(':discount_value', $data['discount_value'] ?? 0);
         $this->db->bind(':wholesale_price', $data['wholesale_price'] ?? null);
         $this->db->bind(':min_selling_price', $data['min_selling_price'] ?? null);
         $this->db->bind(':price_2', $data['price_2'] ?? null);
@@ -370,6 +453,7 @@ class Part extends Model {
         $this->db->bind(':volume_cbm', isset($data['volume_cbm']) ? (float)$data['volume_cbm'] : 0);
         $this->db->bind(':carton_tare_weight_kg', isset($data['carton_tare_weight_kg']) ? (float)$data['carton_tare_weight_kg'] : 0);
         $this->db->bind(':is_online', isset($data['is_online']) ? (int)(bool)$data['is_online'] : 1);
+        $this->db->bind(':out_of_stock', isset($data['out_of_stock']) ? (int)(bool)$data['out_of_stock'] : 0);
         $this->db->bind(':public_description', $data['public_description'] ?? null);
         $this->db->bind(':updated_by', $userId);
         $this->db->bind(':id', (int)$id);
@@ -645,5 +729,66 @@ class Part extends Model {
         if ($fromDt) $this->db->bind(':from_dt', $fromDt);
         if ($toDt) $this->db->bind(':to_dt', $toDt);
         return $this->db->resultSet();
+    }
+
+    public function bulkUpdateDiscount($ids, $type, $value) {
+        $this->ensureSchema();
+        if (empty($ids)) return false;
+        
+        $placeholders = implode(',', array_fill(0, count($ids), '?'));
+        $this->db->query("
+            UPDATE {$this->table} 
+            SET discount_type = ?, 
+                discount_value = ? 
+            WHERE id IN ({$placeholders})
+        ");
+        
+        $this->db->bind(1, $type);
+        $this->db->bind(2, $value);
+        foreach ($ids as $i => $id) {
+            $this->db->bind($i + 3, (int)$id);
+        }
+        
+        return $this->db->execute();
+    }
+
+    public function generateSlug($name, $id = null) {
+        $slug = strtolower(trim(preg_replace('/[^A-Za-z0-9-]+/', '-', $name), '-'));
+        if (empty($slug)) $slug = 'product-' . ($id ?: uniqid());
+        
+        // Check if slug exists
+        $this->db->query("SELECT id FROM parts WHERE slug = :slug AND id != :id LIMIT 1");
+        $this->db->bind(':slug', $slug);
+        $this->db->bind(':id', $id ? (int)$id : 0);
+        $exists = $this->db->single();
+        if ($exists) {
+            $slug .= '-' . substr(md5(uniqid()), 0, 5);
+        }
+        return $slug;
+    }
+
+    public function getBySlug($slug) {
+        $this->ensureSchema();
+        $this->db->query("SELECT id FROM parts WHERE slug = :slug LIMIT 1");
+        $this->db->bind(':slug', $slug);
+        $row = $this->db->single();
+        if ($row) return $this->getById($row->id);
+        return null;
+    }
+
+    public function syncSlugs() {
+        $this->ensureSchema();
+        $this->db->query("SELECT id, part_name FROM parts WHERE slug IS NULL OR slug = ''");
+        $items = $this->db->resultSet();
+        $count = 0;
+        foreach ($items as $item) {
+            $slug = $this->generateSlug($item->part_name, $item->id);
+            $this->db->query("UPDATE parts SET slug = :slug WHERE id = :id");
+            $this->db->bind(':slug', $slug);
+            $this->db->bind(':id', $item->id);
+            $this->db->execute();
+            $count++;
+        }
+        return $count;
     }
 }

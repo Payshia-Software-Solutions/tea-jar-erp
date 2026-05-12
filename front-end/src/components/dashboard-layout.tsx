@@ -43,7 +43,8 @@ import {
   Factory,
   TrendingUp,
   Gift,
-  Building2
+  Building2,
+  ShoppingCart
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
@@ -88,7 +89,8 @@ import {
   hrmItems,
   frontOfficeItems,
   banquetItems,
-  marketingItems
+  marketingItems,
+  ecommerceItems
 } from "@/lib/nav-items";
 
 export function DashboardLayout({ children, fullWidth = true, title }: { children: React.ReactNode; fullWidth?: boolean; title?: string }) {
@@ -109,6 +111,7 @@ export function DashboardLayout({ children, fullWidth = true, title }: { childre
   const [isHrmOpen, setIsHrmOpen] = useState(false);
   const [isFrontOfficeOpen, setIsFrontOfficeOpen] = useState(false);
   const [isBanquetOpen, setIsBanquetOpen] = useState(false);
+  const [isEcommerceOpen, setIsEcommerceOpen] = useState(false);
   const [isAdminOpen, setIsAdminOpen] = useState(false);
 	  const [theme, setTheme] = useState<'light' | 'dark'>('light');
 	  const [availableLocations, setAvailableLocations] = useState<Array<{ id: number; name: string }>>([]);
@@ -385,6 +388,10 @@ export function DashboardLayout({ children, fullWidth = true, title }: { childre
   const visibleBanquetItems = banquetItems.filter((it) => hasPerm((it as any).perm));
   const canSeeBanquet = isModuleAllowed('banquet') && visibleBanquetItems.length > 0;
 
+  const visibleEcommerceItems = ecommerceItems.filter((it) => hasPerm((it as any).perm));
+  const canSeeEcommerce = isModuleAllowed('ecommerce') && visibleEcommerceItems.length > 0;
+
+
   const adminItems = userRole.toLowerCase() === 'admin' ? adminNavItems : [];
   const canSeeAdmin = adminItems.length > 0;
 
@@ -392,7 +399,7 @@ export function DashboardLayout({ children, fullWidth = true, title }: { childre
     return [
       ...mainNavItems, ...serviceCenterItems, ...vendorItems, ...inventoryItems,
       ...crmItems, ...salesItems, ...masterDataItems, ...accountingItems,
-      ...productionItems, ...hrmItems, ...frontOfficeItems, ...banquetItems, ...adminItems
+      ...productionItems, ...hrmItems, ...frontOfficeItems, ...banquetItems, ...ecommerceItems, ...adminItems
     ].map(i => i.href);
   }, [adminItems]);
 
@@ -425,6 +432,7 @@ export function DashboardLayout({ children, fullWidth = true, title }: { childre
     if (pathname.startsWith('/hrm')) setIsHrmOpen(true);
     if (pathname.startsWith('/front-office')) setIsFrontOfficeOpen(true);
     if (pathname.startsWith('/banquet')) setIsBanquetOpen(true);
+    if (pathname.startsWith('/ecommerce')) setIsEcommerceOpen(true);
     if (pathname.startsWith('/admin')) setIsAdminOpen(true);
   }, [pathname, permissionKeys, userRole]);
 
@@ -441,6 +449,7 @@ export function DashboardLayout({ children, fullWidth = true, title }: { childre
   const hrmOpen = isHrmOpen;
   const frontOfficeOpen = isFrontOfficeOpen;
   const banquetOpen = isBanquetOpen;
+  const ecommerceOpen = isEcommerceOpen;
   const adminOpen = isAdminOpen;
 
   return (
@@ -783,6 +792,52 @@ export function DashboardLayout({ children, fullWidth = true, title }: { childre
             </SidebarGroup>
 
             <SidebarGroup className="p-0">
+              <SidebarGroupContent>
+                <SidebarMenu>
+                  {!canSeeEcommerce ? null : (
+                    <SidebarMenuItem>
+                      <SidebarMenuButton
+                        type="button"
+                        onClick={() => setIsEcommerceOpen((v) => !v)}
+                        isActive={ecommerceOpen}
+                        tooltip="E-commerce"
+                        className={cn(
+                          "transition-all duration-200 py-6 sm:py-2 text-white/80 hover:text-white",
+                          ecommerceOpen ? "bg-sidebar-accent text-white" : "hover:bg-sidebar-accent/50"
+                        )}
+                      >
+                        <ShoppingCart className="w-5 h-5" />
+                        <span className="text-base sm:text-sm font-medium">E-commerce</span>
+                        <ChevronRight
+                          className={cn(
+                            "ml-auto w-4 h-4 transition-transform group-data-[collapsible=icon]:hidden",
+                            ecommerceOpen ? "rotate-90" : "rotate-0"
+                          )}
+                        />
+                      </SidebarMenuButton>
+
+                      {ecommerceOpen ? (
+                        <SidebarMenuSub>
+                          {visibleEcommerceItems.map((item) => (
+                            <SidebarMenuSubItem key={item.href}>
+                              <SidebarMenuSubButton asChild isActive={isActiveRoute(item.href)}>
+                                <Link href={item.href}>
+                                  <item.icon className="w-4 h-4" />
+                                  <span>{item.label}</span>
+                                </Link>
+                              </SidebarMenuSubButton>
+                            </SidebarMenuSubItem>
+                          ))}
+                        </SidebarMenuSub>
+                      ) : null}
+                    </SidebarMenuItem>
+                  )}
+                </SidebarMenu>
+              </SidebarGroupContent>
+            </SidebarGroup>
+
+            <SidebarGroup className="p-0">
+
               <SidebarGroupContent>
                 <SidebarMenu>
                   {!canSeeAccounting ? null : (

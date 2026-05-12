@@ -106,7 +106,13 @@ $router->add('api/admin/billing/download', ['controller' => 'BillingController',
 $router->add('api/admin/billing/resend', ['controller' => 'BillingController', 'action' => 'resend']);
 $router->add('api/admin/billing/delete', ['controller' => 'BillingController', 'action' => 'deleteInvoice'], 'POST');
 $router->add('api/admin/billing/pay', ['controller' => 'BillingController', 'action' => 'processPayment'], 'POST');
+$router->add('api/admin/billing/payments/all', ['controller' => 'BillingController', 'action' => 'listAllPayments']);
+$router->add('api/admin/billing/payments/delete', ['controller' => 'BillingController', 'action' => 'deletePayment'], 'POST');
+$router->add('api/admin/billing/email-logs', ['controller' => 'BillingController', 'action' => 'getEmailLogs']);
+$router->add('api/admin/communication/recipients', ['controller' => 'CommunicationController', 'action' => 'getRecipients']);
+$router->add('api/admin/communication/send-custom', ['controller' => 'CommunicationController', 'action' => 'sendCustom'], 'POST');
 $router->add('api/admin/billing/update', ['controller' => 'BillingController', 'action' => 'update'], 'POST');
+$router->add('api/admin/billing/payments', ['controller' => 'BillingController', 'action' => 'getPayments']);
 $router->add('api/client/billing/history', ['controller' => 'BillingController', 'action' => 'getMyHistory']);
 
 // Settings & Exchange Rates
@@ -120,6 +126,12 @@ $router->add('api/admin/settings/exchange-rates/apply', ['controller' => 'Settin
 // Company Settings
 $router->add('api/admin/settings/company', ['controller' => 'SettingsController', 'action' => 'getCompanyInfo']);
 $router->add('api/admin/settings/company/update', ['controller' => 'SettingsController', 'action' => 'updateCompanyInfo'], 'POST');
+$router->add('api/admin/settings/company/logos', ['controller' => 'SettingsController', 'action' => 'getAvailableLogos']);
+
+// Mail Settings
+$router->add('api/admin/settings/mail', ['controller' => 'SettingsController', 'action' => 'getMailSettings']);
+$router->add('api/admin/settings/mail/update', ['controller' => 'SettingsController', 'action' => 'updateMailSettings'], 'POST');
+$router->add('api/admin/settings/mail/test', ['controller' => 'SettingsController', 'action' => 'testMailConnection'], 'POST');
 
 // Match and Dispatch
 $url = $_GET['url'] ?? '';

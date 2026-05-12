@@ -4,6 +4,8 @@ namespace App\Controllers;
 use App\Core\Controller;
 use App\Models\TenantModel;
 use App\Models\SaaSInvoiceModel;
+use App\Core\Mailer;
+
 
 class BillingController extends Controller {
     
@@ -45,6 +47,7 @@ class BillingController extends Controller {
             $tid = is_object($tenant) ? $tenant->id : $tenant['id'];
             $basePrice = is_object($tenant) ? ($tenant->monthly_price ?? 0) : ($tenant['monthly_price'] ?? 0);
             $currency = is_object($tenant) ? ($tenant->currency ?? 'USD') : ($tenant['currency'] ?? 'USD');
+            $ccEmail = is_object($tenant) ? ($tenant->billing_cc_email ?? null) : ($tenant['billing_cc_email'] ?? null);
             $tenantName = is_object($tenant) ? $tenant->name : $tenant['name'];
             $adminEmail = is_object($tenant) ? $tenant->admin_email : $tenant['admin_email'];
             $address = is_object($tenant) ? ($tenant->address ?? '') : ($tenant['address'] ?? '');
@@ -80,13 +83,18 @@ class BillingController extends Controller {
                     'billing_month' => $currentMonth,
                     'due_date' => $dueDate,
                     'status' => 'Pending',
-                    'created_at' => date('Y-m-d H:i:s')
+                    'created_at' => date('Y-m-d H:i:s'),
+                    'package_name' => is_object($tenant) ? ($tenant->package_name ?? 'Custom Plan') : ($tenant['package_name'] ?? 'Custom Plan'),
+                    'base_price' => $basePrice
                 ];
                 
                 $invoiceId = $invoiceModel->create([
                     'tenant_id' => $tid,
                     'invoice_number' => $invoiceNumber,
                     'amount' => $monthlyPrice,
+                    'currency' => $currency,
+                    'exchange_rate' => $exchangeRate,
+                    'source' => $source,
                     'billing_month' => $currentMonth,
                     'due_date' => $dueDate,
                     'status' => 'Pending'
@@ -97,15 +105,18 @@ class BillingController extends Controller {
                     // Generate PDF & Send Email
                     try {
                         $pdf = \App\Services\InvoicePDF::generate($pdfData);
-                        $sent = \App\Core\Mailer::sendInvoiceEmail($adminEmail, $tenantName, $invoiceNumber, $pdf, $currentMonth);
+                        $sent = \App\Core\Mailer::sendInvoiceEmail($adminEmail, $tenantName, $invoiceNumber, $pdf, $currentMonth, $monthlyPrice, $currency, $ccEmail);
                         
-                        // Update Email Status
+                        // Update Email Status & Log
                         $invoiceModel->update($invoiceId, [
                             'email_status' => $sent ? 'Sent' : 'Failed',
                             'last_sent_at' => date('Y-m-d H:i:s')
                         ]);
-                    } catch (\Exception $e) {
-                        // Log error but continue
+                        $subject = "New Invoice #$invoiceNumber for $currentMonth from Nebulink";
+                        $invoiceModel->logEmail($invoiceId, 'Invoice', $adminEmail, $ccEmail, $sent ? 'Sent' : 'Failed', null, $subject, Mailer::$lastBody);
+                    } catch (\Throwable $e) {
+                        error_log("Billing Circle Email Error: " . $e->getMessage());
+                        $invoiceModel->logEmail($invoiceId, 'Invoice', $adminEmail, $ccEmail, 'Failed', $e->getMessage());
                     }
                 }
             }
@@ -166,6 +177,7 @@ class BillingController extends Controller {
         $pdf = \App\Services\InvoicePDF::generate($invoice, $isReceipt);
         $prefix = $isReceipt ? 'Receipt_' : 'Invoice_';
         
+        ob_clean();
         header('Content-Type: application/pdf');
         header('Content-Disposition: attachment; filename="'.$prefix.$invoice->invoice_number.'.pdf"');
         echo $pdf;
@@ -177,6 +189,8 @@ class BillingController extends Controller {
         if ($this->checkSuperAdmin() !== true) return;
 
         $id = $_GET['id'] ?? null;
+        $type = $_GET['type'] ?? 'invoice';
+        
         if (!$id) return $this->json(['status' => 'error', 'message' => 'ID required'], 400);
 
         $model = new SaaSInvoiceModel();
@@ -184,13 +198,23 @@ class BillingController extends Controller {
 
         if (!$invoice) return $this->json(['status' => 'error', 'message' => 'Invoice not found'], 404);
 
-        $pdf = \App\Services\InvoicePDF::generate($invoice, $invoice->status === 'Paid');
-        $sent = \App\Core\Mailer::sendInvoiceEmail($invoice->admin_email, $invoice->tenant_name, $invoice->invoice_number, $pdf);
+        $isReceipt = ($type === 'receipt') || ($invoice->status === 'Paid' && $type !== 'invoice');
+        
+        if ($isReceipt) {
+            $receiptPdf = \App\Services\InvoicePDF::generate($invoice, true);
+            $invoicePdf = \App\Services\InvoicePDF::generate($invoice, false);
+            $sent = \App\Core\Mailer::sendPaymentReceipt($invoice->admin_email, $invoice->tenant_name, $invoice->invoice_number, $receiptPdf, $invoicePdf, $invoice->amount, $invoice->currency, $invoice->receipt_number, $invoice->billing_cc_email);
+        } else {
+            $pdf = \App\Services\InvoicePDF::generate($invoice, false);
+            $sent = \App\Core\Mailer::sendInvoiceEmail($invoice->admin_email, $invoice->tenant_name, $invoice->invoice_number, $pdf, $invoice->billing_month, $invoice->amount, $invoice->currency, $invoice->billing_cc_email);
+        }
 
         $model->update($id, [
-            'email_status' => $sent ? 'Sent' : 'Failed',
+            'email_status' => $sent ? 'Resent' : 'Failed',
             'last_sent_at' => date('Y-m-d H:i:s')
         ]);
+
+        $model->logEmail($id, $isReceipt ? 'Receipt' : 'Invoice', $invoice->admin_email, $invoice->billing_cc_email, $sent ? 'Resent' : 'Failed');
 
         return $this->json([
             'status' => $sent ? 'success' : 'error', 
@@ -220,8 +244,15 @@ class BillingController extends Controller {
             // Trigger receipt if newly paid
             if (isset($data['status']) && $data['status'] === 'Paid' && $oldStatus !== 'Paid') {
                 $invoice = $model->getFullDetail($id);
-                $pdf = \App\Services\InvoicePDF::generate($invoice, true);
-                \App\Core\Mailer::sendPaymentReceipt($invoice->admin_email, $invoice->tenant_name, $invoice->invoice_number, $pdf);
+                $receiptPdf = \App\Services\InvoicePDF::generate($invoice, true);
+                $invoicePdf = \App\Services\InvoicePDF::generate($invoice, false);
+                $sent = \App\Core\Mailer::sendPaymentReceipt($invoice->admin_email, $invoice->tenant_name, $invoice->invoice_number, $receiptPdf, $invoicePdf, $invoice->amount, $invoice->currency, $invoice->receipt_number, $invoice->billing_cc_email);
+                
+                $model->update($id, [
+                    'email_status' => $sent ? 'Sent' : 'Failed',
+                    'last_sent_at' => date('Y-m-d H:i:s')
+                ]);
+                $model->logEmail($id, 'Receipt', $invoice->admin_email, $invoice->billing_cc_email, $sent ? 'Sent' : 'Failed');
             }
             return $this->json(['status' => 'success', 'message' => 'Invoice updated']);
         }
@@ -244,27 +275,29 @@ class BillingController extends Controller {
     }
 
     public function processPayment() {
-        if (!isset($_SESSION['admin_id'])) return $this->json(['status' => 'error', 'message' => 'Unauthorized'], 401);
+        if ($this->checkAuth() !== true) return;
+        if ($this->checkSuperAdmin() !== true) return;
 
         $data = json_decode(file_get_contents('php://input'), true);
         $invoiceId = $data['invoice_id'] ?? null;
         $method = $data['payment_method'] ?? 'Bank Transfer';
         $transactionId = $data['transaction_id'] ?? '';
+        $amountPaid = $data['amount'] ?? null;
 
         if (!$invoiceId) return $this->json(['status' => 'error', 'message' => 'Invoice ID required'], 400);
 
-        $invoiceModel = new \App\Models\InvoiceModel();
-        $invoice = $invoiceModel->getById($invoiceId);
+        $invoiceModel = new SaaSInvoiceModel();
+        $invoice = $invoiceModel->getFullDetail($invoiceId);
         if (!$invoice) return $this->json(['status' => 'error', 'message' => 'Invoice not found'], 404);
 
+        $amountToPay = $amountPaid ?? $invoice->amount;
         $receiptNumber = 'RCP-' . date('Ymd') . '-' . strtoupper(substr(md5(uniqid()), 0, 4));
 
-        // Start Transaction (Mocked via Model)
         $db = new \App\Core\Database();
         $db->query("INSERT INTO saas_payments (invoice_id, receipt_number, amount, payment_method, transaction_id) VALUES (:iid, :rn, :amt, :pm, :tid)");
         $db->bind(':iid', $invoiceId);
         $db->bind(':rn', $receiptNumber);
-        $db->bind(':amt', $invoice->amount);
+        $db->bind(':amt', $amountToPay);
         $db->bind(':pm', $method);
         $db->bind(':tid', $transactionId);
         
@@ -272,33 +305,88 @@ class BillingController extends Controller {
             // Update Invoice Status
             $invoiceModel->update($invoiceId, ['status' => 'Paid']);
 
-            // Get Company Info for Receipt
-            $db->query("SELECT setting_key, setting_value FROM saas_settings WHERE setting_key LIKE 'company_%'");
-            $settingsArr = $db->resultSet();
-            $company = [];
-            foreach ($settingsArr as $s) $company[$s->setting_key] = $s->setting_value;
-
-            // Prepare Receipt Data
-            $receiptData = (object)array_merge((array)$company, [
-                'receipt_number' => $receiptNumber,
-                'payment_date' => date('Y-m-d H:i:s'),
-                'tenant_name' => $invoice->tenant_name,
-                'invoice_number' => $invoice->invoice_number,
-                'billing_month' => $invoice->billing_month,
-                'amount' => $invoice->amount,
-                'currency' => $invoice->currency,
-                'payment_method' => $method,
-                'transaction_id' => $transactionId
-            ]);
-
+            // Prepare Data for Email (Attach both Receipt and Paid Invoice)
             try {
-                $pdf = \App\Services\ReceiptPDF::generate($receiptData);
-                \App\Core\Mailer::sendPaymentReceiptEmail($invoice->admin_email, $invoice->tenant_name, $receiptNumber, $pdf, $invoice->amount, $invoice->currency);
+                $updatedInvoice = $invoiceModel->getFullDetail($invoiceId);
+                $receiptPdf = \App\Services\InvoicePDF::generate($updatedInvoice, true);
+                $invoicePdf = \App\Services\InvoicePDF::generate($updatedInvoice, false);
+                $sent = \App\Core\Mailer::sendPaymentReceipt($updatedInvoice->admin_email, $updatedInvoice->tenant_name, $updatedInvoice->invoice_number, $receiptPdf, $invoicePdf, $updatedInvoice->amount, $updatedInvoice->currency, $updatedInvoice->receipt_number, $updatedInvoice->billing_cc_email);
+                
+                $invoiceModel->update($invoiceId, [
+                    'email_status' => $sent ? 'Sent' : 'Failed',
+                    'last_sent_at' => date('Y-m-d H:i:s')
+                ]);
+                $subject = "Payment Receipt for Invoice #$updatedInvoice->invoice_number - Nebulink";
+                $invoiceModel->logEmail($invoiceId, 'Receipt', $updatedInvoice->admin_email, $updatedInvoice->billing_cc_email, $sent ? 'Sent' : 'Failed', null, $subject, Mailer::$lastBody);
             } catch (\Exception $e) {}
 
             return $this->json(['status' => 'success', 'message' => 'Payment processed and receipt sent']);
         }
 
         return $this->json(['status' => 'error', 'message' => 'Failed to process payment'], 500);
+    }
+
+    public function getPayments() {
+        if ($this->checkAuth() !== true) return;
+        
+        $id = $_GET['id'] ?? null;
+        if (!$id) return $this->json(['status' => 'error', 'message' => 'Invoice ID required'], 400);
+
+        $model = new SaaSInvoiceModel();
+        $payments = $model->getPayments($id);
+        
+        return $this->json(['status' => 'success', 'data' => $payments]);
+    }
+    public function listAllPayments() {
+        if ($this->checkAuth() !== true) return;
+        if ($this->checkSuperAdmin() !== true) return;
+
+        $model = new SaaSInvoiceModel();
+        $payments = $model->getAllPayments();
+        
+        return $this->json(['status' => 'success', 'data' => $payments]);
+    }
+
+    public function deletePayment() {
+        if ($this->checkAuth() !== true) return;
+        if ($this->checkSuperAdmin() !== true) return;
+
+        $id = $_GET['id'] ?? null;
+        if (!$id) return $this->json(['status' => 'error', 'message' => 'Payment ID required'], 400);
+
+        $db = new \App\Core\Database();
+        // Get invoice ID before deleting so we can check if it was the last payment
+        $db->query("SELECT invoice_id FROM saas_payments WHERE id = :id");
+        $db->bind(':id', $id);
+        $payment = $db->single();
+
+        if (!$payment) return $this->json(['status' => 'error', 'message' => 'Payment not found'], 404);
+
+        $db->query("DELETE FROM saas_payments WHERE id = :id");
+        $db->bind(':id', $id);
+        
+        if ($db->execute()) {
+            // Check if any payments remain for this invoice
+            $db->query("SELECT COUNT(*) as count FROM saas_payments WHERE invoice_id = :iid");
+            $db->bind(':iid', $payment->invoice_id);
+            $remaining = $db->single()->count;
+
+            if ($remaining == 0) {
+                // If no payments left, revert invoice to Pending
+                $invoiceModel = new SaaSInvoiceModel();
+                $invoiceModel->update($payment->invoice_id, ['status' => 'Pending']);
+            }
+
+            return $this->json(['status' => 'success', 'message' => 'Payment deleted successfully']);
+        }
+
+        return $this->json(['status' => 'error', 'message' => 'Failed to delete payment'], 500);
+    }
+
+    public function getEmailLogs() {
+        $this->checkAuth();
+        $model = new SaaSInvoiceModel();
+        $logs = $model->getEmailLogs();
+        return $this->json(['status' => 'success', 'data' => $logs]);
     }
 }
