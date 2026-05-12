@@ -33,23 +33,34 @@ class InvoicePDF {
         $company = [];
         foreach ($settingsArr as $s) $company[$s->setting_key] = $s->setting_value;
 
-        // Logo Path
-        $logoName = $company['company_logo'] ?? 'https://portal.nebulync.com/nebulink-logo-new.png';
-        $basePath = dirname(__DIR__, 2);
+        // Logo Logic: 1. DB Setting, 2. User-uploaded local, 3. Requested URL Fallback
+        $logoName = $company['company_logo'] ?? 'nebulync-logo.png';
+        $docRoot = $_SERVER['DOCUMENT_ROOT'] ?? dirname(__DIR__, 2);
+        $logoPath = "";
+        
+        // Resolve path
         if (strpos($logoName, 'http') === 0) {
-            // It's a full URL
             $logoPath = $logoName;
         } elseif (strpos($logoName, 'ui/') === 0) {
-            // Fallback for UI logos if they exist on the same server, else this might need a full URL
-            $logoPath = dirname($basePath) . '/nexus-portal-ui/public/' . substr($logoName, 3);
+            $logoPath = \App\Core\Config::SITE_URL . '/' . substr($logoName, 3);
         } else {
-            $logoPath = $basePath . '/public/' . $logoName;
+            // Priority: Try DOCUMENT_ROOT first as discovered by debug script
+            $logoPath = $docRoot . '/public/' . $logoName;
+            
+            // Fallback: If that fails, try relative to __DIR__
+            if (!file_exists($logoPath)) {
+                $logoPath = dirname(__DIR__, 2) . '/public/' . $logoName;
+            }
+
+            // Final Local Fallback: The specific file we know exists
+            if (!file_exists($logoPath)) {
+                $logoPath = $docRoot . '/public/nebulync-logo.png';
+            }
         }
 
         $logoData = "";
         if (!empty($logoPath)) {
             try {
-                // If it's a local file, check if it exists
                 if (strpos($logoPath, 'http') !== 0) {
                     if (file_exists($logoPath)) {
                         $type = pathinfo($logoPath, PATHINFO_EXTENSION);
@@ -57,9 +68,16 @@ class InvoicePDF {
                         $logoData = 'data:image/' . $type . ';base64,' . base64_encode($imgData);
                     }
                 } else {
-                    // It's a URL - need to encode spaces for file_get_contents
+                    // It's a URL fallback
                     $encodedPath = str_replace(' ', '%20', $logoPath);
                     $imgData = @file_get_contents($encodedPath);
+                    if (!$imgData) {
+                        // Final attempt: try the other URL fallback provided by user
+                        $fallbackUrl = 'https://portal.nebulync.com/nebulink-logo-new.png';
+                        $imgData = @file_get_contents($fallbackUrl);
+                        $logoPath = $fallbackUrl;
+                    }
+                    
                     if ($imgData) {
                         $type = pathinfo($logoPath, PATHINFO_EXTENSION);
                         $logoData = 'data:image/' . $type . ';base64,' . base64_encode($imgData);
