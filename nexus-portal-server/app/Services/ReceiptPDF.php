@@ -13,7 +13,7 @@ class ReceiptPDF {
         
         $dompdf = new Dompdf($options);
         
-        $logoPath = __DIR__ . '/../../public/' . ($data->company_logo ?? 'nebulink-logo-croped.png');
+        $logoPath = __DIR__ . '/../../public/' . ($data->company_logo ?? 'nebulync-logo.png');
         $logoData = "";
         if (file_exists($logoPath)) {
             $logoData = 'data:image/png;base64,' . base64_encode(file_get_contents($logoPath));

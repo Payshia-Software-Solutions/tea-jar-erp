@@ -106,7 +106,7 @@ class Mailer {
             $mail->addAddress($to, $name);
             self::addCCAddresses($mail, $ccEmail);
             $mail->isHTML(true);
-            $mail->Subject = "New Invoice #$invoiceNumber for $period from Nebulink";
+            $mail->Subject = "New Invoice #$invoiceNumber for $period - $name | Nebulync";
             
             $mail->Body = "
                 <div style=\"font-family: sans-serif; color: #1e293b; max-width: 600px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 16px; overflow: hidden;\">
@@ -141,11 +141,11 @@ class Mailer {
                         <p style=\"line-height: 1.6;\">We have attached the detailed invoice PDF to this email for your records. Please ensure payment is processed by the due date mentioned in the document.</p>
                         <p style=\"margin-top: 40px; border-top: 1px solid #f1f5f9; padding-top: 20px; font-size: 13px; color: #64748b;\">
                             Best regards,<br>
-                            <strong>The Nebulink Billing Team</strong>
+                            <strong>The Nebulync Billing Team</strong>
                         </p>
                     </div>
                     <div style=\"background: #f1f5f9; padding: 20px; text-align: center; font-size: 11px; color: #94a3b8;\">
-                        &copy; ".date('Y')." Nebulink Systems (Pvt) Ltd. All rights reserved.
+                        &copy; ".date('Y')." Nebulync Systems (Pvt) Ltd. All rights reserved.
                     </div>
                 </div>
             ";
@@ -165,7 +165,7 @@ class Mailer {
             $mail->addAddress($to, $name);
             self::addCCAddresses($mail, $ccEmail);
             $mail->isHTML(true);
-            $mail->Subject = "Payment Receipt for Invoice #$invoiceNumber - Nebulink";
+            $mail->Subject = "Payment Receipt for Invoice #$invoiceNumber - $name | Nebulync";
             
             $mail->Body = "
                 <div style=\"font-family: sans-serif; color: #1e293b; max-width: 600px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 16px; overflow: hidden;\">
@@ -202,11 +202,11 @@ class Mailer {
                         <p style=\"margin-top: 40px; border-top: 1px solid #f1f5f9; padding-top: 20px; font-size: 13px; color: #64748b;\">
                             If you have any questions regarding this transaction, please contact our billing department.<br><br>
                             Best regards,<br>
-                            <strong>The Nebulink Billing Team</strong>
+                            <strong>The Nebulync Billing Team</strong>
                         </p>
                     </div>
                     <div style=\"background: #f1f5f9; padding: 20px; text-align: center; font-size: 11px; color: #94a3b8;\">
-                        &copy; ".date('Y')." Nebulink Systems (Pvt) Ltd. All rights reserved.
+                        &copy; ".date('Y')." Nebulync Systems (Pvt) Ltd. All rights reserved.
                     </div>
                 </div>
             ";
@@ -248,10 +248,10 @@ class Mailer {
                 </div>
                 
                 <p>If you have any questions, feel free to reply to this email.</p>
-                <p style='margin-top: 40px;'>Best regards,<br><strong>Nebulink Billing Team</strong></p>
+                <p style='margin-top: 40px;'>Best regards,<br><strong>Nebulync Billing Team</strong></p>
             </div>
             <div style='background: #f8fafc; padding: 20px; text-align: center; font-size: 11px; color: #94a3b8;'>
-                &copy; " . date('Y') . " Nebulink. All rights reserved.
+                &copy; " . date('Y') . " Nebulync. All rights reserved.
             </div>
         </div>
         ";
@@ -327,7 +327,7 @@ class Mailer {
                         </p>
                     </div>
                     <div style=\"background: #f1f5f9; padding: 20px; text-align: center; font-size: 11px; color: #94a3b8;\">
-                        &copy; ".date('Y')." Nebulink Systems (Pvt) Ltd. All rights reserved.
+                        &copy; ".date('Y')." Nebulync Systems (Pvt) Ltd. All rights reserved.
                     </div>
                 </div>
             ";
@@ -352,7 +352,7 @@ class Mailer {
             $mail->Body = "
                 <div style='font-family: sans-serif; color: #1e293b; max-width: 600px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 16px; overflow: hidden;'>
                     <div style='background: #f8fafc; padding: 40px; text-align: center; border-bottom: 1px solid #f1f5f9;'>
-                        <img src='https://nebulink.com/logo.png' alt='BizzFlow' style='height: 30px;' />
+                        <img src='https://nebulync.com/logo.png' alt='BizzFlow' style='height: 30px;' />
                     </div>
                     <div style='line-height: 1.6; padding: 40px;'>
                         " . $body . "

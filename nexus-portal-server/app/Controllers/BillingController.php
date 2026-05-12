@@ -112,7 +112,7 @@ class BillingController extends Controller {
                             'email_status' => $sent ? 'Sent' : 'Failed',
                             'last_sent_at' => date('Y-m-d H:i:s')
                         ]);
-                        $subject = "New Invoice #$invoiceNumber for $currentMonth from Nebulink";
+                        $subject = "New Invoice #$invoiceNumber for $currentMonth - $tenantName | Nebulync";
                         $invoiceModel->logEmail($invoiceId, 'Invoice', $adminEmail, $ccEmail, $sent ? 'Sent' : 'Failed', null, $subject, Mailer::$lastBody);
                     } catch (\Throwable $e) {
                         error_log("Billing Circle Email Error: " . $e->getMessage());
@@ -316,7 +316,7 @@ class BillingController extends Controller {
                     'email_status' => $sent ? 'Sent' : 'Failed',
                     'last_sent_at' => date('Y-m-d H:i:s')
                 ]);
-                $subject = "Payment Receipt for Invoice #$updatedInvoice->invoice_number - Nebulink";
+                $subject = "Payment Receipt for Invoice #$updatedInvoice->invoice_number - $updatedInvoice->tenant_name | Nebulync";
                 $invoiceModel->logEmail($invoiceId, 'Receipt', $updatedInvoice->admin_email, $updatedInvoice->billing_cc_email, $sent ? 'Sent' : 'Failed', null, $subject, Mailer::$lastBody);
             } catch (\Exception $e) {}
 

@@ -10,7 +10,7 @@ const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
   title: "BizzFlow ERP | Modern Enterprise Operating System",
-  description: "Accelerate your operations with BizzFlow, the most advanced ERP workspace for modern businesses. Powered by Nebulink.",
+  description: "Accelerate your operations with BizzFlow, the most advanced ERP workspace for modern businesses. Powered by Nebulync.",
 };
 
 export default function RootLayout({
