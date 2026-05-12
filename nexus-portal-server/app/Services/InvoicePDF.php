@@ -34,7 +34,7 @@ class InvoicePDF {
         foreach ($settingsArr as $s) $company[$s->setting_key] = $s->setting_value;
 
         // Logo Path
-        $logoName = $company['company_logo'] ?? 'nebulink-logo-croped.png';
+        $logoName = $company['company_logo'] ?? 'https://portal.nebulync.com/nebulink-logo-new.png';
         $basePath = dirname(__DIR__, 2);
         if (strpos($logoName, 'http') === 0) {
             // It's a full URL
