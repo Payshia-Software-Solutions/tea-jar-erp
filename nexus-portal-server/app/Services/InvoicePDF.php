@@ -35,15 +35,15 @@ class InvoicePDF {
 
         // Logo Path
         $logoName = $company['company_logo'] ?? 'nebulink-logo-croped.png';
-        $logoPath = "";
-        
+        $basePath = dirname(__DIR__, 2);
         if (strpos($logoName, 'http') === 0) {
             // It's a full URL
             $logoPath = $logoName;
         } elseif (strpos($logoName, 'ui/') === 0) {
-            $logoPath = 'c:/xampp/htdocs/rapair-management/nexus-portal-ui/public/' . substr($logoName, 3);
+            // Fallback for UI logos if they exist on the same server, else this might need a full URL
+            $logoPath = dirname($basePath) . '/nexus-portal-ui/public/' . substr($logoName, 3);
         } else {
-            $logoPath = 'c:/xampp/htdocs/rapair-management/nexus-portal-server/public/' . $logoName;
+            $logoPath = $basePath . '/public/' . $logoName;
         }
 
         $logoData = "";
