@@ -15,7 +15,7 @@ jobs:
     - name: 📂 Sync files
       uses: SamKirkland/FTP-Deploy-Action@v4.3.5
       with:        
-        server: ${{ secrets.FTP_SERVER }}
+        server: ${{ secrets.MASTER_FTP_SERVER }}
         username: ${{ secrets.MASTER_FTP_USERNAME }}
         password: ${{ secrets.MASTER_FTP_PASSWORD }}
         local-dir: ./nexus-portal-server/  # Tells the action to only upload the contents of the server folder
