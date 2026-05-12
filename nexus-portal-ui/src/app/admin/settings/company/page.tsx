@@ -1,5 +1,5 @@
-import { API_BASE, SITE_URL } from '@/config';
 'use client';
+import { API_BASE, SITE_URL } from '@/config';
 
 import { useState, useEffect } from 'react';
 import { Save, Building2, Mail, MapPin, Globe, Phone, Image as ImageIcon, Loader2, CheckCircle } from 'lucide-react';

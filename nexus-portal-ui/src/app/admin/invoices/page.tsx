@@ -224,7 +224,7 @@ export default function GlobalInvoicesPage() {
       
       let created = 0;
       let skipped = 0;
-      const details = [];
+      const details: any[] = [];
       
       // 2. Process one by one
       for (let i = 0; i < activeTenants.length; i++) {

@@ -25,7 +25,20 @@ export default function TenantEditPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [packages, setPackages] = useState<any[]>([]);
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<{
+    id: string;
+    name: string;
+    slug: string;
+    package_id: string;
+    status: string;
+    license_key: string;
+    api_key: string;
+    trial_expiry: string;
+    currency: string;
+    billing_cc_email: string | string[];
+    admin_email: string;
+    contact_number: string;
+  }>({
     id: '',
     name: '',
     slug: '',
@@ -35,7 +48,7 @@ export default function TenantEditPage() {
     api_key: '',
     trial_expiry: '',
     currency: 'USD',
-    billing_cc_email: '',
+    billing_cc_email: [],
     admin_email: '',
     contact_number: ''
   });

@@ -39,9 +39,6 @@ export default function BackgroundGradients() {
       <motion.div
         animate={{
           opacity: [0.05, 0.15, 0.05],
-          dark: {
-            opacity: [0.3, 0.6, 0.3]
-          }
         }}
         transition={{
           duration: 15,

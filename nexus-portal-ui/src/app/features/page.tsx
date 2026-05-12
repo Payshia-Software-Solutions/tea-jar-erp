@@ -18,16 +18,16 @@ export default function FeaturesPage() {
       opacity: 1,
       transition: { staggerChildren: 0.1 }
     }
-  };
+  } as const;
 
   const itemVariants = {
     hidden: { opacity: 0, y: 20 },
     visible: { 
       opacity: 1, 
       y: 0,
-      transition: { type: 'spring', stiffness: 100, damping: 20 }
+      transition: { type: 'spring' as const, stiffness: 100, damping: 20 }
     }
-  };
+  } as const;
 
   return (
     <div className="pt-32 pb-20 px-4 max-w-7xl mx-auto">

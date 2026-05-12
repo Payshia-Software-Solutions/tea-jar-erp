@@ -27,12 +27,12 @@ export default function PricingPage() {
   const containerVariants = {
     hidden: { opacity: 0 },
     visible: { opacity: 1, transition: { staggerChildren: 0.1 } }
-  };
+  } as const;
 
   const itemVariants = {
     hidden: { opacity: 0, scale: 0.95 },
-    visible: { opacity: 1, scale: 1, transition: { type: 'spring', stiffness: 100 } }
-  };
+    visible: { opacity: 1, scale: 1, transition: { type: 'spring' as const, stiffness: 100 } }
+  } as const;
 
   return (
     <div className="pt-32 pb-20 px-4 max-w-7xl mx-auto">
