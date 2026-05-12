@@ -1,4 +1,5 @@
 "use client";
+import { API_BASE } from '@/config';
 
 import React, { useState } from 'react';
 import { CheckCircle2 } from 'lucide-react';
@@ -8,7 +9,7 @@ export default function PricingPage() {
   const [serverPackages, setServerPackages] = useState<any[]>([]);
 
   React.useEffect(() => {
-    fetch('http://localhost/rapair-management/nexus-portal-server/public/api/saas/packages')
+    fetch(`${API_BASE}/saas/packages`)
       .then(res => res.json())
       .then(data => {
         if (data.status === 'success') {

@@ -1,4 +1,5 @@
 "use client";
+import { API_BASE, SITE_URL } from '@/config';
 
 import React, { useEffect, useState, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
@@ -23,7 +24,7 @@ function VerifyEmailContent() {
 
     const verify = async () => {
       try {
-        const response = await fetch(`http://localhost/rapair-management/nexus-portal-server/public/api/auth/verify?token=${token}`);
+        const response = await fetch(`${API_BASE.replace("/api", "")}/api/auth/verify?token=${token}`);
         const data = await response.json();
 
         if (response.ok) {

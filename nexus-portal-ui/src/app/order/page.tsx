@@ -1,4 +1,5 @@
 "use client";
+import { API_BASE } from '@/config';
 
 import React, { useState } from 'react';
 import { ChevronRight, ShieldCheck, Zap } from 'lucide-react';
@@ -10,7 +11,7 @@ export default function OrderPage() {
   const [serverPackages, setServerPackages] = useState<any[]>([]);
 
   React.useEffect(() => {
-    fetch('http://localhost/rapair-management/nexus-portal-server/public/api/saas/packages', { credentials: 'include' })
+    fetch(`${API_BASE}/saas/packages`, { credentials: 'include' })
       .then(res => res.json())
       .then(data => {
         if (data.status === 'success') {
@@ -30,7 +31,7 @@ export default function OrderPage() {
     const data = Object.fromEntries(formData.entries());
 
     try {
-      const response = await fetch('http://localhost/rapair-management/nexus-portal-server/public/api/auth/register', {
+      const response = await fetch(`${API_BASE}/auth/register`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',

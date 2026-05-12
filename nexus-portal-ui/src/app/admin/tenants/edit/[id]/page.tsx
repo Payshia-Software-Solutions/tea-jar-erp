@@ -1,4 +1,5 @@
 "use client";
+import { API_BASE } from '@/config';
 
 import React, { useState, useEffect } from 'react';
 import { 
@@ -39,7 +40,7 @@ export default function TenantEditPage() {
     contact_number: ''
   });
 
-  const API_BASE = 'http://localhost/rapair-management/nexus-portal-server/public/api';
+  
 
   useEffect(() => {
     const fetchData = async () => {

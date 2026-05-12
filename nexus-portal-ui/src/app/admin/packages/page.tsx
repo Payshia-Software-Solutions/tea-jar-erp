@@ -1,4 +1,5 @@
 "use client";
+import { API_BASE } from '@/config';
 
 import React, { useState, useEffect } from 'react';
 import { 
@@ -19,7 +20,7 @@ export default function PackagesPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
 
-  const API_BASE = 'http://localhost/rapair-management/nexus-portal-server/public/api';
+  
 
   const fetchData = async () => {
     setLoading(true);

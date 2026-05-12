@@ -1,11 +1,12 @@
 "use client";
+import { API_BASE } from '@/config';
 
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 
 export default function AdminDashboardRedirect() {
   const router = useRouter();
-  const API_BASE = 'http://localhost/rapair-management/nexus-portal-server/public/api';
+  
 
   useEffect(() => {
     const checkAuthAndRedirect = async () => {

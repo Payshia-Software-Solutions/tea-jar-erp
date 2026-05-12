@@ -109,7 +109,7 @@ class TenantModel {
         $this->db->bind(':pid', $data['package_id'] ?? 1);
         $this->db->bind(':curr', $data['currency'] ?? 'USD');
         $this->db->bind(':db', $data['db_name'] ?? 'repair_management_db');
-        $this->db->bind(':url', $data['api_url'] ?? 'http://localhost/rapair-management/server');
+        $this->db->bind(':url', $data['api_url'] ?? null);
         $this->db->bind(':expiry', $expiry);
         $this->db->bind(':license', $license);
         $this->db->bind(':apikey', $apiKey);

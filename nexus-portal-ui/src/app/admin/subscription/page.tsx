@@ -1,4 +1,5 @@
 "use client";
+import { API_BASE } from '@/config';
 
 import React, { useState, useEffect } from 'react';
 import { 
@@ -16,7 +17,7 @@ export default function SubscriptionPage() {
   const [billingHistory, setBillingHistory] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const API_BASE = 'http://localhost/rapair-management/nexus-portal-server/public/api';
+  
 
   const handleDownload = (id: number, type: string = '') => {
     const link = document.createElement('a');

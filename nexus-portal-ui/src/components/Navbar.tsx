@@ -1,4 +1,5 @@
 "use client";
+import { API_BASE } from '@/config';
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
@@ -14,7 +15,7 @@ export default function Navbar() {
   useEffect(() => {
     const checkAuth = async () => {
       try {
-        const res = await fetch('http://localhost/rapair-management/nexus-portal-server/public/api/auth/check', { credentials: 'include' });
+        const res = await fetch(`${API_BASE}/auth/check`, { credentials: 'include' });
         if (res.ok) {
           const data = await res.json();
           setIsLoggedIn(true);

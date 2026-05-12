@@ -1,4 +1,5 @@
 "use client";
+import { API_BASE } from '@/config';
 
 import React, { useState, useEffect } from 'react';
 import { 
@@ -20,7 +21,7 @@ export default function AdminLoginPage() {
 
   useEffect(() => {
     // Check if already logged in
-    fetch('http://localhost/rapair-management/nexus-portal-server/public/api/auth/check', { credentials: 'include' })
+    fetch(`${API_BASE}/auth/check`, { credentials: 'include' })
       .then(res => res.ok && router.push('/admin/dashboard'))
       .catch(() => {});
   }, [router]);
@@ -31,7 +32,7 @@ export default function AdminLoginPage() {
     setError('');
 
     try {
-      const response = await fetch('http://localhost/rapair-management/nexus-portal-server/public/api/auth/login', {
+      const response = await fetch(`${API_BASE}/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',

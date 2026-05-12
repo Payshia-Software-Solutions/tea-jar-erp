@@ -1,4 +1,5 @@
 "use client";
+import { API_BASE } from '@/config';
 
 import React from 'react';
 import { 
@@ -34,7 +35,7 @@ export default function AdminSidebar({ activeTab, currentUser, role, theme, onTo
   const pathname = usePathname();
 
   const handleLogout = async () => {
-    await fetch('http://localhost/rapair-management/nexus-portal-server/public/api/auth/logout', { credentials: 'include' });
+    await fetch(`${API_BASE}/auth/logout`, { credentials: 'include' });
     router.push('/admin/login');
   };
 

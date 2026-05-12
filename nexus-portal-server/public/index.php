@@ -63,6 +63,13 @@ if (empty($_GET['url']) || $_GET['url'] === '/') {
     exit;
 }
 
+// Test Route
+if ($_GET['url'] === 'api/test') {
+    header('Content-Type: application/json');
+    echo json_encode(['status' => 'success', 'message' => 'API Routing is working!']);
+    exit;
+}
+
 // Routes
 $router->add('api/request', ['controller' => 'PortalController', 'action' => 'submitRequest'], 'POST');
 $router->add('api/auth/register', ['controller' => 'AuthController', 'action' => 'register'], 'POST');

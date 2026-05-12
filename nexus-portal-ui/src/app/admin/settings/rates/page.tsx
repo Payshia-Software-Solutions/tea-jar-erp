@@ -1,4 +1,5 @@
 "use client";
+import { API_BASE } from '@/config';
 
 import React, { useState, useEffect } from 'react';
 import { 
@@ -24,7 +25,7 @@ export default function ExchangeRatesPage() {
   const [saving, setSaving] = useState<string | null>(null);
   const [message, setMessage] = useState<{type: 'success' | 'error', text: string} | null>(null);
 
-  const API_BASE = 'http://localhost/rapair-management/nexus-portal-server/public/api';
+  
 
   const fetchRates = async (force = false) => {
     if (force) setSyncing(true);

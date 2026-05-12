@@ -1,4 +1,5 @@
 "use client";
+import { API_BASE } from '@/config';
 
 import React, { useState, useEffect, useRef } from 'react';
 import 'quill/dist/quill.snow.css';
@@ -37,7 +38,7 @@ export default function SendEmailPage() {
   const quillRef = useRef<any>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const API_BASE = 'http://localhost/rapair-management/nexus-portal-server/public/api';
+  
 
   useEffect(() => {
     const fetchRecipients = async () => {

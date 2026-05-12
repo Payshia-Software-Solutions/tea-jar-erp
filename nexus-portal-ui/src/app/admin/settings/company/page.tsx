@@ -1,10 +1,11 @@
+import { API_BASE, SITE_URL } from '@/config';
 'use client';
 
 import { useState, useEffect } from 'react';
 import { Save, Building2, Mail, MapPin, Globe, Phone, Image as ImageIcon, Loader2, CheckCircle } from 'lucide-react';
 import { motion } from 'framer-motion';
 
-const API_BASE = 'http://localhost/rapair-management/nexus-portal-server/public/api';
+
 
 export default function CompanySettingsPage() {
   const [settings, setSettings] = useState({
@@ -84,7 +85,7 @@ export default function CompanySettingsPage() {
     if (logo.startsWith('ui/')) {
       return `/${logo.substring(3)}`;
     }
-    return `http://localhost/rapair-management/nexus-portal-server/public/${logo}`;
+    return `${API_BASE.replace("/api", "")}/${logo}`;
   };
 
   return (

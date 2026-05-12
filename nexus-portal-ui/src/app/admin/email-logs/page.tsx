@@ -1,4 +1,5 @@
 "use client";
+import { API_BASE } from '@/config';
 
 import React, { useState, useEffect } from 'react';
 import { 
@@ -24,7 +25,7 @@ export default function EmailLogsPage() {
   const itemsPerPage = 10;
   const [selectedLog, setSelectedLog] = useState<any | null>(null);
 
-  const API_BASE = 'http://localhost/rapair-management/nexus-portal-server/public/api';
+  
 
   const fetchData = async () => {
     setLoading(true);

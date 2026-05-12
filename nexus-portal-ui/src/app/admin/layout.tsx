@@ -1,4 +1,5 @@
 "use client";
+import { API_BASE } from '@/config';
 
 import React, { useState, useEffect } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
@@ -18,7 +19,7 @@ export default function AdminLayout({
   const [theme, setTheme] = useState<'light' | 'dark'>('dark');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
-  const API_BASE = 'http://localhost/rapair-management/nexus-portal-server/public/api';
+  
 
   useEffect(() => {
     // Load theme
