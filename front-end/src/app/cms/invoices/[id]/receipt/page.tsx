@@ -141,6 +141,14 @@ function ReceiptContent() {
 
 function ReceiptBody({ invoice, company, balance, fmt, taxInclusive }: any) {
   const totalTaxPercent = (invoice.applied_taxes || []).reduce((acc: number, t: any) => acc + Number(t.rate_percent || 0), 0);
+
+  const getShortTaxName = (name: string) => {
+    const upper = (name || "").toUpperCase();
+    if (upper.includes("SOCIAL SECURITY CONTRIBUTION LEVY")) return "SSCL";
+    if (upper.includes("VALUE ADDED TAX")) return "VAT";
+    return name;
+  };
+
   return (
     <>
       {/* Store Header */}
@@ -244,10 +252,16 @@ function ReceiptBody({ invoice, company, balance, fmt, taxInclusive }: any) {
           })()}
           {(invoice.applied_taxes || []).map((tax: any, idx: number) => (
             <div className="row" key={idx}>
-              <span>{tax.tax_code || tax.tax_name}{Number(tax.rate_percent) > 0 ? ` (${tax.rate_percent}%)` : ''}</span>
+              <span>{getShortTaxName(tax.tax_code || tax.tax_name)}{Number(tax.rate_percent) > 0 ? ` (${tax.rate_percent}%)` : ''}</span>
               <span>LKR {fmt(tax.amount)}</span>
             </div>
           ))}
+          {Number(invoice.shipping_fee) > 0 && (
+            <div className="row">
+              <span>Shipping ({invoice.shipping_provider_name || 'Standard'})</span>
+              <span>LKR {fmt(invoice.shipping_fee)}</span>
+            </div>
+          )}
         </>
       )}
 

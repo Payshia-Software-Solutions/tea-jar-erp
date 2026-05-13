@@ -44,6 +44,13 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   Dialog,
   DialogContent,
   DialogHeader,
@@ -68,11 +75,36 @@ export default function OnlineOrdersPage() {
   const [showOrderModal, setShowOrderModal] = useState(false);
   const [loadingDetails, setLoadingDetails] = useState(false);
 
+  const [dispatchOpen, setDispatchOpen] = useState(false);
+  const [dispatchOrder, setDispatchOrder] = useState<any>(null);
+  const [carrier, setCarrier] = useState("");
+  const [trackingNo, setTrackingNo] = useState("");
+  const [dispatching, setDispatching] = useState(false);
+  const [carriers, setCarriers] = useState<any[]>([]);
+
   const API_BASE_URL = (process.env.NEXT_PUBLIC_API_URL || "").replace(/\/$/, "");
 
   useEffect(() => {
     fetchOrders();
+    fetchCarriers();
   }, []);
+
+  const fetchCarriers = async () => {
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/shipping-carrier/index`);
+      const data = await res.json();
+      setCarriers(data.data || []);
+    } catch (err) {
+      console.error("Failed to fetch carriers", err);
+    }
+  };
+
+  const getTrackingLink = (order: any) => {
+    if (!order?.tracking_no || !order?.shipping_carrier) return null;
+    const carrierObj = carriers.find(c => c.name === order.shipping_carrier);
+    if (!carrierObj || !carrierObj.tracking_url) return null;
+    return carrierObj.tracking_url.replace('{tracking_number}', order.tracking_no);
+  };
 
   const fetchOrders = async () => {
     try {
@@ -98,6 +130,33 @@ export default function OnlineOrdersPage() {
       console.error("Failed to fetch order details", err);
       setLoadingDetails(false);
       setShowOrderModal(false);
+    }
+  };
+
+  const handleDispatch = async () => {
+    if (!dispatchOrder) return;
+    try {
+      setDispatching(true);
+      const response = await fetch(`${API_BASE_URL}/api/online-order/dispatch`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: dispatchOrder.id,
+          carrier,
+          tracking_no: trackingNo
+        })
+      });
+
+      if (!response.ok) throw new Error("Failed to dispatch");
+
+      setDispatchOpen(false);
+      setCarrier("");
+      setTrackingNo("");
+      fetchOrders();
+    } catch (err) {
+      console.error("Dispatch Failed", err);
+    } finally {
+      setDispatching(false);
     }
   };
 
@@ -261,7 +320,20 @@ export default function OnlineOrdersPage() {
                   paginatedOrders.map((order) => (
                     <TableRow key={order.id} className="hover:bg-muted/5 transition-colors group">
                       <TableCell className="py-3">
-                         <span className="font-bold text-primary">#{order.order_no}</span>
+                         <div className="flex flex-col gap-1">
+                            <span className="font-bold text-primary text-sm">#{order.order_no}</span>
+                            {order.invoice_no && (
+                              <button 
+                                onClick={() => router.push(`/cms/invoices/${order.invoice_id}/view`)}
+                                className="flex items-center gap-1 w-fit bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 px-1.5 py-0.5 rounded border border-slate-200 dark:border-slate-700 transition-colors group/inv"
+                              >
+                                <FileText className="w-2.5 h-2.5 text-muted-foreground group-hover/inv:text-primary" />
+                                <span className="text-[9px] font-black text-muted-foreground group-hover/inv:text-primary uppercase tracking-tight">
+                                  {order.invoice_no}
+                                </span>
+                              </button>
+                            )}
+                         </div>
                       </TableCell>
                       <TableCell className="py-3">
                         <div className="flex flex-col">
@@ -279,7 +351,27 @@ export default function OnlineOrdersPage() {
                         {getPaymentBadge(order)}
                       </TableCell>
                       <TableCell className="py-3 text-center">
-                        {getStatusBadge(order.order_status)}
+                        <div className="flex flex-col items-center gap-1.5">
+                          {getStatusBadge(order.order_status)}
+                          {order.tracking_no && (
+                            <div className="flex flex-col items-center">
+                              {getTrackingLink(order) ? (
+                                <a 
+                                  href={getTrackingLink(order)!} 
+                                  target="_blank" 
+                                  rel="noopener noreferrer"
+                                  className="text-[9px] font-black text-primary hover:underline flex items-center gap-1 uppercase tracking-tighter"
+                                >
+                                  <Truck className="w-2.5 h-2.5" /> {order.tracking_no}
+                                </a>
+                              ) : (
+                                <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-tighter">
+                                  {order.tracking_no}
+                                </span>
+                              )}
+                            </div>
+                          )}
+                        </div>
                       </TableCell>
                       <TableCell className="py-3 text-right font-bold text-sm">
                         Rs. {Number(order.total_amount).toFixed(2)}
@@ -294,7 +386,7 @@ export default function OnlineOrdersPage() {
                           >
                             <Eye className="w-4 h-4" />
                           </Button>
-                          <DropdownMenu>
+                          <DropdownMenu modal={false}>
                             <DropdownMenuTrigger asChild>
                               <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground">
                                 <MoreVertical className="w-4 h-4" />
@@ -308,7 +400,24 @@ export default function OnlineOrdersPage() {
                               >
                                 <FileText className="w-4 h-4 mr-2" /> Generate Invoice
                               </DropdownMenuItem>
-                              <DropdownMenuItem className="font-bold text-sm cursor-pointer">
+                              <DropdownMenuItem 
+                                onSelect={(e) => {
+                                  e.preventDefault();
+                                  setDispatchOrder(order);
+                                  // Pre-fill existing or set default
+                                  if (order.shipping_carrier) {
+                                    setCarrier(order.shipping_carrier);
+                                  } else {
+                                    const def = carriers.find(c => Boolean(Number(c.is_default)));
+                                    setCarrier(def ? def.name : "");
+                                  }
+                                  setTrackingNo(order.tracking_no || "");
+                                  setTimeout(() => {
+                                    setDispatchOpen(true);
+                                  }, 100);
+                                }}
+                                className="font-bold text-sm cursor-pointer"
+                              >
                                 <Truck className="w-4 h-4 mr-2 text-indigo-500" /> Dispatch Order
                               </DropdownMenuItem>
                               <DropdownMenuSeparator />
@@ -443,7 +552,7 @@ export default function OnlineOrdersPage() {
                 </Card>
 
                 {/* Section 2: Addresses */}
-                <div className="grid grid-cols-1 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <Card className="bg-white border-gray-200 shadow-sm">
                     <CardHeader className="pb-3 border-b bg-gray-50/30">
                       <CardTitle className="text-[11px] font-black uppercase tracking-widest flex items-center gap-2 text-gray-500">
@@ -483,6 +592,7 @@ export default function OnlineOrdersPage() {
                           <TableHead className="font-bold text-[10px] uppercase h-10 text-gray-600">Product</TableHead>
                           <TableHead className="font-bold text-[10px] uppercase h-10 text-center text-gray-600">Qty</TableHead>
                           <TableHead className="font-bold text-[10px] uppercase h-10 text-right text-gray-600">Price</TableHead>
+                          <TableHead className="font-bold text-[10px] uppercase h-10 text-right text-gray-600">Discount</TableHead>
                           <TableHead className="font-bold text-[10px] uppercase h-10 text-right text-gray-600">Subtotal</TableHead>
                         </TableRow>
                       </TableHeader>
@@ -495,6 +605,7 @@ export default function OnlineOrdersPage() {
                             </TableCell>
                             <TableCell className="text-center font-black text-gray-700">{Number(item.quantity).toFixed(4)}</TableCell>
                             <TableCell className="text-right font-semibold text-gray-600">Rs. {Number(item.unit_price).toFixed(2)}</TableCell>
+                            <TableCell className="text-right font-bold text-emerald-600">- Rs. {Number(item.discount || 0).toFixed(2)}</TableCell>
                             <TableCell className="text-right font-bold text-gray-900">Rs. {Number(item.line_total).toFixed(2)}</TableCell>
                           </TableRow>
                         ))}
@@ -508,12 +619,80 @@ export default function OnlineOrdersPage() {
                   <div className="w-full max-w-[300px] space-y-3">
                     <div className="flex justify-between text-sm text-gray-500 font-semibold">
                       <span>Subtotal</span>
-                      <span className="text-gray-900">Rs. {(Number(selectedOrder?.total_amount) - Number(selectedOrder?.shipping_fee || 0)).toFixed(2)}</span>
+                      <span className="text-gray-900">Rs. {Number(selectedOrder?.subtotal_amount || 0).toFixed(2)}</span>
                     </div>
+
+                    {(() => {
+                      const lineDiscountsTotal = selectedOrder?.items?.reduce((acc: number, item: any) => acc + (Number(item.discount || 0) * Number(item.quantity || 0)), 0) || 0;
+                      if (lineDiscountsTotal > 0) {
+                        return (
+                          <div className="flex justify-between text-sm text-emerald-600 font-bold">
+                            <span>Line Discounts</span>
+                            <span>- Rs. {lineDiscountsTotal.toFixed(2)}</span>
+                          </div>
+                        );
+                      }
+                      return null;
+                    })()}
+
+                    {(() => {
+                      const taxDetails = selectedOrder?.tax_details_json ? JSON.parse(selectedOrder.tax_details_json) : [];
+                      if (!Array.isArray(taxDetails) || taxDetails.length === 0) {
+                        return Number(selectedOrder?.tax_total || 0) > 0 ? (
+                          <div className="flex justify-between text-sm text-gray-500 font-semibold">
+                            <span>Taxes</span>
+                            <span className="text-gray-900">Rs. {Number(selectedOrder?.tax_total).toFixed(2)}</span>
+                          </div>
+                        ) : null;
+                      }
+
+                      const base = Number(selectedOrder?.subtotal_amount || 0);
+                      let currentSubtotal = base;
+                      const breakdown: any[] = [];
+
+                      // Sort taxes by sort_order or id to ensure consistent compounding
+                      const sortedTaxes = [...taxDetails].sort((a, b) => (Number(a.sort_order || 0) - Number(b.sort_order || 0)) || (a.id - b.id));
+
+                      sortedTaxes.forEach(tax => {
+                        let amount = 0;
+                        
+                        if (tax.amount !== undefined) {
+                          // Use the amount stored in the database record
+                          amount = Number(tax.amount);
+                        } else {
+                          // Recalculate for legacy orders that don't have the amount stored
+                          const rate = Number(tax.rate_percent) / 100;
+                          if (tax.apply_on === 'base_plus_previous') {
+                            amount = currentSubtotal * rate;
+                            currentSubtotal += amount;
+                          } else {
+                            amount = base * rate;
+                          }
+                        }
+                        
+                        if (amount > 0) {
+                          breakdown.push({ name: tax.name, amount });
+                        }
+                      });
+
+                      return breakdown.map((b, i) => (
+                        <div key={i} className="flex justify-between text-[11px] text-gray-400 font-bold uppercase tracking-wider pl-4">
+                          <span>{b.name}</span>
+                          <span>Rs. {b.amount.toFixed(2)}</span>
+                        </div>
+                      ));
+                    })()}
+
                     <div className="flex justify-between text-sm text-gray-500 font-semibold">
                       <span>Shipping</span>
                       <span className="text-gray-900">Rs. {Number(selectedOrder?.shipping_fee || 0).toFixed(2)}</span>
                     </div>
+                    {Number(selectedOrder?.coupon_discount || 0) > 0 && (
+                      <div className="flex justify-between text-sm text-emerald-600 font-bold">
+                        <span>Coupon ({selectedOrder?.coupon_code})</span>
+                        <span>- Rs. {Number(selectedOrder?.coupon_discount).toFixed(2)}</span>
+                      </div>
+                    )}
                     <div className="flex justify-between items-center pt-3 border-t border-gray-200 text-lg">
                       <span className="font-black uppercase tracking-tighter text-gray-900">Total</span>
                       <span className="font-black text-primary">Rs. {Number(selectedOrder?.total_amount).toFixed(2)}</span>
@@ -555,6 +734,60 @@ export default function OnlineOrdersPage() {
                 Proceed to Invoice
               </Button>
             </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+      <Dialog open={dispatchOpen} onOpenChange={setDispatchOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle className="text-2xl font-black tracking-tighter flex items-center gap-2">
+              <Truck className="w-6 h-6 text-primary" />
+              DISPATCH ORDER
+            </DialogTitle>
+            <div className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mt-1">
+              Order #{dispatchOrder?.order_no}
+            </div>
+          </DialogHeader>
+          <div className="grid gap-6 py-4">
+            <div className="space-y-2">
+              <label htmlFor="list-carrier" className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Shipping Carrier</label>
+              <Select value={carrier} onValueChange={setCarrier}>
+                <SelectTrigger id="list-carrier" className="h-11 font-medium">
+                  <SelectValue placeholder="Select a carrier" />
+                </SelectTrigger>
+                <SelectContent>
+                  {carriers.map((c) => (
+                    <SelectItem key={c.id} value={c.name} className="font-medium">
+                      {c.name} {Boolean(Number(c.is_default)) && "(Default)"}
+                    </SelectItem>
+                  ))}
+                  {carriers.length === 0 && (
+                    <SelectItem value="manual" disabled>No carriers configured in Master</SelectItem>
+                  )}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <label htmlFor="list-tracking" className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Tracking Number / Waybill</label>
+              <Input 
+                id="list-tracking" 
+                placeholder="Enter tracking number" 
+                className="h-11 font-black tracking-wider"
+                value={trackingNo}
+                onChange={(e) => setTrackingNo(e.target.value)}
+              />
+            </div>
+          </div>
+          <div className="flex justify-end gap-3 mt-4">
+            <Button variant="outline" className="font-bold" onClick={() => setDispatchOpen(false)}>Cancel</Button>
+            <Button 
+              className="font-black px-8" 
+              onClick={handleDispatch}
+              disabled={dispatching || !trackingNo}
+            >
+              {dispatching ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Truck className="w-4 h-4 mr-2" />}
+              CONFIRM DISPATCH
+            </Button>
           </div>
         </DialogContent>
       </Dialog>

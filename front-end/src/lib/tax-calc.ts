@@ -24,7 +24,7 @@ export function calculateTaxes(baseAmount: number, taxes: TaxRow[]) {
         ? base + prevTaxes
         : base;
 
-    const amount = Math.round(taxable * rate * 100) / 100;
+    const amount = taxable * rate;
     prevTaxes += amount;
     lines.push({
       tax_id: t.id,

@@ -204,7 +204,12 @@ export default function OnlineOrdersPage() {
                   orders.map((order) => (
                     <TableRow key={order.id} className="hover:bg-primary/[0.02] group transition-colors border-b">
                       <TableCell className="font-black p-4 text-base">
-                        <span className="text-primary hover:underline cursor-pointer">{order.order_no}</span>
+                        <span 
+                          onClick={() => router.push(`/ecommerce/orders/view/${order.id}`)}
+                          className="text-primary hover:underline cursor-pointer"
+                        >
+                          {order.order_no}
+                        </span>
                       </TableCell>
                       <TableCell className="p-4">
                         <div className="flex flex-col">
@@ -235,7 +240,10 @@ export default function OnlineOrdersPage() {
                       </TableCell>
                       <TableCell className="p-4">
                         <div className="flex justify-end gap-2">
-                          <Button variant="ghost" size="icon" className="h-10 w-10 rounded-xl hover:bg-primary/10 hover:text-primary">
+                          <Button 
+                            onClick={() => router.push(`/ecommerce/orders/view/${order.id}`)}
+                            variant="ghost" size="icon" className="h-10 w-10 rounded-xl hover:bg-primary/10 hover:text-primary"
+                          >
                             <Eye className="w-5 h-5" />
                           </Button>
                           <DropdownMenu>
@@ -246,7 +254,10 @@ export default function OnlineOrdersPage() {
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end" className="w-56 rounded-xl p-2 shadow-2xl border-muted-foreground/10">
                               <DropdownMenuLabel className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground mb-1 px-2">Order Management</DropdownMenuLabel>
-                              <DropdownMenuItem className="rounded-lg h-10 font-medium px-3 cursor-pointer">
+                              <DropdownMenuItem 
+                                onClick={() => router.push(`/ecommerce/orders/view/${order.id}`)}
+                                className="rounded-lg h-10 font-medium px-3 cursor-pointer"
+                              >
                                 <Eye className="w-4 h-4 mr-2 text-muted-foreground" /> View Details
                               </DropdownMenuItem>
                               <DropdownMenuItem 

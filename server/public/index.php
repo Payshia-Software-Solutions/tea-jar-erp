@@ -85,9 +85,10 @@ require_once '../app/helpers/AccountingSchema.php';
 require_once '../app/helpers/BanquetSchema.php';
 require_once '../app/helpers/ShippingSchema.php';
 require_once '../app/helpers/CRMSchema.php';
-require_once '../app/helpers/CityPostalSchema.php';
+require_once '../app/helpers/ShippingCarrierSchema.php';
 
 // Ensure schema is up to date
 CityPostalSchema::ensure();
+ShippingCarrierSchema::ensure();
 
 $init = new App();

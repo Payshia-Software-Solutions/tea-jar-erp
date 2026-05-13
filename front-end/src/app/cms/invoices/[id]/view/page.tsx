@@ -237,6 +237,13 @@ function InvoiceContent() {
     return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'LKR' }).format(Number(amount));
   };
 
+  const getShortTaxName = (name: string) => {
+    const upper = (name || "").toUpperCase();
+    if (upper.includes("SOCIAL SECURITY CONTRIBUTION LEVY")) return "SSCL";
+    if (upper.includes("VALUE ADDED TAX")) return "VAT";
+    return name;
+  };
+
   return (
     <div className="w-full max-w-5xl mx-auto space-y-8 animate-in fade-in duration-500">
       {/* Top Action Bar */}
@@ -384,7 +391,7 @@ function InvoiceContent() {
             Resend Email
           </Button>
 
-          <Button onClick={() => window.open(`/cms/invoices/${id}/print?autoprint=1`, '_blank')} className="bg-primary hover:bg-primary/90 shadow-sm">
+          <Button onClick={() => window.open(`/cms/invoices/${id}/print?autoprint=1${taxInclusive ? '&tax_inclusive=1' : ''}`, '_blank')} className="bg-primary hover:bg-primary/90 shadow-sm">
             <Printer className="w-4 h-4 mr-2" />
             Print Invoice
           </Button>
@@ -536,11 +543,13 @@ function InvoiceContent() {
                 <tbody className="divide-y divide-border/40">
                   {invoice.items?.map((item: any) => {
                     const totalTaxPercent = (invoice.applied_taxes || []).reduce((acc: number, t: any) => acc + Number(t.rate_percent || 0), 0);
-                    let displayUnitPrice = Number(item.unit_price) - Number(item.discount);
+                    let displayUnitPrice = Number(item.unit_price);
+                    let displayDiscount = Number(item.discount || 0);
                     let displayLineTotal = Number(item.line_total);
                     
                     if (taxInclusive && totalTaxPercent > 0) {
                       displayUnitPrice = displayUnitPrice * (1 + totalTaxPercent / 100);
+                      displayDiscount = displayDiscount * (1 + totalTaxPercent / 100);
                       displayLineTotal = displayLineTotal * (1 + totalTaxPercent / 100);
                     }
 
@@ -581,7 +590,7 @@ function InvoiceContent() {
                         <td className="py-5 px-6 text-right font-medium text-muted-foreground tabular-nums">{item.quantity}</td>
                         <td className="py-5 px-6 text-right font-medium text-muted-foreground tabular-nums">{formatCurrency(displayUnitPrice)}</td>
                         <td className="py-5 px-6 text-right font-bold text-rose-500 tabular-nums uppercase tracking-tighter">
-                          {Number(item.discount) > 0 ? `-${formatCurrency(item.discount)}` : "-"}
+                          {displayDiscount > 0 ? `-${formatCurrency(displayDiscount)}` : "-"}
                         </td>
                         <td className="py-5 px-6 text-right font-black text-foreground tabular-nums tracking-tighter shadow-sm">
                           {formatCurrency(displayLineTotal)}
@@ -697,7 +706,7 @@ function InvoiceContent() {
                       {invoice.applied_taxes && invoice.applied_taxes.length > 0 ? (
                         invoice.applied_taxes.map((tax: any) => (
                           <div key={tax.id} className="flex justify-between items-center text-sm text-blue-600 dark:text-cyan-400">
-                            <span className="font-medium">{tax.tax_code} {Number(tax.rate_percent) > 0 ? `(${Number(tax.rate_percent)}%)` : ''}</span>
+                            <span className="font-medium">{getShortTaxName(tax.tax_code || tax.tax_name)} {Number(tax.rate_percent) > 0 ? `(${Number(tax.rate_percent)}%)` : ''}</span>
                             <span className="font-bold tabular-nums">+LKR {Number(tax.amount).toFixed(2)}</span>
                           </div>
                         ))
@@ -709,10 +718,10 @@ function InvoiceContent() {
                           </div>
                         )
                       )}
-                      {invoice.is_international === 1 && (
+                      {Number(invoice.shipping_fee) > 0 && (
                         <div className="flex justify-between items-center text-sm text-indigo-600 dark:text-indigo-400">
-                          <span className="font-medium">Shipping ({invoice.provider_name || 'International'})</span>
-                          <span className="font-bold tabular-nums">+LKR {Number(invoice.shipping_cost || 0).toFixed(2)}</span>
+                          <span className="font-medium">Shipping ({invoice.shipping_provider_name || 'Standard'})</span>
+                          <span className="font-bold tabular-nums">+LKR {Number(invoice.shipping_fee).toFixed(2)}</span>
                         </div>
                       )}
                     </>

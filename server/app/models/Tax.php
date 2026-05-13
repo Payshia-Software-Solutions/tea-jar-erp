@@ -90,6 +90,18 @@ class Tax extends Model {
         return $this->db->execute();
     }
 
+    public function getByIds($ids) {
+        $this->ensureSchema();
+        if (empty($ids)) return [];
+        $ids = array_map('intval', $ids);
+        $placeholders = implode(',', array_fill(0, count($ids), '?'));
+        $this->db->query("SELECT * FROM {$this->table} WHERE id IN ($placeholders) AND is_active = 1 ORDER BY sort_order ASC");
+        foreach ($ids as $i => $id) {
+            $this->db->bind($i + 1, $id);
+        }
+        return $this->db->resultSet();
+    }
+
     public function delete($id) {
         $this->ensureSchema();
         $this->db->query("DELETE FROM {$this->table} WHERE id = :id");

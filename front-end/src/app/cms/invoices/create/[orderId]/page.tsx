@@ -363,20 +363,18 @@ export default function CreateInvoicePage() {
   const promoDiscountAmt = appliedPromotion ? Number(appliedPromotion.discount_value) : 0;
   const taxableAmount = Math.max(0, totals.line_totals_sum - globalDiscount - promoDiscountAmt);
   
-  let currentBase = taxableAmount;
-  let taxSum = 0;
-  const appliedTaxes: { name: string, code: string, amount: number }[] = [];
-  
-  const sortedTaxes = [...systemTaxes].sort((a, b) => a.sort_order - b.sort_order);
-  sortedTaxes.forEach(tax => {
-    const applyTo = tax.apply_on === 'base_plus_previous' ? currentBase : taxableAmount;
-    const taxAmt = applyTo * (Number(tax.rate_percent) / 100);
-    taxSum += taxAmt;
-    appliedTaxes.push({ name: tax.name, code: tax.code, amount: taxAmt });
-    if (tax.apply_on === 'base_plus_previous') {
+    let currentBase = taxableAmount;
+    let taxSum = 0;
+    const appliedTaxes: { name: string, code: string, amount: number }[] = [];
+    
+    const sortedTaxes = [...systemTaxes].sort((a, b) => a.sort_order - b.sort_order);
+    sortedTaxes.forEach(tax => {
+      const applyTo = tax.apply_on === 'base_plus_previous' ? currentBase : taxableAmount;
+      const taxAmt = applyTo * (Number(tax.rate_percent) / 100);
+      taxSum += taxAmt;
+      appliedTaxes.push({ name: tax.name, code: tax.code, amount: taxAmt });
       currentBase += taxAmt;
-    }
-  });
+    });
 
   const grandTotal = taxableAmount + taxSum;
   const totalDiscount = totals.line_discount + globalDiscount + promoDiscountAmt;

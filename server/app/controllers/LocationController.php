@@ -61,6 +61,12 @@ class LocationController extends Controller {
             return;
         }
         $data['location_type'] = $type;
+        
+        // Handle tax_ids conversion
+        if (isset($data['tax_ids']) && is_array($data['tax_ids'])) {
+            $data['allowed_taxes_json'] = json_encode($data['tax_ids']);
+        }
+
         $ok = $this->locationModel->create($data, (int)$u['sub']);
         if (!$ok) {
             $this->error('Failed to create location');
@@ -100,6 +106,12 @@ class LocationController extends Controller {
             return;
         }
         $data['location_type'] = $type;
+
+        // Handle tax_ids conversion
+        if (isset($data['tax_ids']) && is_array($data['tax_ids'])) {
+            $data['allowed_taxes_json'] = json_encode($data['tax_ids']);
+        }
+
         $ok = $this->locationModel->update((int)$id, $data, (int)$u['sub']);
         if (!$ok) {
             $this->error('Failed to update location');

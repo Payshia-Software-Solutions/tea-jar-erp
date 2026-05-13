@@ -31,7 +31,26 @@ class PubliccontentController extends Controller {
      */
     public function settings() {
         $this->handlePublicCors();
-        $settings = $this->settingModel->getGrouped();
+        
+        $apiKey = $_SERVER['HTTP_X_API_KEY'] ?? $_GET['api_key'] ?? '';
+        $client = $this->apiClientModel->getByKey($apiKey);
+        $locationId = $client->location_id ?? 1;
+
+        $settings = $this->settingModel->getGrouped($locationId);
+        
+        // Add Taxes and Inclusive preference
+        require_once '../app/models/Tax.php';
+        require_once '../app/models/ServiceLocation.php';
+        $taxModel = new Tax();
+        $locModel = new ServiceLocation();
+        
+        $location = $locModel->getById($locationId);
+        $taxIds = !empty($location->allowed_taxes_json) ? json_decode($location->allowed_taxes_json, true) : [];
+        $taxes = $taxModel->getByIds($taxIds);
+        
+        $settings['taxes'] = $taxes;
+        $settings['tax_inclusive'] = ($settings['ecom_tax_inclusive'] ?? '0') === '1';
+
         $this->success($settings);
     }
 }

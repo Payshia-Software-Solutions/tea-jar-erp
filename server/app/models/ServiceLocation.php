@@ -55,6 +55,7 @@ class ServiceLocation extends Model {
                 name, location_type, address, phone, tax_no, tax_label, 
                 allow_service_charge, service_charge_rate, 
                 allow_dine_in, allow_take_away, allow_retail, is_pos_active, allow_production, allow_online,
+                allowed_taxes_json,
                 google_analytics_code, facebook_pixel_code,
                 created_by, updated_by
             ) VALUES (

@@ -692,9 +692,7 @@ export const POSProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       const taxAmt = applyTo * (Number(tax.rate_percent) / 100);
       taxSum += taxAmt;
       appliedTaxes.push({ name: tax.name, code: tax.code, rate_percent: tax.rate_percent, amount: taxAmt });
-      if (tax.apply_on === 'base_plus_previous') {
-        currentBase += taxAmt;
-      }
+      currentBase += taxAmt;
     });
 
     // Service Charge from Location Settings (Decoupled from Taxes)

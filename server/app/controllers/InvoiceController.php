@@ -130,6 +130,9 @@ class InvoiceController extends Controller {
         require_once '../app/models/Tax.php';
         new Tax();
 
+        require_once '../app/models/OnlineOrder.php';
+        $onlineOrderModel = new OnlineOrder();
+
         $db = new Database();
         $db->beginTransaction();
 
@@ -191,8 +194,6 @@ class InvoiceController extends Controller {
             ]);
             // Optional: Mark online order as completed and link invoice
             if (!empty($data['online_order_id'])) {
-                require_once '../app/models/OnlineOrder.php';
-                $onlineOrderModel = new OnlineOrder();
                 $onlineOrderModel->setInvoiceId($data['online_order_id'], $invoiceId);
                 
                 // Also update status to Completed

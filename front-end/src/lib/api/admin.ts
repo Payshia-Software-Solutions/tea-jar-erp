@@ -261,7 +261,7 @@ export const updateSystemSettings = async (settings: Record<string, string>): Pr
     throw new Error(err.message || 'Failed to update system settings');
   }
 };
-export const fetchStorefrontSettings = async (locationId: string | number) => {
+export const fetchStorefrontSettings = async (locationId: string | number = 1) => {
   const res = await api(`/api/storefront-settings/index?location_id=${locationId}`);
   if (!res.ok) throw new Error('Failed to load storefront settings');
   const data = await res.json();

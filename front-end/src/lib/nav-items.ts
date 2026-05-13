@@ -42,7 +42,8 @@ import {
   Calendar as CalendarIcon,
   Utensils,
   Calculator,
-  FolderTree
+  FolderTree,
+  Ticket
 } from "lucide-react";
 
 export type NavItem = {
@@ -124,6 +125,7 @@ export const masterDataItems: NavItem[] = [
   { icon: Tags, label: "Units", href: "/master-data/units", perm: "units.read" },
   { icon: Percent, label: "Taxes", href: "/master-data/taxes", perm: "taxes.read" },
   { icon: Landmark, label: "Banks & Branches", href: "/master-data/banks", perm: "banks.read" },
+  { icon: Truck, label: "Shipping Carriers", href: "/master-data/shipping-carriers", perm: "parts.read" },
   { icon: Grid, label: "Departments", href: "/master-data/departments", perm: "departments.read" },
   { icon: Grid, label: "Restaurant Tables", href: "/master-data/tables", perm: "tables.read" },
 ];
@@ -184,6 +186,7 @@ export const ecommerceItems: NavItem[] = [
   { icon: FolderTree, label: "Navigation Menu", href: "/ecommerce/navigation", perm: "promotions.write" },
   { icon: Boxes, label: "Storefront Products", href: "/ecommerce/products", perm: "parts.read" },
   { icon: MessageSquare, label: "Product Reviews", href: "/ecommerce/reviews", perm: "promotions.write" },
+  { icon: Ticket, label: "Coupons & Discounts", href: "/ecommerce/coupons", perm: "promotions.write" },
   { icon: Settings, label: "E-commerce Settings", href: "/ecommerce/settings", perm: "promotions.write" },
   { icon: Calculator, label: "Developer Options", href: "/ecommerce/developer", perm: "promotions.write" },
 ];

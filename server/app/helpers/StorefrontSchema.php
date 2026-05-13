@@ -58,6 +58,9 @@ class StorefrontSchema {
                 ['bank_account_name', '', 'Account Name', 'payments', 'text'],
                 ['bank_account_number', '', 'Account Number', 'payments', 'text'],
                 ['bank_branch', '', 'Branch Name', 'payments', 'text'],
+                ['shipping_enabled', '0', 'Enable Shipping Charges', 'shipping', 'text'],
+                ['shipping_flat_rate', '0', 'Flat Rate Amount', 'shipping', 'text'],
+
             ];
 
             $stmt = $pdo->prepare("INSERT IGNORE INTO storefront_settings (`key`, `value`, `label`, `group`, `type`) VALUES (?, ?, ?, ?, ?)");

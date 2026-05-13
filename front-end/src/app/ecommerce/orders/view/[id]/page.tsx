@@ -18,11 +18,30 @@ import {
   Loader2,
   Package,
   Calendar,
-  ExternalLink
+  ExternalLink,
+  Sparkles
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { 
+  Dialog, 
+  DialogContent, 
+  DialogHeader, 
+  DialogTitle, 
+  DialogFooter,
+  DialogDescription,
+  DialogTrigger
+} from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { 
   Table, 
   TableBody, 
@@ -42,18 +61,40 @@ export default function OrderViewPage() {
   const { toast } = useToast();
   const [order, setOrder] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [dispatchOpen, setDispatchOpen] = useState(false);
+  const [carrier, setCarrier] = useState("");
+  const [trackingNo, setTrackingNo] = useState("");
+  const [dispatching, setDispatching] = useState(false);
+  const [carriers, setCarriers] = useState<any[]>([]);
 
   const API_BASE_URL = (process.env.NEXT_PUBLIC_API_URL || "").replace(/\/$/, "");
 
   useEffect(() => {
-    if (id) fetchDetails();
+    if (id) {
+      fetchDetails();
+      fetchCarriers();
+    }
   }, [id]);
+
+  const fetchCarriers = async () => {
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/shipping-carrier/index`);
+      const data = await res.json();
+      setCarriers(data.data || []);
+    } catch (err) {
+      console.error("Failed to fetch carriers", err);
+    }
+  };
 
   const fetchDetails = async () => {
     try {
       setLoading(true);
       const data = await fetchOnlineOrder(id as string);
       setOrder(data);
+      if (data.shipping_carrier) {
+        setCarrier(data.shipping_carrier);
+      }
+      if (data.tracking_no) setTrackingNo(data.tracking_no);
       setLoading(false);
     } catch (err) {
       console.error("Failed to fetch order details", err);
@@ -64,6 +105,46 @@ export default function OrderViewPage() {
       });
       setLoading(false);
     }
+  };
+
+  const handleDispatch = async () => {
+    try {
+      setDispatching(true);
+      const response = await fetch(`${API_BASE_URL}/api/online-order/dispatch`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: order.id,
+          carrier,
+          tracking_no: trackingNo
+        })
+      });
+
+      if (!response.ok) throw new Error("Failed to dispatch");
+
+      toast({
+        title: "Order Dispatched",
+        description: "Status updated to Shipped and customer notified.",
+      });
+      
+      setDispatchOpen(false);
+      fetchDetails();
+    } catch (err) {
+      toast({
+        title: "Dispatch Failed",
+        description: "Could not update order status.",
+        variant: "destructive"
+      });
+    } finally {
+      setDispatching(false);
+    }
+  };
+
+  const getTrackingLink = () => {
+    if (!order?.tracking_no || !order?.shipping_carrier) return null;
+    const carrierObj = carriers.find(c => c.name === order.shipping_carrier);
+    if (!carrierObj || !carrierObj.tracking_url) return null;
+    return carrierObj.tracking_url.replace('{tracking_number}', order.tracking_no);
   };
 
   const getStatusBadge = (status: string) => {
@@ -137,6 +218,25 @@ export default function OrderViewPage() {
             <Button variant="outline" size="sm" className="h-10 font-bold px-6 border-muted-foreground/20 shadow-sm" onClick={() => window.print()}>
               <Printer className="w-4 h-4 mr-2" /> Print Order
             </Button>
+            
+            {order.order_status?.toLowerCase() !== 'shipped' && order.order_status?.toLowerCase() !== 'completed' && (
+              <Button 
+                variant="outline" 
+                size="sm" 
+                className="h-10 font-bold px-6 border-primary text-primary hover:bg-primary/5"
+                onClick={() => {
+                  if (!order.shipping_carrier) {
+                    const def = carriers.find(c => Boolean(Number(c.is_default)));
+                    if (def) setCarrier(def.name);
+                  }
+                  toast({ title: "Dispatching...", description: "Opening fulfillment dialog." });
+                  setDispatchOpen(true);
+                }}
+              >
+                <Truck className="w-4 h-4 mr-2" /> Dispatch Order
+              </Button>
+            )}
+
             <Button 
                 size="sm" 
                 className="h-10 font-bold px-6 shadow-lg shadow-primary/20"
@@ -194,12 +294,18 @@ export default function OrderViewPage() {
                 <div className="w-full max-w-[300px] space-y-4">
                   <div className="flex justify-between text-sm text-muted-foreground font-medium">
                     <span>Items Subtotal</span>
-                    <span>Rs. {(Number(order.total_amount) - Number(order.shipping_fee || 0)).toFixed(2)}</span>
+                    <span>Rs. {(order.items?.reduce((acc: number, item: any) => acc + (Number(item.line_total) || 0), 0) || 0).toFixed(2)}</span>
                   </div>
                   <div className="flex justify-between text-sm text-muted-foreground font-medium">
                     <span>Shipping & Handling</span>
                     <span>Rs. {Number(order.shipping_fee || 0).toFixed(2)}</span>
                   </div>
+                  {Number(order.coupon_discount || 0) > 0 && (
+                    <div className="flex justify-between text-sm text-emerald-600 font-bold">
+                      <span>Coupon ({order.coupon_code})</span>
+                      <span>- Rs. {Number(order.coupon_discount).toFixed(2)}</span>
+                    </div>
+                  )}
                   <div className="h-px bg-muted-foreground/10 my-2" />
                   <div className="flex justify-between items-center text-2xl">
                     <span className="font-black uppercase tracking-tighter">Grand Total</span>
@@ -301,7 +407,7 @@ export default function OrderViewPage() {
                             Shipping Info
                         </CardTitle>
                     </CardHeader>
-                    <CardContent className="p-6">
+                    <CardContent className="p-6 space-y-6">
                         <div className="flex gap-4">
                             <div className="w-10 h-10 rounded-xl bg-amber-500/10 flex items-center justify-center shrink-0">
                                 <Truck className="w-5 h-5 text-amber-600" />
@@ -311,6 +417,30 @@ export default function OrderViewPage() {
                                 <p className="text-base font-bold leading-relaxed text-gray-700">{order.shipping_address}</p>
                             </div>
                         </div>
+
+                        {order.tracking_no && (
+                          <div className="pt-6 border-t border-muted/50">
+                            <div className="p-4 rounded-xl bg-primary/5 border border-primary/10">
+                              <div className="flex items-center justify-between mb-2">
+                                <p className="text-[10px] font-black uppercase tracking-widest text-primary/60">Tracking Detail</p>
+                                {getTrackingLink() && (
+                                  <a 
+                                    href={getTrackingLink()!} 
+                                    target="_blank" 
+                                    rel="noopener noreferrer"
+                                    className="text-[10px] font-black text-primary hover:underline flex items-center gap-1 uppercase"
+                                  >
+                                    <ExternalLink className="w-3 h-3" /> Track Order
+                                  </a>
+                                )}
+                              </div>
+                              <div className="space-y-1">
+                                <p className="text-xs font-bold text-muted-foreground">{order.shipping_carrier || 'Standard Shipping'}</p>
+                                <p className="text-lg font-black tracking-tight text-primary">{order.tracking_no}</p>
+                              </div>
+                            </div>
+                          </div>
+                        )}
                     </CardContent>
                 </Card>
 
@@ -337,6 +467,61 @@ export default function OrderViewPage() {
           </div>
         </div>
       </div>
+
+      <Dialog open={dispatchOpen} onOpenChange={setDispatchOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle className="text-2xl font-black tracking-tighter flex items-center gap-2">
+              <Truck className="w-6 h-6 text-primary" />
+              DISPATCH ORDER
+            </DialogTitle>
+            <DialogDescription className="font-medium text-muted-foreground">
+              Enter shipping details to mark this order as shipped. The customer will be notified via email.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-6 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="carrier" className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Shipping Carrier</Label>
+              <Select value={carrier} onValueChange={setCarrier}>
+                <SelectTrigger id="carrier" className="h-11 font-medium">
+                  <SelectValue placeholder="Select a carrier" />
+                </SelectTrigger>
+                <SelectContent>
+                  {carriers.map((c: any) => (
+                    <SelectItem key={c.id} value={c.name} className="font-medium">
+                      {c.name} {Boolean(Number(c.is_default)) && "(Default)"}
+                    </SelectItem>
+                  ))}
+                  {carriers.length === 0 && (
+                    <SelectItem value="manual" disabled>No carriers configured in Master</SelectItem>
+                  )}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="tracking" className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Tracking Number / Waybill</Label>
+              <Input 
+                id="tracking" 
+                placeholder="Enter tracking number" 
+                className="h-11 font-black tracking-wider"
+                value={trackingNo}
+                onChange={(e) => setTrackingNo(e.target.value)}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" className="font-bold" onClick={() => setDispatchOpen(false)}>Cancel</Button>
+            <Button 
+              className="font-black px-8" 
+              onClick={handleDispatch}
+              disabled={dispatching || !trackingNo}
+            >
+              {dispatching ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Sparkles className="w-4 h-4 mr-2" />}
+              CONFIRM DISPATCH
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </DashboardLayout>
   );
 }

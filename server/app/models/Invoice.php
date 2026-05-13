@@ -155,10 +155,12 @@ class Invoice extends Model {
 
     public function getAll($filters = []) {
         $sql = "
-            SELECT i.*, c.name as customer_name, ro.customer_name as order_customer_name
+            SELECT i.*, c.name as customer_name, ro.customer_name as order_customer_name,
+                   oo.order_no as online_order_no
             FROM invoices i
             JOIN customers c ON i.customer_id = c.id
             LEFT JOIN repair_orders ro ON i.order_id = ro.id
+            LEFT JOIN online_orders oo ON i.online_order_id = oo.id
             WHERE i.status != 'Cancelled'
         ";
 
@@ -185,9 +187,11 @@ class Invoice extends Model {
                    sl.name as location_name, sl.address as location_address, sl.phone as location_phone,
                    sl.tax_no as location_tax_no, sl.tax_label as location_tax_label,
                    rt.name as table_name, u.name as steward_name,
-                   sp.name as shipping_provider_name
+                   sp.name as shipping_provider_name,
+                   oo.order_no as web_order_no
             FROM invoices i
             JOIN customers c ON i.customer_id = c.id
+            LEFT JOIN online_orders oo ON i.online_order_id = oo.id
             LEFT JOIN repair_orders ro ON i.order_id = ro.id
             LEFT JOIN service_locations sl ON i.location_id = sl.id
             LEFT JOIN restaurant_tables rt ON i.table_id = rt.id

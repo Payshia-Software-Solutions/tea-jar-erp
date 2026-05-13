@@ -126,6 +126,13 @@ export default function EcommerceSettingsPage() {
   const [termsOfService, setTermsOfService] = React.useState("Enter your terms and conditions here...");
   const [privacyPolicy, setPrivacyPolicy] = React.useState("Enter your privacy policy here...");
 
+  // Shipping State
+  const [shippingEnabled, setShippingEnabled] = React.useState(false);
+  const [shippingFlatRate, setShippingFlatRate] = React.useState("0");
+
+  // Pricing State
+  const [taxInclusive, setTaxInclusive] = React.useState(false);
+
   React.useEffect(() => {
     async function loadLocations() {
       try {
@@ -187,6 +194,9 @@ export default function EcommerceSettingsPage() {
           setTermsOfService(settings.terms_of_service || "");
           setPrivacyPolicy(settings.privacy_policy || "");
           
+          setShippingEnabled(settings.shipping_enabled === "1");
+          setShippingFlatRate(settings.shipping_flat_rate || "0");
+
           setPayhereEnabled(settings.payment_payhere_enabled === "1");
           setCodEnabled(settings.payment_cod_enabled === "1");
           setMintpayEnabled(settings.payment_mintpay_enabled === "1");
@@ -201,6 +211,8 @@ export default function EcommerceSettingsPage() {
           setBankAccountName(settings.bank_account_name || "");
           setBankAccountNumber(settings.bank_account_number || "");
           setBankBranch(settings.bank_branch || "");
+
+          setTaxInclusive(settings.ecom_tax_inclusive === "1");
         }
       } catch (error) {
         console.error("Failed to load storefront settings", error);
@@ -255,7 +267,10 @@ export default function EcommerceSettingsPage() {
         bank_name: bankName,
         bank_account_name: bankAccountName,
         bank_account_number: bankAccountNumber,
-        bank_branch: bankBranch
+        bank_branch: bankBranch,
+        shipping_enabled: shippingEnabled ? "1" : "0",
+        shipping_flat_rate: shippingFlatRate,
+        ecom_tax_inclusive: taxInclusive ? "1" : "0"
       };
       await updateStorefrontSettings(payload);
       triggerDialog("Settings Saved", "Your storefront settings have been updated successfully.", "success");
@@ -376,7 +391,9 @@ export default function EcommerceSettingsPage() {
                   { id: "email", icon: Mail, label: "Email Server" },
                   { id: "promotions", icon: Zap, label: "Promotions" },
                   { id: "payments", icon: CreditCard, label: "Payments" },
+                  { id: "pricing", icon: Database, label: "Pricing & Taxes" },
                   { id: "seo", icon: Globe, label: "SEO & Social" },
+                  { id: "shipping", icon: Truck, label: "Shipping" },
                   { id: "legals", icon: ShieldCheck, label: "Legals" },
                ].map((item) => (
                   <Button 
@@ -408,6 +425,58 @@ export default function EcommerceSettingsPage() {
             </div>
 
             <div className="lg:col-span-9 space-y-6">
+               {activeTab === 'pricing' && (
+                  <Card className="shadow-sm border-muted animate-in fade-in slide-in-from-bottom-2 duration-300">
+                    <CardHeader className="bg-muted/5 border-b py-5 px-6">
+                        <CardTitle className="text-lg font-bold tracking-tight flex items-center gap-2">
+                          <Database className="w-5 h-5 text-primary" /> Pricing & Tax Settings
+                        </CardTitle>
+                        <CardDescription className="text-xs font-medium">Configure how taxes are handled and displayed on your storefront.</CardDescription>
+                    </CardHeader>
+                    <CardContent className="p-6 space-y-8">
+                        <div className="flex items-center justify-between p-6 rounded-2xl border-2 border-primary/10 bg-primary/5">
+                            <div className="flex items-center gap-4">
+                                <div className="p-3 bg-primary/10 rounded-xl">
+                                    <ShieldCheck className="w-6 h-6 text-primary" />
+                                </div>
+                                <div className="space-y-1">
+                                    <h3 className="font-bold text-base">Tax Inclusive Pricing</h3>
+                                    <p className="text-xs text-muted-foreground font-medium max-w-md leading-relaxed">
+                                        When enabled, product prices displayed on the store already include taxes. Taxes will be extracted at checkout for reporting.
+                                    </p>
+                                </div>
+                            </div>
+                            <Switch 
+                                checked={taxInclusive} 
+                                onCheckedChange={setTaxInclusive}
+                                className="scale-110 data-[state=checked]:bg-primary"
+                            />
+                        </div>
+
+                        <div className="p-5 rounded-xl border border-dashed bg-muted/5 space-y-4">
+                            <div className="flex items-center gap-2">
+                                <Info className="w-4 h-4 text-primary" />
+                                <h4 className="text-xs font-bold uppercase tracking-widest text-foreground">Important Information</h4>
+                            </div>
+                            <ul className="space-y-2 ml-1">
+                                <li className="text-[11px] text-muted-foreground font-medium flex items-center gap-2">
+                                    <div className="w-1 h-1 rounded-full bg-primary" />
+                                    Taxes are fetched from the <strong>{selectedLocation?.name}</strong> configuration in Location Settings.
+                                </li>
+                                <li className="text-[11px] text-muted-foreground font-medium flex items-center gap-2">
+                                    <div className="w-1 h-1 rounded-full bg-primary" />
+                                    The ERP always stores <strong>Base Prices</strong> (exclusive of tax) in the database for accurate accounting.
+                                </li>
+                                <li className="text-[11px] text-muted-foreground font-medium flex items-center gap-2">
+                                    <div className="w-1 h-1 rounded-full bg-primary" />
+                                    Tax breakdown will be visible in the order summary and confirmation emails.
+                                </li>
+                            </ul>
+                        </div>
+                    </CardContent>
+                  </Card>
+               )}
+
                {activeTab === 'identity' && (
                   <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
                     <Card className="shadow-sm border-muted">
@@ -891,6 +960,68 @@ export default function EcommerceSettingsPage() {
                                </div>
                            </div>
                          ))}
+                    </CardContent>
+                  </Card>
+               )}
+
+               {activeTab === 'shipping' && (
+                  <Card className="shadow-sm border-muted animate-in fade-in slide-in-from-bottom-2 duration-300">
+                    <CardHeader className="bg-muted/5 border-b py-5 px-6">
+                        <CardTitle className="text-lg font-bold tracking-tight flex items-center gap-2">
+                          <Truck className="w-5 h-5 text-primary" /> Shipping Charges
+                        </CardTitle>
+                        <CardDescription className="text-xs font-medium">Configure how you charge for delivery across your storefront.</CardDescription>
+                    </CardHeader>
+                    <CardContent className="p-6 space-y-8">
+                        <div className="flex items-center justify-between p-5 rounded-2xl border-2 border-primary/10 bg-primary/5">
+                            <div className="flex items-center gap-4">
+                                <div className="p-3 bg-primary/10 rounded-xl">
+                                    <Truck className="w-6 h-6 text-primary" />
+                                </div>
+                                <div className="space-y-0.5">
+                                    <h3 className="font-bold text-sm">Enable Shipping Charges</h3>
+                                    <p className="text-[11px] text-muted-foreground font-medium italic">Apply a flat rate shipping fee to all orders.</p>
+                                </div>
+                            </div>
+                            <Switch 
+                                checked={shippingEnabled} 
+                                onCheckedChange={setShippingEnabled}
+                                className="data-[state=checked]:bg-primary"
+                            />
+                        </div>
+
+                        {shippingEnabled && (
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 pt-2 animate-in fade-in slide-in-from-top-2 duration-500">
+                                <div className="space-y-3">
+                                    <Label className="text-xs font-bold text-muted-foreground uppercase tracking-[0.15em] ml-0.5">Shipping Method</Label>
+                                    <Select value="flat_rate" disabled>
+                                        <SelectTrigger className="h-11 rounded-xl bg-muted/10 border-muted/20 font-semibold">
+                                            <SelectValue placeholder="Select Method" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="flat_rate">Flat Rate per Order</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                                <div className="space-y-3">
+                                    <Label className="text-xs font-bold text-muted-foreground uppercase tracking-[0.15em] ml-0.5">Flat Rate Amount (LKR)</Label>
+                                    <Input 
+                                        type="number"
+                                        value={shippingFlatRate} 
+                                        onChange={(e) => setShippingFlatRate(e.target.value)} 
+                                        placeholder="500" 
+                                        className="h-11 rounded-xl bg-background border-muted font-bold text-lg" 
+                                    />
+                                </div>
+                            </div>
+                        )}
+
+                        <div className="p-4 rounded-xl border border-dashed border-amber-200 bg-amber-50/50 flex items-start gap-4">
+                            <Info className="w-5 h-5 text-amber-600 mt-0.5 shrink-0" />
+                            <p className="text-[11px] text-amber-900/70 font-medium leading-relaxed">
+                                Currently, we only support a <strong>Global Flat Rate</strong>. Advanced features like zone-based pricing or weight-based shipping are coming in a future update.
+                            </p>
+                        </div>
                     </CardContent>
                   </Card>
                )}

@@ -10,7 +10,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 
 export type SearchableSelectOption = {
   value: string;
-  label: string;
+  label: React.ReactNode;
   keywords?: string;
 };
 
@@ -51,7 +51,8 @@ export function SearchableSelect({
     const q = query.trim().toLowerCase();
     if (!q) return options;
     return options.filter((o) => {
-      const hay = `${o.label} ${o.keywords ?? ""}`.toLowerCase();
+      const labelStr = typeof o.label === 'string' ? o.label : '';
+      const hay = `${labelStr} ${o.keywords ?? ""}`.toLowerCase();
       return hay.includes(q);
     });
   }, [options, query]);

@@ -12,15 +12,18 @@ class OnlineOrder extends Model {
     }
 
     public function create($data) {
-        $orderNo = 'WEB-' . strtoupper(bin2hex(random_bytes(4)));
+        require_once __DIR__ . '/../helpers/DocumentSequenceHelper.php';
+        $orderNo = DocumentSequenceHelper::getNextDateBased('WEB');
         
         $this->db->query("
             INSERT INTO {$this->table} (
                 order_no, location_id, customer_id, customer_details_json, shipping_address, billing_address, 
-                shipping_fee, shipping_zone_id, district_id, total_amount, payment_method, payment_status, order_status, payment_slip
+                subtotal_amount, tax_total, tax_details_json,
+                shipping_fee, shipping_zone_id, district_id, total_amount, payment_method, payment_status, order_status, payment_slip, coupon_code, coupon_discount
             ) VALUES (
                 :order_no, :location_id, :customer_id, :customer_details, :shipping, :billing, 
-                :shipping_fee, :shipping_zone_id, :district_id, :total, :method, :pay_status, :order_status, :slip
+                :subtotal, :tax_total, :tax_details,
+                :shipping_fee, :shipping_zone_id, :district_id, :total, :method, :pay_status, :order_status, :slip, :coupon_code, :coupon_discount
             )
         ");
 
@@ -30,6 +33,9 @@ class OnlineOrder extends Model {
         $this->db->bind(':customer_details', json_encode($data['customer_details'] ?? []));
         $this->db->bind(':shipping', $data['shipping_address'] ?? null);
         $this->db->bind(':billing', $data['billing_address'] ?? null);
+        $this->db->bind(':subtotal', $data['subtotal_amount'] ?? 0);
+        $this->db->bind(':tax_total', $data['tax_total'] ?? 0);
+        $this->db->bind(':tax_details', $data['tax_details_json'] ?? null);
         $this->db->bind(':shipping_fee', $data['shipping_fee'] ?? 0);
         $this->db->bind(':shipping_zone_id', $data['shipping_zone_id'] ?? null);
         $this->db->bind(':district_id', $data['district_id'] ?? null);
@@ -38,6 +44,8 @@ class OnlineOrder extends Model {
         $this->db->bind(':pay_status', 'Pending');
         $this->db->bind(':order_status', 'Pending');
         $this->db->bind(':slip', $data['payment_slip'] ?? null);
+        $this->db->bind(':coupon_code', $data['coupon_code'] ?? null);
+        $this->db->bind(':coupon_discount', $data['coupon_discount'] ?? 0);
 
         if ($this->db->execute()) {
             $orderId = $this->db->lastInsertId();
@@ -73,10 +81,15 @@ class OnlineOrder extends Model {
                     strtoupper(md5($merchantSecret))
                 ));
 
+                $itemNames = array_map(function($item) {
+                    return $item['description'] ?? $item['product_name'] ?? 'Product';
+                }, $data['items']);
+                $itemsString = implode(', ', $itemNames);
+
                 $result['payhere'] = [
                     'merchant_id' => $merchantId,
                     'order_id' => $orderNo,
-                    'items' => 'Order ' . $orderNo,
+                    'items' => $itemsString,
                     'amount' => $amount,
                     'currency' => $currency,
                     'hash' => $hash,
@@ -99,14 +112,15 @@ class OnlineOrder extends Model {
     private function addItems($orderId, $items) {
         foreach ($items as $item) {
             $this->db->query("
-                INSERT INTO online_order_items (order_id, item_id, description, quantity, unit_price, line_total)
-                VALUES (:order_id, :item_id, :desc, :qty, :price, :total)
+                INSERT INTO online_order_items (order_id, item_id, description, quantity, unit_price, discount, line_total)
+                VALUES (:order_id, :item_id, :desc, :qty, :price, :discount, :total)
             ");
             $this->db->bind(':order_id', $orderId);
             $this->db->bind(':item_id', $item['item_id']);
             $this->db->bind(':desc', $item['description'] ?? '');
             $this->db->bind(':qty', $item['quantity']);
             $this->db->bind(':price', $item['unit_price']);
+            $this->db->bind(':discount', $item['discount'] ?? 0);
             $this->db->bind(':total', $item['line_total']);
             $this->db->execute();
         }

@@ -88,6 +88,48 @@ class PublicitemController extends Controller {
         // Fetch items for this location
         $items = $this->itemModel->listLocationBalances($locationId);
         
+        // Fetch taxes and tax_inclusive setting
+        require_once '../app/models/Tax.php';
+        require_once '../app/models/ServiceLocation.php';
+        require_once '../app/models/StorefrontSetting.php';
+        
+        $taxModel = new Tax();
+        $locModel = new ServiceLocation();
+        $settingModel = new StorefrontSetting();
+        
+        $location = $locModel->getById($locationId);
+        $taxIds = !empty($location->allowed_taxes_json) ? json_decode($location->allowed_taxes_json, true) : [];
+        $taxes = $taxModel->getByIds($taxIds);
+        $allSettings = $settingModel->getAll($locationId);
+        $taxInclusive = ($allSettings['ecom_tax_inclusive'] ?? '0') === '1';
+        
+        $taxMultiplier = 0; // Cumulative multiplier. 1.0 means 0% tax.
+        $currentMultiplier = 1.0;
+        foreach ($taxes as $tax) {
+            $rate = (float)$tax->rate_percent / 100;
+            if (($tax->apply_on ?? 'base') === 'base_plus_previous') {
+                $currentMultiplier *= (1 + $rate);
+            } else {
+                $taxMultiplier += $rate;
+            }
+        }
+        $finalMultiplier = ($currentMultiplier - 1.0) + $taxMultiplier;
+        // Total price = Base * (1 + finalMultiplier) if only additive.
+        // Wait, the correct way to combine additive and compound:
+        // Price = (Base * (1 + SumOfAdditive)) * (ProductOfCompound)
+        
+        $additiveRate = 0;
+        $compoundMultiplier = 1.0;
+        foreach ($taxes as $tax) {
+            $rate = (float)$tax->rate_percent / 100;
+            if (($tax->apply_on ?? 'base') === 'base_plus_previous') {
+                $compoundMultiplier *= (1 + $rate);
+            } else {
+                $additiveRate += $rate;
+            }
+        }
+        $totalMultiplier = ((1 + $additiveRate) * $compoundMultiplier) - 1;
+
         require_once '../app/models/PartAttribute.php';
         $attrModel = new PartAttribute();
 
@@ -117,12 +159,17 @@ class PublicitemController extends Controller {
                 ];
             }, $item->gallery ?: []);
 
+            $displayPrice = (float)$item->price;
+            if ($taxInclusive) {
+                $displayPrice = $displayPrice * (1 + $totalMultiplier);
+            }
+
             $sanitized[] = [
                 'id' => (int)$item->id,
                 'name' => (string)$item->part_name,
                 'slug' => (string)($item->slug ?? ''),
                 'sku' => (string)$item->sku,
-                'price' => (float)$item->price,
+                'price' => $displayPrice,
                 'discount_type' => (string)($item->discount_type ?? 'None'),
                 'discount_value' => (float)($item->discount_value ?? 0),
                 'brand' => (string)($item->brand_name ?? 'Generic'),
@@ -176,6 +223,37 @@ class PublicitemController extends Controller {
         require_once '../app/models/PartAttribute.php';
         $attrModel = new PartAttribute();
 
+        require_once '../app/models/Tax.php';
+        require_once '../app/models/ServiceLocation.php';
+        require_once '../app/models/StorefrontSetting.php';
+        
+        $taxModel = new Tax();
+        $locModel = new ServiceLocation();
+        $settingModel = new StorefrontSetting();
+        
+        $location = $locModel->getById($locationId);
+        $taxIds = !empty($location->allowed_taxes_json) ? json_decode($location->allowed_taxes_json, true) : [];
+        $taxes = $taxModel->getByIds($taxIds);
+        $allSettings = $settingModel->getAll($locationId);
+        $taxInclusive = ($allSettings['ecom_tax_inclusive'] ?? '0') === '1';
+        
+        $additiveRate = 0;
+        $compoundMultiplier = 1.0;
+        foreach ($taxes as $tax) {
+            $rate = (float)$tax->rate_percent / 100;
+            if (($tax->apply_on ?? 'base') === 'base_plus_previous') {
+                $compoundMultiplier *= (1 + $rate);
+            } else {
+                $additiveRate += $rate;
+            }
+        }
+        $totalMultiplier = ((1 + $additiveRate) * $compoundMultiplier) - 1;
+
+        $displayPrice = (float)$item->price;
+        if ($taxInclusive) {
+            $displayPrice = $displayPrice * (1 + $totalMultiplier);
+        }
+
         $sanitized = [
             'id' => (int)$item->id,
             'name' => (string)$item->part_name,
@@ -183,7 +261,7 @@ class PublicitemController extends Controller {
             'sku' => (string)$item->sku,
             'part_number' => (string)$item->part_number,
             'description' => (string)$item->public_description, 
-            'price' => (float)$item->price,
+            'price' => $displayPrice,
             'discount_type' => (string)($item->discount_type ?? 'None'),
             'discount_value' => (float)($item->discount_value ?? 0),
             'brand' => (string)($item->brand_name ?? 'Generic'),

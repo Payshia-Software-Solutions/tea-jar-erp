@@ -33,6 +33,7 @@ import {
   fetchPartBatches, 
   api as apiHelper 
 } from "@/lib/api";
+import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
@@ -70,6 +71,7 @@ export default function CreateOnlineInvoicePage() {
   const [billingAddress, setBillingAddress] = useState("");
   const [shippingAddress, setShippingAddress] = useState("");
   const [differentShipping, setDifferentShipping] = useState(false);
+  const [shippingFee, setShippingFee] = useState<number>(0);
   
   const [addCustomerOpen, setAddCustomerOpen] = useState(false);
   const [newCustomerName, setNewCustomerName] = useState("");
@@ -80,15 +82,8 @@ export default function CreateOnlineInvoicePage() {
     loadOrderContext();
   }, [orderId]);
 
-  useEffect(() => {
-    if (selectedCustomer && customers.length > 0) {
-      const cust = customers.find(c => String(c.id) === selectedCustomer);
-      if (cust && cust.address) {
-        setBillingAddress(cust.address);
-        if (!differentShipping) setShippingAddress(cust.address);
-      }
-    }
-  }, [selectedCustomer, customers, differentShipping]);
+  // Removed automatic address sync from customer profile to avoid overwriting 
+  // the specific addresses provided in the online order.
 
   const loadOrderContext = async () => {
     setLoading(true);
@@ -137,10 +132,18 @@ export default function CreateOnlineInvoicePage() {
       }
 
       // Pre-fill addresses
-      setBillingAddress(onlineOrderData.billing_address || "");
-      setShippingAddress(onlineOrderData.shipping_address || "");
-      if (onlineOrderData.shipping_address && onlineOrderData.shipping_address !== onlineOrderData.billing_address) {
+      const sAddr = onlineOrderData.shipping_address || "";
+      const bAddr = onlineOrderData.billing_address || sAddr;
+      setBillingAddress(bAddr);
+      setShippingAddress(sAddr);
+      if (sAddr && bAddr && sAddr !== bAddr) {
         setDifferentShipping(true);
+      }
+      setShippingFee(Number(onlineOrderData.shipping_fee) || 0);
+
+      if (Number(onlineOrderData.coupon_discount) > 0) {
+        setBillDiscount(String(onlineOrderData.coupon_discount));
+        setDiscountType("value");
       }
 
       // Map online order items to invoice items
@@ -156,14 +159,17 @@ export default function CreateOnlineInvoicePage() {
               console.error("Failed to load batches for", p.description);
             }
           }
+          const roundedPrice = Number(Number(p.unit_price).toFixed(2));
+          const roundedDiscount = Number(Number(p.discount || 0).toFixed(2));
+          const roundedQty = Number(p.quantity);
           return {
             description: p.description,
             item_id: p.item_id,
             item_type: "Part",
-            quantity: p.quantity,
-            unit_price: p.unit_price,
-            discount: 0,
-            line_total: p.line_total,
+            quantity: roundedQty,
+            unit_price: roundedPrice,
+            discount: roundedDiscount,
+            line_total: Number(Math.max(0, (roundedPrice - roundedDiscount) * roundedQty).toFixed(2)),
             is_fifo: isFifo,
             available_batches: batches,
             selected_batch: 'auto'
@@ -191,7 +197,8 @@ export default function CreateOnlineInvoicePage() {
       const qty = Number(newItems[index].quantity) || 0;
       const price = Number(newItems[index].unit_price) || 0;
       const disc = Number(newItems[index].discount) || 0;
-      newItems[index].line_total = Math.max(0, (price - disc) * qty);
+      const rawTotal = (price - disc) * qty;
+      newItems[index].line_total = Number(Math.max(0, rawTotal).toFixed(2));
     }
     setItems(newItems);
   };
@@ -210,13 +217,15 @@ export default function CreateOnlineInvoicePage() {
     const qty = Number(item.quantity) || 0;
     const price = Number(item.unit_price) || 0;
     const discPerUnit = Number(item.discount) || 0;
-    const gross = qty * price;
-    const lineDiscount = discPerUnit * qty;
-    const lineTotal = Math.max(0, gross - lineDiscount);
+    
+    const lineDiscount = Number((discPerUnit * qty).toFixed(2));
+    const lineTotal = Number(Math.max(0, (price - discPerUnit) * qty).toFixed(2));
+    const gross = Number((lineTotal + lineDiscount).toFixed(2));
+    
     return {
-      subtotal: acc.subtotal + gross,
-      line_discount: acc.line_discount + lineDiscount,
-      line_totals_sum: acc.line_totals_sum + lineTotal
+      subtotal: Number((acc.subtotal + gross).toFixed(2)),
+      line_discount: Number((acc.line_discount + lineDiscount).toFixed(2)),
+      line_totals_sum: Number((acc.line_totals_sum + lineTotal).toFixed(2))
     };
   }, { subtotal: 0, line_discount: 0, line_totals_sum: 0 });
 
@@ -227,23 +236,35 @@ export default function CreateOnlineInvoicePage() {
 
   const taxableAmount = Math.max(0, totals.line_totals_sum - globalDiscount);
   
-  let currentBase = taxableAmount;
   let taxSum = 0;
   const appliedTaxes: any[] = [];
   
-  const sortedTaxes = [...systemTaxes].sort((a, b) => a.sort_order - b.sort_order);
-  sortedTaxes.forEach(tax => {
-    const applyTo = tax.apply_on === 'base_plus_previous' ? currentBase : taxableAmount;
-    const taxAmt = applyTo * (Number(tax.rate_percent) / 100);
-    taxSum += taxAmt;
-    appliedTaxes.push({ name: tax.name, code: tax.code, amount: taxAmt, rate_percent: tax.rate_percent });
-    if (tax.apply_on === 'base_plus_previous') {
-      currentBase += taxAmt;
-    }
-  });
+  // Try to use stored tax breakdown from order if items haven't been modified
+  const orderTaxDetails = order?.tax_details_json ? JSON.parse(order.tax_details_json) : null;
+  const itemsModified = items.length !== (order?.items?.length || 0);
 
-  const grandTotal = taxableAmount + taxSum;
-  const totalDiscount = totals.line_discount + globalDiscount;
+  if (orderTaxDetails && !itemsModified) {
+    // Use stored breakdown
+    orderTaxDetails.forEach((tax: any) => {
+      const amt = Number(tax.amount || 0);
+      taxSum += amt;
+      appliedTaxes.push({ name: tax.name, code: tax.code || tax.name, amount: amt, rate_percent: tax.rate_percent });
+    });
+  } else {
+    // Recalculate based on current items
+    let currentBase = taxableAmount;
+    const sortedTaxes = [...systemTaxes].sort((a, b) => a.sort_order - b.sort_order);
+    sortedTaxes.forEach(tax => {
+      const applyTo = tax.apply_on === 'base_plus_previous' ? currentBase : taxableAmount;
+      const taxAmt = applyTo * (Number(tax.rate_percent) / 100);
+      taxSum += taxAmt;
+      appliedTaxes.push({ name: tax.name, code: tax.code, amount: taxAmt, rate_percent: tax.rate_percent });
+      currentBase += taxAmt;
+    });
+  }
+
+  const grandTotal = taxableAmount + taxSum + shippingFee;
+  const totalDiscount = globalDiscount; // Line discounts are now part of subtotal
 
   const handleSave = async () => {
     if (!selectedLocation) {
@@ -271,21 +292,38 @@ export default function CreateOnlineInvoicePage() {
         shipping_address: differentShipping ? shippingAddress.trim() : billingAddress.trim(),
         issue_date: issueDate,
         due_date: dueDate,
-        subtotal: totals.subtotal,
+        subtotal: totals.line_totals_sum,
         tax_total: taxSum,
         discount_total: totalDiscount,
+        shipping_fee: shippingFee,
         grand_total: grandTotal,
         notes: notes,
+        applied_promotion_id: order?.coupon_code ? 1 : null, // Marker for coupon
+        applied_promotion_name: order?.coupon_code || null,
         items: items.map(item => ({
           ...item,
           selected_batches: item.selected_batch && item.selected_batch !== 'auto' ? [{ batch_id: Number(item.selected_batch), qty: Number(item.quantity) }] : null
         })),
-        applied_taxes: appliedTaxes
+        applied_taxes: appliedTaxes,
+        payments: (order?.payment_status === 'Paid' && order?.payment_method !== 'COD') ? [
+          {
+            method: order.payment_method === 'PayHere' ? 'Online' : (order.payment_method || 'Bank Transfer'),
+            amount: grandTotal,
+            reference_no: order.payhere_id || order.order_no,
+            notes: `Auto-generated from Online Order ${order.order_no}`
+          }
+        ] : []
       };
 
       const res = await createInvoice(payload);
       toast({ title: "Success", description: "Invoice generated successfully." });
-      router.push(`/cms/invoices/${res.data.id}/print?autoprint=1`);
+      
+      // Redirect to the invoice view page
+      if (res?.data?.id) {
+        router.push(`/cms/invoices/${res.data.id}/view`);
+      } else {
+        router.push(`/cms/invoices`);
+      }
     } catch (error: any) {
       toast({
         title: "Error",
@@ -346,40 +384,90 @@ export default function CreateOnlineInvoicePage() {
         </div>
 
         {/* Location + Customer Bar */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-5 p-5 rounded-2xl border border-slate-200 dark:border-border bg-white dark:bg-card shadow-sm">
-          <div className="space-y-2">
-            <label className="text-[11px] font-bold text-slate-500 dark:text-muted-foreground uppercase tracking-widest block">📍 Fulfillment Location</label>
-            <Select value={selectedLocation} onValueChange={setSelectedLocation}>
-              <SelectTrigger className="h-11 border-slate-200 dark:border-border bg-slate-50 dark:bg-muted/40">
-                <SelectValue placeholder="Select location" />
-              </SelectTrigger>
-              <SelectContent>
-                {locations.map((loc: any) => (
-                  <SelectItem key={loc.id} value={String(loc.id)}>{loc.name}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+        {/* Location + Customer + Payment Info */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="md:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-5 p-5 rounded-2xl border border-slate-200 dark:border-border bg-white dark:bg-card shadow-sm">
+            <div className="space-y-2">
+              <label className="text-[11px] font-bold text-slate-500 dark:text-muted-foreground uppercase tracking-widest block">📍 Fulfillment Location</label>
+              <Select value={selectedLocation} onValueChange={setSelectedLocation}>
+                <SelectTrigger className="h-11 border-slate-200 dark:border-border bg-slate-50 dark:bg-muted/40">
+                  <SelectValue placeholder="Select location" />
+                </SelectTrigger>
+                <SelectContent>
+                  {locations.map((loc: any) => (
+                    <SelectItem key={loc.id} value={String(loc.id)}>{loc.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-[11px] font-bold text-slate-500 dark:text-muted-foreground uppercase tracking-widest block">👤 Customer Account</label>
+              <div className="flex items-center gap-2">
+                <div className="flex-1">
+                  <SearchableSelect
+                    value={selectedCustomer}
+                    onValueChange={setSelectedCustomer}
+                    options={customers.map(c => ({
+                      value: String(c.id),
+                      label: (
+                        <div className="flex items-center justify-between w-full gap-2">
+                          <span>{c.name} ({c.phone || 'No Phone'})</span>
+                          {Number(c.is_ecommerce_user) === 1 && (
+                            <Badge variant="outline" className="bg-blue-50 text-blue-600 border-blue-200 text-[9px] font-black uppercase h-5 px-1.5 shrink-0">Web</Badge>
+                          )}
+                        </div>
+                      ),
+                      keywords: `${c.name} ${c.phone || ''} ${Number(c.is_ecommerce_user) === 1 ? 'web' : ''}`
+                    }))}
+                    placeholder="Link customer account..."
+                  />
+                </div>
+                {selectedCustomer && customers.find(c => String(c.id) === String(selectedCustomer))?.is_ecommerce_user == 1 && (
+                  <Badge className="bg-blue-500 hover:bg-blue-600 text-white font-black text-[10px] h-10 px-3 uppercase tracking-tighter shrink-0 animate-in zoom-in-50 duration-300">
+                    Web Customer
+                  </Badge>
+                )}
+                <Button variant="outline" className="h-10 w-10 p-0 shrink-0" onClick={() => setAddCustomerOpen(true)}>
+                  <Plus className="w-4 h-4" />
+                </Button>
+              </div>
+            </div>
           </div>
 
-          <div className="space-y-2">
-            <label className="text-[11px] font-bold text-slate-500 dark:text-muted-foreground uppercase tracking-widest block">👤 Customer Account</label>
-            <div className="flex gap-2 items-center">
-              <div className="flex-1">
-                <SearchableSelect
-                  value={selectedCustomer}
-                  onValueChange={setSelectedCustomer}
-                  options={customers.map(c => ({
-                    value: String(c.id),
-                    label: `${c.name} (${c.phone || 'No Phone'})`,
-                    keywords: `${c.name} ${c.phone || ''}`
-                  }))}
-                  placeholder="Link customer account..."
-                />
-              </div>
-              <Button variant="outline" className="h-10 w-10 p-0 shrink-0" onClick={() => setAddCustomerOpen(true)}>
-                <Plus className="w-4 h-4" />
-              </Button>
-            </div>
+          <div className="p-5 rounded-2xl border border-slate-200 dark:border-border bg-slate-50/50 dark:bg-muted/20 shadow-sm flex flex-col justify-center">
+             <div className="flex items-center justify-between mb-4">
+               <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-500">Order Payment</h3>
+               <Badge variant={order?.payment_status === 'Paid' ? 'default' : 'outline'} className={order?.payment_status === 'Paid' ? 'bg-green-500 hover:bg-green-600 border-none' : ''}>
+                 {order?.payment_status || 'Pending'}
+               </Badge>
+             </div>
+             <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className="w-8 h-8 rounded-lg bg-white dark:bg-muted flex items-center justify-center border border-slate-100">
+                      <CreditCard className="w-4 h-4 text-slate-400" />
+                    </div>
+                    <div>
+                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">Method</p>
+                      <p className="text-sm font-black">{order?.payment_method || 'N/A'}</p>
+                    </div>
+                  </div>
+                </div>
+                <div className="pt-2 border-t border-slate-200/50">
+                  {order?.payment_status === 'Paid' && order?.payment_method !== 'COD' ? (
+                    <div className="flex items-center gap-2 text-green-600">
+                      <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+                      <span className="text-[11px] font-bold uppercase tracking-tight">Auto-Receipt Enabled</span>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-2 text-amber-600">
+                      <div className="w-2 h-2 rounded-full bg-amber-500" />
+                      <span className="text-[11px] font-bold uppercase tracking-tight">Payment via {order?.payment_method === 'COD' ? 'COD (Manual)' : 'Verification'}</span>
+                    </div>
+                  )}
+                </div>
+             </div>
           </div>
         </div>
 
@@ -420,6 +508,10 @@ export default function CreateOnlineInvoicePage() {
                     <div className="w-1/2 lg:w-28">
                       <label className="text-[10px] font-bold text-slate-500 dark:text-muted-foreground uppercase tracking-widest mb-1.5 block">Unit Price</label>
                       <Input type="number" value={item.unit_price} onChange={(e) => handleItemChange(index, 'unit_price', e.target.value)} />
+                    </div>
+                    <div className="w-1/2 lg:w-28">
+                      <label className="text-[10px] font-bold text-slate-500 dark:text-muted-foreground uppercase tracking-widest mb-1.5 block">Disc/Unit</label>
+                      <Input type="number" value={item.discount} onChange={(e) => handleItemChange(index, 'discount', e.target.value)} />
                     </div>
                     <div className="w-1/2 lg:w-28">
                       <label className="text-[10px] font-bold text-slate-500 dark:text-muted-foreground uppercase tracking-widest mb-1.5 block">Total</label>
@@ -493,7 +585,7 @@ export default function CreateOnlineInvoicePage() {
                 <CardHeader className="bg-slate-50 dark:bg-muted/40 py-3 border-b">
                   <CardTitle className="text-xs font-bold uppercase tracking-widest">Address Details</CardTitle>
                 </CardHeader>
-                <CardContent className="p-4 space-y-3">
+                <CardContent className="p-4 grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <label className="text-[10px] font-bold text-muted-foreground uppercase mb-1 block">Billing Address</label>
                     <textarea value={billingAddress} onChange={e => setBillingAddress(e.target.value)} className="w-full text-xs bg-muted/20 border-slate-200 rounded-lg p-2" rows={2} />
@@ -519,11 +611,20 @@ export default function CreateOnlineInvoicePage() {
                 <div className="space-y-3">
                   <div className="flex justify-between text-sm">
                     <span className="text-slate-400 font-medium">Subtotal</span>
-                    <span className="font-bold">Rs. {totals.subtotal.toLocaleString()}</span>
+                    <span className="font-bold">Rs. {totals.line_totals_sum.toLocaleString()}</span>
+                  </div>
+                  {totals.line_discount > 0 && (
+                    <div className="flex justify-between text-[10px] text-muted-foreground italic">
+                      <span>(Incl. Rs. {totals.line_discount.toLocaleString()} line discounts)</span>
+                    </div>
+                  )}
+                  <div className="flex justify-between text-sm">
+                    <span className="text-slate-400 font-medium">Bill Discount</span>
+                    <span className="text-emerald-400 font-bold">- Rs. {globalDiscount.toLocaleString()}</span>
                   </div>
                   <div className="flex justify-between text-sm">
-                    <span className="text-slate-400 font-medium">Line Discounts</span>
-                    <span className="text-emerald-400 font-bold">- Rs. {totals.line_discount.toLocaleString()}</span>
+                    <span className="text-slate-400 font-medium">Shipping</span>
+                    <span className="font-bold">Rs. {shippingFee.toLocaleString()}</span>
                   </div>
                   {appliedTaxes.map(tax => (
                     <div key={tax.code} className="flex justify-between text-sm">

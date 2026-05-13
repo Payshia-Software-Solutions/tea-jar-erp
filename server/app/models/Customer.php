@@ -13,7 +13,6 @@ class Customer extends Model {
                     FROM invoices i 
                     WHERE i.customer_id = c.id AND i.status != 'Cancelled') as total_outstanding
             FROM {$this->table} c 
-            WHERE c.is_ecommerce_user = 0
             ORDER BY c.name ASC
         ");
         return $this->db->resultSet();

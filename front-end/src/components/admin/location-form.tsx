@@ -11,6 +11,10 @@ import { useToast } from "@/hooks/use-toast";
 import { createLocation, updateLocation, ServiceLocation } from "@/lib/api";
 import { Loader2, MapPin, Store, Users, ShoppingBag, Factory, Percent, ArrowLeft, Code2 } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
+import { fetchTaxes, TaxRow } from "@/lib/api/finance";
+import { Badge } from "@/components/ui/badge";
+import { Check, Plus } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 interface LocationFormProps {
   initialData?: ServiceLocation;
@@ -40,6 +44,8 @@ export function LocationForm({ initialData, isEdit = false }: LocationFormProps)
   const [allowOnline, setAllowOnline] = useState(false);
   const [googleAnalyticsCode, setGoogleAnalyticsCode] = useState("");
   const [facebookPixelCode, setFacebookPixelCode] = useState("");
+  const [availableTaxes, setAvailableTaxes] = useState<TaxRow[]>([]);
+  const [taxIds, setTaxIds] = useState<number[]>([]);
 
   useEffect(() => {
     if (initialData) {
@@ -59,8 +65,24 @@ export function LocationForm({ initialData, isEdit = false }: LocationFormProps)
       setAllowOnline(Boolean(initialData.allow_online));
       setGoogleAnalyticsCode(initialData.google_analytics_code || "");
       setFacebookPixelCode(initialData.facebook_pixel_code || "");
+      
+      // Handle allowed_taxes_json
+      try {
+        if (initialData.allowed_taxes_json) {
+          const ids = JSON.parse(initialData.allowed_taxes_json);
+          if (Array.isArray(ids)) setTaxIds(ids);
+        } else {
+          setTaxIds([]);
+        }
+      } catch (e) {
+        setTaxIds([]);
+      }
     }
   }, [initialData]);
+
+  useEffect(() => {
+    fetchTaxes('', { all: true }).then(setAvailableTaxes).catch(() => {});
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -85,6 +107,7 @@ export function LocationForm({ initialData, isEdit = false }: LocationFormProps)
         allow_online: allowOnline ? 1 : 0,
         google_analytics_code: googleAnalyticsCode.trim() || undefined,
         facebook_pixel_code: facebookPixelCode.trim() || undefined,
+        tax_ids: taxIds,
       };
 
       if (isEdit && initialData) {
@@ -201,6 +224,56 @@ export function LocationForm({ initialData, isEdit = false }: LocationFormProps)
                     onChange={(e) => setTaxLabel(e.target.value)}
                   />
                 </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="border-amber-100 dark:border-amber-500/20 bg-amber-50/30 dark:bg-amber-500/5">
+            <CardHeader>
+              <div className="flex items-center gap-3">
+                 <div className="p-2 bg-amber-100 dark:bg-amber-500/20 rounded-lg">
+                    <Percent className="w-5 h-5 text-amber-600 dark:text-amber-400" />
+                 </div>
+                 <div>
+                    <CardTitle className="text-amber-900 dark:text-amber-100">Tax Configuration</CardTitle>
+                    <CardDescription>Select which taxes apply to transactions at this location.</CardDescription>
+                 </div>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                <Label>Allowed Taxes</Label>
+                <div className="flex flex-wrap gap-2">
+                  {availableTaxes.map((tax) => {
+                    const isSelected = taxIds.includes(tax.id);
+                    return (
+                      <Badge
+                        key={tax.id}
+                        variant={isSelected ? "default" : "outline"}
+                        className={cn(
+                          "px-3 py-1.5 cursor-pointer transition-all flex items-center gap-2 text-xs font-bold",
+                          isSelected ? "bg-amber-600 hover:bg-amber-700" : "hover:bg-amber-50 dark:hover:bg-amber-900/20"
+                        )}
+                        onClick={() => {
+                          if (isSelected) {
+                            setTaxIds(prev => prev.filter(id => id !== tax.id));
+                          } else {
+                            setTaxIds(prev => [...prev, tax.id]);
+                          }
+                        }}
+                      >
+                        {isSelected ? <Check className="w-3 h-3" /> : <Plus className="w-3 h-3 opacity-50" />}
+                        {tax.code || tax.name} ({tax.rate_percent}%)
+                      </Badge>
+                    );
+                  })}
+                  {availableTaxes.length === 0 && (
+                    <p className="text-sm text-muted-foreground italic">No taxes found. Please create taxes in the Finance section first.</p>
+                  )}
+                </div>
+                <p className="text-[10px] text-muted-foreground uppercase font-black tracking-widest pt-2">
+                  Selected IDs: {taxIds.length > 0 ? taxIds.join(', ') : 'NONE'}
+                </p>
               </div>
             </CardContent>
           </Card>

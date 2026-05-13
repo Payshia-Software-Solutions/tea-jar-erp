@@ -128,10 +128,161 @@ class PublicOrderController extends Controller {
             }
         }
         $data['customer_id'] = $customerId;
+        $data['total_amount'] = (float)$data['total_amount'];
+
+        // 1.5 Calculate Taxes and Subtotal
+        require_once '../app/models/Tax.php';
+        require_once '../app/models/StorefrontSetting.php';
+        require_once '../app/models/ServiceLocation.php';
+        $taxModel = new Tax();
+        $settingsModel = new StorefrontSetting();
+        $locModel = new ServiceLocation();
+
+        $locationId = $data['location_id'] ?? 1;
+        $location = $locModel->getById($locationId);
+        $settings = $settingsModel->getAll($locationId);
+        $taxInclusive = ($settings['ecom_tax_inclusive'] ?? '0') === '1';
+
+        $taxIds = !empty($location->allowed_taxes_json) ? json_decode($location->allowed_taxes_json, true) : [];
+        $taxes = $taxModel->getByIds($taxIds);
+        
+        $additiveRate = 0;
+        $compoundMultiplier = 1.0;
+        foreach ($taxes as $tx) {
+            $rate = (float)$tx->rate_percent / 100;
+            if (($tx->apply_on ?? 'base') === 'base_plus_previous') {
+                $compoundMultiplier *= (1 + $rate);
+            } else {
+                $additiveRate += $rate;
+            }
+        }
+        $totalMultiplier = ((1 + $additiveRate) * $compoundMultiplier) - 1;
+
+        $calculatedSubtotal = 0;
+        $calculatedTaxTotal = 0;
+
+        foreach ($data['items'] as &$item) {
+            $sentPrice = (float)$item['unit_price'];
+            $qty = (float)$item['quantity'];
+
+            if ($taxInclusive) {
+                // Sent price and discount are inclusive, extract base
+                $sentDiscount = (float)($item['discount'] ?? 0);
+                $netInclusivePrice = $sentPrice - $sentDiscount;
+                
+                $basePrice = $sentPrice / (1 + $totalMultiplier);
+                $netBasePrice = $netInclusivePrice / (1 + $totalMultiplier);
+                $baseDiscount = $basePrice - $netBasePrice; // Calculate discount from base price difference
+                
+                $itemTax = $netInclusivePrice - $netBasePrice;
+            } else {
+                // Sent price and discount are base, add tax
+                $basePrice = $sentPrice;
+                $baseDiscount = (float)($item['discount'] ?? 0);
+                $netBasePrice = $basePrice - $baseDiscount;
+                
+                // Tax is calculated on the net base price
+                $itemTax = $netBasePrice * $totalMultiplier;
+            }
+
+            // Update item to use base price and base discount for storage
+            $item['unit_price'] = $basePrice;
+            $item['discount'] = $baseDiscount;
+            $item['line_total'] = ($basePrice - $baseDiscount) * $qty;
+            
+            $calculatedSubtotal += ($basePrice * $qty);
+            $calculatedTaxTotal += ($itemTax * $qty);
+        }
+
+        // Add to data for OnlineOrder model
+        $totalLineDiscount = array_reduce($data['items'], function($acc, $item) {
+            return $acc + ((float)($item['discount'] ?? 0) * (float)($item['quantity'] ?? 1));
+        }, 0);
+        
+        $netSubtotal = $calculatedSubtotal - $totalLineDiscount;
+
+        // Calculate Detailed Tax Breakdown for Storage
+        $taxBreakdown = [];
+        $calculatedTaxSum = 0;
+        
+        // 1. Process all "base" taxes first
+        $additiveTaxesSum = 0;
+        foreach ($taxes as $tx) {
+            if (($tx->apply_on ?? 'base') === 'base') {
+                $rate = (float)$tx->rate_percent / 100;
+                $amount = round($netSubtotal * $rate, 2);
+                $additiveTaxesSum += $amount;
+                
+                $taxBreakdown[] = [
+                    'id' => $tx->id,
+                    'name' => $tx->name,
+                    'rate_percent' => $tx->rate_percent,
+                    'apply_on' => $tx->apply_on,
+                    'amount' => $amount
+                ];
+                $calculatedTaxSum += $amount;
+            }
+        }
+
+        // 2. Process all "compound" taxes on top of (base + additiveSum)
+        $currentCompoundBase = $netSubtotal + $additiveTaxesSum;
+        foreach ($taxes as $tx) {
+            if (($tx->apply_on ?? 'base') === 'base_plus_previous') {
+                $rate = (float)$tx->rate_percent / 100;
+                $amount = round($currentCompoundBase * $rate, 2);
+                $currentCompoundBase += $amount;
+                
+                $taxBreakdown[] = [
+                    'id' => $tx->id,
+                    'name' => $tx->name,
+                    'rate_percent' => $tx->rate_percent,
+                    'apply_on' => $tx->apply_on,
+                    'amount' => $amount
+                ];
+                $calculatedTaxSum += $amount;
+            }
+        }
+
+        $data['subtotal_amount'] = round($netSubtotal, 2);
+        $data['tax_total'] = round($calculatedTaxSum, 2);
+        $data['tax_details_json'] = json_encode($taxBreakdown);
+
+        $shippingFee = (float)($data['shipping_fee'] ?? 0);
+        $couponDiscount = 0; // Initialize as 0, will be set if coupon validated
+
+        // 1.6 Handle Coupon Validation
+        $couponId = null;
+        if (!empty($data['coupon_code'])) {
+            require_once '../app/models/Coupon.php';
+            $couponModel = new Coupon();
+            
+            // Validate coupon against the net subtotal (post line-discounts)
+            $validation = $couponModel->validate($data['coupon_code'], $netSubtotal, $customerId);
+            if (!$validation['valid']) {
+                $this->error($validation['message'], 400);
+            }
+            
+            $couponDiscount = $validation['discount_amount'];
+            $data['coupon_discount'] = $couponDiscount;
+            $couponId = $validation['coupon']->id;
+        }
+
+        // Re-calculate final total to ensure it matches
+        // Total = Net Subtotal (Gross - Line Discs) + Taxes + Shipping - Coupon Discount
+        $expectedTotal = round($netSubtotal + $calculatedTaxSum + $shippingFee - $couponDiscount, 2);
+        
+        // Small epsilon check for float comparison
+        if (abs($data['total_amount'] - $expectedTotal) > 0.01) {
+            $data['total_amount'] = $expectedTotal; 
+        }
 
         // 2. Create Order
         $result = $orderModel->create($data);
         if ($result) {
+            // 2.5 Record Coupon Usage
+            if ($couponId) {
+                $couponModel->recordUsage($couponId, $result['id'], $data['coupon_discount'], $customerId);
+            }
             // 3. Send Confirmation Email
             try {
                 require_once '../app/helpers/EmailHelper.php';
@@ -315,12 +466,25 @@ class PublicOrderController extends Controller {
                             ' . $itemsHtml . '
                             <tr>
                                 <td style="padding: 24px 0 8px 0; text-align: right; color: #64748b; font-size: 14px; font-weight: 500;">Subtotal</td>
-                                <td style="padding: 24px 0 8px 0; text-align: right; color: #0f172a; font-size: 14px; font-weight: 700;">LKR ' . number_format($data['total_amount'] - ($data['shipping_fee'] ?? 0), 2) . '</td>
+                                <td style="padding: 24px 0 8px 0; text-align: right; color: #0f172a; font-size: 14px; font-weight: 700;">LKR ' . number_format($calculatedSubtotal, 2) . '</td>
                             </tr>
                             <tr>
-                                <td style="padding: 4px 0 24px 0; text-align: right; color: #64748b; font-size: 14px; font-weight: 500; border-bottom: 2px solid #f1f5f9;">Shipping</td>
-                                <td style="padding: 4px 0 24px 0; text-align: right; color: #0f172a; font-size: 14px; font-weight: 700; border-bottom: 2px solid #f1f5f9;">LKR ' . number_format($data['shipping_fee'] ?? 0, 2) . '</td>
+                                <td style="padding: 4px 0 8px 0; text-align: right; color: #64748b; font-size: 14px; font-weight: 500;">Taxes</td>
+                                <td style="padding: 4px 0 8px 0; text-align: right; color: #0f172a; font-size: 14px; font-weight: 700;">LKR ' . number_format($calculatedTaxTotal, 2) . '</td>
                             </tr>
+                            <tr>
+                                <td style="padding: 4px 0 8px 0; text-align: right; color: #64748b; font-size: 14px; font-weight: 500;">Shipping</td>
+                                <td style="padding: 4px 0 8px 0; text-align: right; color: #0f172a; font-size: 14px; font-weight: 700;">' . ($shippingFee > 0 ? 'LKR ' . number_format($shippingFee, 2) : 'Free') . '</td>
+                            </tr>
+                            ' . (!empty($data['coupon_code']) ? '
+                            <tr>
+                                <td style="padding: 4px 0 24px 0; text-align: right; color: #64748b; font-size: 14px; font-weight: 500; border-bottom: 2px solid #f1f5f9;">Coupon (' . htmlspecialchars($data['coupon_code']) . ')</td>
+                                <td style="padding: 4px 0 24px 0; text-align: right; color: #e11d48; font-size: 14px; font-weight: 700; border-bottom: 2px solid #f1f5f9;">- LKR ' . number_format($data['coupon_discount'], 2) . '</td>
+                            </tr>' : '
+                            <tr>
+                                <td style="padding: 4px 0 24px 0; text-align: right; color: #64748b; font-size: 14px; font-weight: 500; border-bottom: 2px solid #f1f5f9;"></td>
+                                <td style="padding: 4px 0 24px 0; text-align: right; color: #0f172a; font-size: 14px; font-weight: 700; border-bottom: 2px solid #f1f5f9;"></td>
+                            </tr>') . '
                             <tr>
                                 <td style="padding: 24px 0; text-align: right; color: #0f172a; font-size: 18px; font-weight: 800;">Total</td>
                                 <td style="padding: 24px 0; text-align: right; color: #0f172a; font-size: 24px; font-weight: 800;">LKR ' . number_format($data['total_amount'], 2) . '</td>
@@ -430,10 +594,17 @@ class PublicOrderController extends Controller {
             'id' => (string)$order->id,
             'order_no' => (string)$order->order_no,
             'total_amount' => (string)$order->total_amount,
+            'subtotal_amount' => (string)$order->subtotal_amount,
+            'tax_total' => (string)$order->tax_total,
+            'tax_details_json' => $order->tax_details_json,
+            'shipping_fee' => (string)$order->shipping_fee,
+            'coupon_code' => (string)$order->coupon_code,
+            'coupon_discount' => (string)$order->coupon_discount,
             'payment_method' => (string)$order->payment_method,
             'payment_status' => (string)$order->payment_status,
             'shipping_address' => (string)$order->shipping_address,
             'billing_address' => (string)$order->billing_address,
+            'location_id' => (string)$order->location_id,
             'customer_name' => $details['name'] ?? '',
             'customer_email' => $details['email'] ?? '',
             'items' => array_map(function($item) {
@@ -442,6 +613,7 @@ class PublicOrderController extends Controller {
                     'product_name' => (string)$item->description,
                     'quantity' => (string)$item->quantity,
                     'unit_price' => (string)$item->unit_price,
+                    'discount' => (string)$item->discount,
                     'line_total' => (string)$item->line_total,
                 ];
             }, $items)

@@ -12,6 +12,7 @@ function PrintContent() {
   const id = params.id as string;
   const searchParams = useSearchParams();
   const autoPrint = searchParams.get('autoprint') === '1';
+  const taxInclusive = searchParams.get('tax_inclusive') === '1';
 
   const [invoice, setInvoice] = useState<any>(null);
   const [company, setCompany] = useState<CompanyRow | null>(null);
@@ -73,6 +74,13 @@ function PrintContent() {
   };
 
   const balance = Number(invoice.grand_total) - Number(invoice.paid_amount);
+
+  const getShortTaxName = (name: string) => {
+    const upper = (name || "").toUpperCase();
+    if (upper.includes("SOCIAL SECURITY CONTRIBUTION LEVY")) return "SSCL";
+    if (upper.includes("VALUE ADDED TAX")) return "VAT";
+    return name;
+  };
 
   return (
     <div className="min-h-screen bg-slate-100/50 print:bg-white">
@@ -171,9 +179,21 @@ function PrintContent() {
                 <span className="font-bold text-slate-700">{invoice.due_date}</span>
               </div>
               {invoice.order_id && (
-                <div className="flex justify-between text-[11px] py-0.5">
+                <div className="flex justify-between text-[11px] py-0.5 border-b border-slate-50">
                   <span className="text-slate-400 font-medium">Order Ref</span>
                   <span className="font-black text-primary italic">#{invoice.order_id}</span>
+                </div>
+              )}
+              {invoice.online_order_id && (
+                <div className="mt-1 pt-1 border-t border-slate-100 space-y-0.5">
+                  <div className="flex justify-between text-[11px] py-0.5">
+                    <span className="text-slate-400 font-medium uppercase text-[9px] tracking-widest">Sales Channel</span>
+                    <span className="font-black text-emerald-600">WEB</span>
+                  </div>
+                  <div className="flex justify-between text-[11px] py-0.5">
+                    <span className="text-slate-400 font-medium uppercase text-[9px] tracking-widest">Web Order No</span>
+                    <span className="font-black text-slate-800">{invoice.web_order_no || invoice.online_order_id}</span>
+                  </div>
                 </div>
               )}
               {invoice.order_type === 'dine_in' && (
@@ -215,22 +235,35 @@ function PrintContent() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {invoice.items?.map((item: any) => (
-                  <tr key={item.id}>
-                    <td className="py-2.5">
-                      <div className="font-bold text-slate-800 uppercase leading-tight">{item.description}</div>
-                      <div className="text-[9px] text-slate-400 mt-0.5 uppercase tracking-tighter leading-none">
-                        {item.item_type}
-                      </div>
-                    </td>
-                    <td className="py-2.5 text-center font-medium">{item.quantity}</td>
-                    <td className="py-2.5 text-right font-medium">{formatCurrency(item.unit_price)}</td>
-                    <td className="py-2.5 text-right font-medium text-rose-500">
-                      {Number(item.discount) > 0 ? `-${formatCurrency(item.discount)}` : "-"}
-                    </td>
-                    <td className="py-2.5 text-right font-black text-slate-900">{formatCurrency(item.line_total)}</td>
-                  </tr>
-                ))}
+                {invoice.items?.map((item: any) => {
+                  const totalTaxPercent = (invoice.applied_taxes || []).reduce((acc: number, t: any) => acc + Number(t.rate_percent || 0), 0);
+                  let displayPrice = Number(item.unit_price);
+                  let displayDiscount = Number(item.discount || 0);
+                  let displayLineTotal = Number(item.line_total);
+
+                  if (taxInclusive && totalTaxPercent > 0) {
+                    displayPrice = displayPrice * (1 + totalTaxPercent / 100);
+                    displayDiscount = displayDiscount * (1 + totalTaxPercent / 100);
+                    displayLineTotal = displayLineTotal * (1 + totalTaxPercent / 100);
+                  }
+
+                  return (
+                    <tr key={item.id}>
+                      <td className="py-2.5">
+                        <div className="font-bold text-slate-800 uppercase leading-tight">{item.description}</div>
+                        <div className="text-[9px] text-slate-400 mt-0.5 uppercase tracking-tighter leading-none">
+                          {item.item_type}
+                        </div>
+                      </td>
+                      <td className="py-2.5 text-center font-medium">{item.quantity}</td>
+                      <td className="py-2.5 text-right font-medium">{formatCurrency(displayPrice)}</td>
+                      <td className="py-2.5 text-right font-medium text-rose-500">
+                        {displayDiscount > 0 ? `-${formatCurrency(displayDiscount)}` : "-"}
+                      </td>
+                      <td className="py-2.5 text-right font-black text-slate-900">{formatCurrency(displayLineTotal)}</td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
@@ -266,7 +299,7 @@ function PrintContent() {
                   invoice.applied_taxes.map((tax: any) => (
                     <div key={tax.id} className="flex justify-between items-center text-slate-600">
                       <span className="text-[10px] font-bold uppercase tracking-widest">
-                        {tax.tax_code || tax.tax_name} {Number(tax.rate_percent) > 0 ? `(${Number(tax.rate_percent)}%)` : ''}
+                        {getShortTaxName(tax.tax_code || tax.tax_name)} {Number(tax.rate_percent) > 0 ? `(${Number(tax.rate_percent)}%)` : ''}
                       </span>
                       <span className="font-bold tabular-nums">LKR {Number(tax.amount).toFixed(2)}</span>
                     </div>
@@ -278,6 +311,12 @@ function PrintContent() {
                       <span className="font-bold tabular-nums">LKR {Number(invoice.tax_total).toFixed(2)}</span>
                     </div>
                   )
+                )}
+                {Number(invoice.shipping_fee) > 0 && (
+                  <div className="flex justify-between items-center text-slate-600">
+                    <span className="text-[10px] font-bold uppercase tracking-widest">Shipping ({invoice.shipping_provider_name || 'Standard'})</span>
+                    <span className="font-bold tabular-nums">+LKR {Number(invoice.shipping_fee).toFixed(2)}</span>
+                  </div>
                 )}
               </div>
               

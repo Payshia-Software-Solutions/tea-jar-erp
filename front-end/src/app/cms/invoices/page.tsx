@@ -168,6 +168,7 @@ export default function InvoicesPage() {
                 <TableHeader className="bg-muted/50">
                   <TableRow>
                     <TableHead>Invoice</TableHead>
+                    <TableHead>Channel</TableHead>
                     <TableHead>Customer</TableHead>
                     <TableHead>Dates</TableHead>
                     <TableHead className="text-right">Amount</TableHead>
@@ -178,7 +179,7 @@ export default function InvoicesPage() {
                 <TableBody>
                   {loading ? (
                     <TableRow>
-                      <TableCell colSpan={6} className="h-48 text-center">
+                      <TableCell colSpan={7} className="h-48 text-center">
                         <div className="flex flex-col items-center gap-2 text-muted-foreground">
                           <Loader2 className="w-8 h-8 animate-spin text-primary" />
                           <span>Loading invoices...</span>
@@ -187,7 +188,7 @@ export default function InvoicesPage() {
                     </TableRow>
                   ) : filteredInvoices.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={6} className="h-48 text-center text-muted-foreground">
+                      <TableCell colSpan={7} className="h-48 text-center text-muted-foreground">
                         <div className="flex flex-col items-center justify-center gap-3">
                           <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center">
                             <FileText className="w-6 h-6 text-muted-foreground/50" />
@@ -203,8 +204,33 @@ export default function InvoicesPage() {
                           <div className="font-medium">{invoice.invoice_no}</div>
                           {invoice.order_id && (
                             <div className="text-xs text-muted-foreground mt-0.5">
-                              Order #{invoice.order_id}
+                              Repair Order #{invoice.order_id}
                             </div>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          {invoice.online_order_id ? (
+                            <div className="flex flex-col gap-1">
+                              <Badge variant="secondary" className="w-fit bg-blue-50 text-blue-700 border-blue-200 font-black text-[9px] uppercase tracking-tighter px-1.5 h-5">Web</Badge>
+                              {invoice.online_order_no ? (
+                                <button 
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    router.push(`/ecommerce/orders/view/${invoice.online_order_id}`);
+                                  }}
+                                  className="text-[10px] font-bold text-blue-600 hover:text-blue-800 hover:underline text-left uppercase tracking-tighter w-fit transition-colors"
+                                  title="View Online Order"
+                                >
+                                  {invoice.online_order_no}
+                                </button>
+                              ) : (
+                                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">
+                                  #{invoice.online_order_id}
+                                </span>
+                              )}
+                            </div>
+                          ) : (
+                            <Badge variant="outline" className="w-fit bg-slate-50 text-slate-500 border-slate-200 font-bold text-[9px] uppercase px-1.5 h-5">Counter</Badge>
                           )}
                         </TableCell>
                         <TableCell>

@@ -105,6 +105,13 @@ class PromotionSchema {
                 $pdo->exec("ALTER TABLE promotion_benefits MODIFY COLUMN benefit_type ENUM('Percentage', 'FixedAmount', 'FixedPrice', 'FreeItem', 'BuyXGetY') NOT NULL");
             }
 
+            // 4. Permissions
+            $pdo->exec("
+                INSERT IGNORE INTO permissions (perm_key, description) VALUES
+                ('promotions.read', 'View promotions and coupons'),
+                ('promotions.write', 'Manage promotions and coupons')
+            ");
+
         } catch (Exception $e) {
             // Silently fail to avoid breaking the logic during schema upgrades
             error_log("PromotionSchema setup error: " . $e->getMessage());
