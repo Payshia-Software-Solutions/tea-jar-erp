@@ -1,8 +1,10 @@
 /**
  * Core API fetch wrapper
  */
+export const BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? '';
+
 export const api = async (path: string, options: RequestInit = {}): Promise<Response> => {
-  const baseUrl = process.env.NEXT_PUBLIC_API_URL ?? '';
+  const baseUrl = BASE_URL;
   const token =
     typeof window !== 'undefined' ? window.localStorage.getItem('auth_token') : null;
   const locationId =
