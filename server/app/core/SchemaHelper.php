@@ -42,14 +42,20 @@ class SchemaHelper {
         $live = [];
         foreach ($liveTablesList as $t) {
             $live[$t] = ['columns' => [], 'indexes' => []];
-            $resCol = $this->db->rawQuery("DESCRIBE `$t` ");
-            while ($c = $resCol->fetch(PDO::FETCH_ASSOC)) $live[$t]['columns'][$c['Field']] = $c;
-            
-            $resIdx = $this->db->rawQuery("SHOW INDEX FROM `$t` ");
-            while ($i = $resIdx->fetch(PDO::FETCH_ASSOC)) {
-                $key = $i['Key_name'];
-                if (!isset($live[$t]['indexes'][$key])) $live[$t]['indexes'][$key] = ['Key_name' => $key, 'Columns' => []];
-                $live[$t]['indexes'][$key]['Columns'][] = $i['Column_name'];
+            try {
+                $resCol = $this->db->rawQuery("DESCRIBE `$t` ");
+                while ($c = $resCol->fetch(\PDO::FETCH_ASSOC)) $live[$t]['columns'][$c['Field']] = $c;
+                
+                $resIdx = $this->db->rawQuery("SHOW INDEX FROM `$t` ");
+                while ($i = $resIdx->fetch(\PDO::FETCH_ASSOC)) {
+                    $key = $i['Key_name'];
+                    if (!isset($live[$t]['indexes'][$key])) $live[$t]['indexes'][$key] = ['Key_name' => $key, 'Columns' => []];
+                    $live[$t]['indexes'][$key]['Columns'][] = $i['Column_name'];
+                }
+            } catch (\Exception $e) {
+                // If a table is corrupted (e.g. MariaDB error 1932), mark it so we don't crash
+                $live[$t]['corrupted'] = true;
+                $live[$t]['error'] = $e->getMessage();
             }
         }
 

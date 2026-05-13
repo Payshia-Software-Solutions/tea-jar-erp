@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
-import { fetchDatabaseAudit, syncSchema, optimizeDatabase } from "@/lib/api/reports";
+import { fetchDatabaseAudit, syncSchema, optimizeDatabase, createSchemaSnapshot, dropDatabaseTable } from "@/lib/api/reports";
 import { 
   Database, 
   ShieldCheck, 
@@ -28,12 +28,13 @@ type TableAudit = {
   live: {
     columns: Record<string, any>;
     indexes: Record<string, any>;
-  } | null;
+  } | null | "CORRUPTED";
   defined: {
     name: string;
     columns: Record<string, any>;
     indexes: Record<string, any>;
   } | null;
+  error?: string;
 };
 
 export default function TableVerificationPage() {
@@ -79,6 +80,21 @@ export default function TableVerificationPage() {
       toast({ title: "Sync Failed", description: (err as Error).message, variant: "destructive" });
     } finally {
       setSyncing(null);
+    }
+  };
+
+  const handleDrop = async (tableName: string) => {
+    if (!confirm(`CAUTION: This will attempt to FORCE DROP the table '${tableName}'. Any remaining data in this table will be PERMANENTLY LOST. Continue?`)) return;
+
+    setSyncing(tableName);
+    try {
+        await dropDatabaseTable(tableName);
+        toast({ title: "Success", description: `Table ${tableName} dropped successfully.` });
+        void load();
+    } catch (err) {
+        toast({ title: "Drop Failed", description: (err as Error).message, variant: "destructive" });
+    } finally {
+        setSyncing(null);
     }
   };
 
@@ -135,10 +151,11 @@ export default function TableVerificationPage() {
     return filtered.sort((a, b) => {
       const getScore = (t: TableAudit) => {
         if (!t.live) return 0; // Missing (Highest Priority)
+        if (t.live === "CORRUPTED") return 0.5; // Corrupted (High Priority)
         
         const liveCols = Object.keys(t.live.columns);
         const defCols = Object.keys(t.defined?.columns || {});
-        const isMismatch = liveCols.length !== defCols.length || defCols.some(c => !t.live?.columns[c]);
+        const isMismatch = liveCols.length !== defCols.length || defCols.some(c => !t.live?.columns[c as any]);
         
         if (isMismatch) return 1; // Mismatch
         return 2; // OK
@@ -157,11 +174,12 @@ export default function TableVerificationPage() {
     let missing = 0, mismatch = 0, ok = 0;
     for (const t of data) {
       if (!t.live) missing++;
+      else if (t.live === "CORRUPTED") missing++;
       else if (!t.defined) mismatch++; // Unexpected table
       else {
         const liveCols = Object.keys(t.live.columns);
         const defCols = Object.keys(t.defined.columns);
-        const isMismatch = liveCols.length !== defCols.length || defCols.some(c => !t.live?.columns[c]);
+        const isMismatch = liveCols.length !== defCols.length || defCols.some(c => !t.live?.columns[c as any]);
         if (isMismatch) mismatch++;
         else ok++;
       }
@@ -216,6 +234,10 @@ export default function TableVerificationPage() {
             <Button variant="outline" onClick={() => void handleOptimize()} disabled={loading || !!syncing} className="gap-2 border-primary/20 text-primary hover:bg-primary/5">
               <Database className={cn("w-4 h-4", syncing === "optimize" && "animate-spin")} />
               Optimize Database
+            </Button>
+            <Button variant="outline" onClick={() => void handleSnapshot()} disabled={loading || !!syncing} className="gap-2 border-primary/20 text-primary hover:bg-primary/5">
+              <RefreshCcw className={cn("w-4 h-4", syncing === "snapshot" && "animate-spin")} />
+              Snapshot All to Schema
             </Button>
             <Button variant="default" onClick={() => void handleSync()} disabled={loading || !!syncing} className="gap-2 bg-primary">
               <Settings2 className={cn("w-4 h-4", syncing === "all" && "animate-spin")} />
@@ -315,12 +337,13 @@ export default function TableVerificationPage() {
             </div>
           ) : (
             filteredData.map((table) => {
+              const isCorrupted = table.live === "CORRUPTED";
               const isMissing = !table.live;
-              const liveCols = table.live ? Object.keys(table.live.columns) : [];
+              const liveCols = (table.live && !isCorrupted) ? Object.keys(table.live.columns) : [];
               const defCols = table.defined ? Object.keys(table.defined.columns) : [];
               const missingCols = defCols.filter(c => !liveCols.includes(c));
-              const isMismatch = missingCols.length > 0;
-              const isHealthy = !isMissing && !isMismatch;
+              const isMismatch = missingCols.length > 0 && !isCorrupted && !isMissing;
+              const isHealthy = !isMissing && !isMismatch && !isCorrupted;
 
               return (
                 <Card key={table.name} className="overflow-hidden border-none shadow-sm">
@@ -337,6 +360,8 @@ export default function TableVerificationPage() {
                         <div className="flex gap-2 mt-0.5">
                           {isMissing ? (
                             <Badge variant="destructive" className="text-[10px] uppercase">Missing Table</Badge>
+                          ) : isCorrupted ? (
+                            <Badge variant="destructive" className="text-[10px] uppercase animate-pulse">Corrupted / Engine Error</Badge>
                           ) : isMismatch ? (
                             <Badge variant="outline" className="text-[10px] uppercase text-amber-600 border-amber-600/20 bg-amber-600/5">Structure Mismatch</Badge>
                           ) : (
@@ -346,7 +371,19 @@ export default function TableVerificationPage() {
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
-                      {!isHealthy && (
+                      {isCorrupted && (
+                        <Button 
+                          size="sm" 
+                          variant="destructive" 
+                          className="gap-2"
+                          onClick={() => void handleDrop(table.name)}
+                          disabled={!!syncing}
+                        >
+                          {syncing === table.name ? <RefreshCcw className="w-3 h-3 animate-spin" /> : <ShieldAlert className="w-3 h-3" />}
+                          Force Drop
+                        </Button>
+                      )}
+                      {!isHealthy && !isCorrupted && (
                         <Button 
                           size="sm" 
                           variant="secondary" 
@@ -386,12 +423,22 @@ export default function TableVerificationPage() {
                               <ShieldAlert className="w-5 h-5" />
                               <span className="text-sm font-medium">Table does not exist in the database.</span>
                             </div>
+                          ) : isCorrupted ? (
+                            <div className="p-4 rounded-lg bg-red-500/10 border border-red-500/20 space-y-2">
+                               <div className="flex items-center gap-3 text-red-600">
+                                <ShieldAlert className="w-5 h-5" />
+                                <span className="text-sm font-bold uppercase tracking-tight">Database Engine Error</span>
+                              </div>
+                              <p className="text-[11px] text-red-500/80 font-mono bg-white/50 p-2 rounded border border-red-200">
+                                {table.error || "Table exists in metadata but could not be read by the engine (MariaDB Error 1932). This usually indicates a corrupted .ibd file or an orphaned table."}
+                              </p>
+                            </div>
                           ) : (
                             <div className="space-y-1.5">
                               {liveCols.map(c => (
                                 <div key={c} className="flex items-center justify-between p-2 rounded bg-background/50 text-xs">
                                   <span className="font-mono">{c}</span>
-                                  <span className="text-muted-foreground">{table.live?.columns[c].Type}</span>
+                                  <span className="text-muted-foreground">{(table.live as any).columns[c].Type}</span>
                                 </div>
                               ))}
                             </div>

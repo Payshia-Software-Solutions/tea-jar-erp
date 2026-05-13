@@ -234,6 +234,13 @@ export const optimizeDatabase = async () => {
   return data.status === 'success' ? data.data : data;
 };
 
+export const dropDatabaseTable = async (tableName: string) => {
+  const res = await api(`/api/report/database_drop?table=${tableName}`, { method: 'POST' });
+  if (!res.ok) throw new Error('Failed to drop table');
+  const data = await res.json();
+  return data.status === 'success' ? data.data : data;
+};
+
 // --- Aliases for Backward Compatibility ---
 export const fetchReportStockBalance = fetchStockBalance;
 export const fetchReportStockTransfers = fetchStockTransferReport;

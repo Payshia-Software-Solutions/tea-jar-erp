@@ -4,9 +4,11 @@
  */
 class ReportController extends Controller {
     private $db;
+    private $auditModel;
 
     public function __construct() {
         $this->db = new Database();
+        $this->auditModel = $this->model('AuditLog');
     }
 
     private function resolveLocationIds($u, $locationParam, $defaultAllForAdmin = true) {
@@ -733,6 +735,7 @@ class ReportController extends Controller {
 
     // GET /api/report/database_audit
     public function database_audit() {
+        @ini_set('display_errors', '0');
         @ini_set('memory_limit', '256M');
         @set_time_limit(60);
 
@@ -765,25 +768,30 @@ class ReportController extends Controller {
                     'columns' => [],
                     'indexes' => []
                 ];
-                // Columns
-                $resCol = $this->db->rawQuery("DESCRIBE `$table` ");
-                while ($c = $resCol->fetch(PDO::FETCH_ASSOC)) {
-                    $liveInfo['columns'][$c['Field']] = $c;
-                }
-                // Indexes
-                $resIdx = $this->db->rawQuery("SHOW INDEX FROM `$table` ");
-                while ($i = $resIdx->fetch(PDO::FETCH_ASSOC)) {
-                    $key = $i['Key_name'];
-                    if (!isset($liveInfo['indexes'][$key])) {
-                        $liveInfo['indexes'][$key] = [
-                            'Key_name' => $key,
-                            'Non_unique' => $i['Non_unique'],
-                            'Columns' => []
-                        ];
+                try {
+                    // Columns
+                    $resCol = $this->db->rawQuery("DESCRIBE `$table` ");
+                    while ($c = $resCol->fetch(\PDO::FETCH_ASSOC)) {
+                        $liveInfo['columns'][$c['Field']] = $c;
                     }
-                    $liveInfo['indexes'][$key]['Columns'][] = $i['Column_name'];
+                    // Indexes
+                    $resIdx = $this->db->rawQuery("SHOW INDEX FROM `$table` ");
+                    while ($i = $resIdx->fetch(\PDO::FETCH_ASSOC)) {
+                        $key = $i['Key_name'];
+                        if (!isset($liveInfo['indexes'][$key])) {
+                            $liveInfo['indexes'][$key] = [
+                                'Key_name' => $key,
+                                'Non_unique' => $i['Non_unique'],
+                                'Columns' => []
+                            ];
+                        }
+                        $liveInfo['indexes'][$key]['Columns'][] = $i['Column_name'];
+                    }
+                    $tableInfo['live'] = $liveInfo;
+                } catch (\Exception $e) {
+                    $tableInfo['live'] = 'CORRUPTED';
+                    $tableInfo['error'] = $e->getMessage();
                 }
-                $tableInfo['live'] = $liveInfo;
             }
 
             $audit[] = $tableInfo;
@@ -880,25 +888,31 @@ class ReportController extends Controller {
                 'columns' => [],
                 'indexes' => []
             ];
-            // Columns
-            $resCol = $this->db->rawQuery("DESCRIBE `$table` ");
-            while ($c = $resCol->fetch(PDO::FETCH_ASSOC)) {
-                $tableInfo['columns'][$c['Field']] = $c;
-            }
-            // Indexes
-            $resIdx = $this->db->rawQuery("SHOW INDEX FROM `$table` ");
-            while ($i = $resIdx->fetch(PDO::FETCH_ASSOC)) {
-                $key = $i['Key_name'];
-                if (!isset($tableInfo['indexes'][$key])) {
-                    $tableInfo['indexes'][$key] = [
-                        'Key_name' => $key,
-                        'Non_unique' => $i['Non_unique'],
-                        'Columns' => []
-                    ];
+            
+            try {
+                // Columns
+                $resCol = $this->db->rawQuery("DESCRIBE `$table` ");
+                while ($c = $resCol->fetch(\PDO::FETCH_ASSOC)) {
+                    $tableInfo['columns'][$c['Field']] = $c;
                 }
-                $tableInfo['indexes'][$key]['Columns'][] = $i['Column_name'];
+                // Indexes
+                $resIdx = $this->db->rawQuery("SHOW INDEX FROM `$table` ");
+                while ($i = $resIdx->fetch(\PDO::FETCH_ASSOC)) {
+                    $key = $i['Key_name'];
+                    if (!isset($tableInfo['indexes'][$key])) {
+                        $tableInfo['indexes'][$key] = [
+                            'Key_name' => $key,
+                            'Non_unique' => $i['Non_unique'],
+                            'Columns' => []
+                        ];
+                    }
+                    $tableInfo['indexes'][$key]['Columns'][] = $i['Column_name'];
+                }
+                $newSchema[$table] = $tableInfo;
+            } catch (\Exception $e) {
+                // Skip corrupted tables during snapshot
+                error_log("Skipping corrupted table '$table' during snapshot: " . $e->getMessage());
             }
-            $newSchema[$table] = $tableInfo;
         }
 
         // Sort by table name for consistency
@@ -936,5 +950,42 @@ class ReportController extends Controller {
         $results = $helper->sync(['missing_tables' => [], 'missing_columns' => [], 'missing_indexes' => $diff['missing_indexes']]);
         
         $this->success($results, "Database optimization completed.");
+    }
+
+    // POST /api/report/database_drop?table=name
+    public function database_drop() {
+        $u = $this->requireAuth();
+        if ($u['role'] !== 'Admin') {
+            $this->error('Access Denied', 403);
+            return;
+        }
+
+        $tableName = $_GET['table'] ?? null;
+        if (!$tableName) {
+            $this->error('Table name is required');
+            return;
+        }
+
+        try {
+            // Disable FK checks to allow dropping parent tables with corrupted metadata
+            $this->db->rawQuery("SET FOREIGN_KEY_CHECKS = 0");
+            $this->db->rawQuery("DROP TABLE IF EXISTS `$tableName` ");
+            $this->db->rawQuery("SET FOREIGN_KEY_CHECKS = 1");
+
+            $this->auditModel->write([
+                'user_id' => (int)$u['sub'],
+                'action' => 'drop_table',
+                'entity' => 'database',
+                'entity_id' => 0,
+                'method' => 'POST',
+                'path' => $_SERVER['REQUEST_URI'] ?? '',
+                'ip' => $_SERVER['REMOTE_ADDR'] ?? '',
+                'user_agent' => $_SERVER['HTTP_USER_AGENT'] ?? '',
+                'details' => json_encode(['table' => $tableName]),
+            ]);
+            $this->success(null, "Table $tableName dropped successfully");
+        } catch (\Exception $e) {
+            $this->error("Failed to drop table $tableName: " . $e->getMessage());
+        }
     }
 }
