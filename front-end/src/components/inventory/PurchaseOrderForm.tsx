@@ -16,8 +16,10 @@ import {
   fetchPartsForSupplier, 
   fetchSupplier, 
   fetchSuppliers, 
+  fetchLocations,
   type PartRow, 
   type PurchaseOrderItemRow, 
+  type ServiceLocationRow,
   type SupplierRow, 
   type TaxRow 
 } from "@/lib/api";
@@ -56,6 +58,8 @@ export function PurchaseOrderForm({ editId, initialData }: PurchaseOrderFormProp
   const [saving, setSaving] = useState(false);
   const [suppliers, setSuppliers] = useState<SupplierRow[]>([]);
   const [parts, setParts] = useState<PartRow[]>([]);
+  const [currentLocation, setCurrentLocation] = useState<ServiceLocationRow | null>(null);
+  const [originalSupplierTaxes, setOriginalSupplierTaxes] = useState<TaxRow[]>([]);
   const [supplierTaxes, setSupplierTaxes] = useState<TaxRow[]>([]);
 
   const [form, setForm] = useState({
@@ -77,8 +81,15 @@ export function PurchaseOrderForm({ editId, initialData }: PurchaseOrderFormProp
     const run = async () => {
       setLoading(true);
       try {
-        const [supRows] = await Promise.all([fetchSuppliers()]);
+        const [supRows, locRows] = await Promise.all([fetchSuppliers(), fetchLocations()]);
         setSuppliers(Array.isArray(supRows) ? supRows : []);
+        
+        // Identify current location
+        const lsLocId = typeof window !== 'undefined' ? window.localStorage.getItem("location_id") : null;
+        if (lsLocId && Array.isArray(locRows)) {
+           const found = (locRows as ServiceLocationRow[]).find(l => String(l.id) === lsLocId);
+           if (found) setCurrentLocation(found);
+        }
       } catch (e: any) {
         toast({ title: "Error", description: e?.message || "Failed to load suppliers", variant: "destructive" });
       } finally {
@@ -99,14 +110,39 @@ export function PurchaseOrderForm({ editId, initialData }: PurchaseOrderFormProp
       try {
         const [partRows, sup] = await Promise.all([fetchPartsForSupplier(sid, ""), fetchSupplier(String(sid))]);
         setParts(Array.isArray(partRows) ? partRows : []);
-        setSupplierTaxes(Array.isArray((sup as any)?.taxes) ? ((sup as any).taxes as TaxRow[]) : []);
+        setOriginalSupplierTaxes(Array.isArray((sup as any)?.taxes) ? ((sup as any).taxes as TaxRow[]) : []);
       } catch (e: any) {
         setParts([]);
-        setSupplierTaxes([]);
+        setOriginalSupplierTaxes([]);
         toast({ title: "Error", description: e?.message || "Failed to load supplier details", variant: "destructive" });
       }
     })();
   }, [form.supplier_id]);
+
+  useEffect(() => {
+    if (!currentLocation) {
+      setSupplierTaxes(originalSupplierTaxes);
+      return;
+    }
+
+    let allowedIds: number[] = [];
+    let isExplicitlySet = false;
+    try {
+      if (currentLocation.allowed_taxes_json) {
+        allowedIds = JSON.parse(currentLocation.allowed_taxes_json);
+        isExplicitlySet = Array.isArray(allowedIds);
+      }
+    } catch (e) {
+      allowedIds = [];
+    }
+
+    if (!isExplicitlySet && currentLocation.allowed_taxes_json === null) {
+      setSupplierTaxes(originalSupplierTaxes);
+    } else {
+      const allowedSet = new Set(allowedIds.map(Number));
+      setSupplierTaxes(originalSupplierTaxes.filter((t) => allowedSet.has(Number(t.id))));
+    }
+  }, [currentLocation, originalSupplierTaxes]);
 
   const partById = useMemo(() => {
     const m = new Map<number, PartRow>();

@@ -59,6 +59,7 @@ class Customer extends Model {
         $this->db->bind(':order_type', $data['order_type'] ?? 'External');
         $this->db->bind(':is_active', isset($data['is_active']) ? (int)$data['is_active'] : 1);
         $this->db->bind(':is_unsubscribed', isset($data['is_unsubscribed']) ? (int)$data['is_unsubscribed'] : 0);
+        $this->db->bind(':credit_limit', $data['credit_limit'] ?? 0);
         $this->db->bind(':credit_days', $data['credit_days'] ?? 0);
         $this->db->bind(':is_ecommerce_user', isset($data['is_ecommerce_user']) ? (int)$data['is_ecommerce_user'] : 0);
         $this->db->bind(':created_by', $userId);

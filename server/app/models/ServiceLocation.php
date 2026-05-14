@@ -24,7 +24,8 @@ class ServiceLocation extends Model {
                 'allow_online' => "TINYINT NOT NULL DEFAULT 0",
                 'allowed_taxes_json' => "TEXT NULL",
                 'google_analytics_code' => "TEXT NULL",
-                'facebook_pixel_code' => "TEXT NULL"
+                'facebook_pixel_code' => "TEXT NULL",
+                'default_customer_id' => "INT NULL"
             ];
             foreach ($cols as $col => $def) {
                 $this->db->query("SHOW COLUMNS FROM {$this->table} LIKE '{$col}'");
@@ -57,6 +58,7 @@ class ServiceLocation extends Model {
                 allow_dine_in, allow_take_away, allow_retail, is_pos_active, allow_production, allow_online,
                 allowed_taxes_json,
                 google_analytics_code, facebook_pixel_code,
+                default_customer_id,
                 created_by, updated_by
             ) VALUES (
                 :name, :location_type, :address, :phone, :tax_no, :tax_label, 
@@ -64,6 +66,7 @@ class ServiceLocation extends Model {
                 :allow_dine_in, :allow_take_away, :allow_retail, :is_pos_active, :allow_production, :allow_online,
                 :allowed_taxes_json,
                 :google_analytics_code, :facebook_pixel_code,
+                :default_customer_id,
                 :created_by, :updated_by
             )
         ");
@@ -84,6 +87,7 @@ class ServiceLocation extends Model {
         $this->db->bind(':allowed_taxes_json', $data['allowed_taxes_json'] ?? null);
         $this->db->bind(':google_analytics_code', $data['google_analytics_code'] ?? null);
         $this->db->bind(':facebook_pixel_code', $data['facebook_pixel_code'] ?? null);
+        $this->db->bind(':default_customer_id', $data['default_customer_id'] ?? null);
         $this->db->bind(':created_by', $userId);
         $this->db->bind(':updated_by', $userId);
         return $this->db->execute();
@@ -100,6 +104,7 @@ class ServiceLocation extends Model {
                 is_pos_active = :is_pos_active, allow_production = :allow_production, allow_online = :allow_online,
                 allowed_taxes_json = :allowed_taxes_json,
                 google_analytics_code = :google_analytics_code, facebook_pixel_code = :facebook_pixel_code,
+                default_customer_id = :default_customer_id,
                 updated_by = :updated_by
             WHERE id = :id
         ");
@@ -121,6 +126,7 @@ class ServiceLocation extends Model {
         $this->db->bind(':allowed_taxes_json', $data['allowed_taxes_json'] ?? null);
         $this->db->bind(':google_analytics_code', $data['google_analytics_code'] ?? null);
         $this->db->bind(':facebook_pixel_code', $data['facebook_pixel_code'] ?? null);
+        $this->db->bind(':default_customer_id', $data['default_customer_id'] ?? null);
         $this->db->bind(':updated_by', $userId);
         return $this->db->execute();
     }

@@ -144,6 +144,7 @@ export interface ServiceLocation {
   allow_online?: number;
   google_analytics_code?: string | null;
   facebook_pixel_code?: string | null;
+  default_customer_id?: number | null;
   created_at?: string;
   updated_at?: string;
 }

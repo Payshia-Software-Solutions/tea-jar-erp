@@ -195,6 +195,7 @@ export const POSProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   // Data Context
   const [inventory, setInventory] = useState<any[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
+  const [allTaxes, setAllTaxes] = useState<any[]>([]);
   const [systemTaxes, setSystemTaxes] = useState<any[]>([]);
   const [locations, setLocations] = useState<any[]>([]);
   const [customers, setCustomers] = useState<any[]>([]);
@@ -349,7 +350,7 @@ export const POSProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         refreshCustomers(),
         refreshTablesAndStewards(),
         refreshHeldOrders(),
-        fetchTaxes('', { all: true }).then(t => setSystemTaxes(t || [])).catch(() => {}),
+        fetchTaxes('', { all: true }).then(t => setAllTaxes(t || [])).catch(() => {}),
         fetchCollections(true).then(c => setCollections(c || [])).catch(() => {}),
         fetchCompany().then(c => setCompany(c)).catch(() => {})
       ]);
@@ -399,17 +400,7 @@ export const POSProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         setBanks(banksRes);
         setCollections(collRes);
         
-        let enabledIds = new Set<number>();
-        if (compRes?.tax_ids_json) {
-          try {
-            const ids = JSON.parse(compRes.tax_ids_json);
-            if (Array.isArray(ids)) enabledIds = new Set(ids);
-          } catch {}
-        }
-        
-        const filteredTaxes = (taxesRes || []).filter((t: any) => t.is_active && enabledIds.has(t.id));
-        setSystemTaxes(filteredTaxes);
-        
+        setAllTaxes(taxesRes || []);
         setLocations(locsRes || []);
         setCustomers(custsRes || []);
         setCompany(compRes);
@@ -456,6 +447,43 @@ export const POSProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     };
     loadContext();
   }, [toast]);
+
+  useEffect(() => {
+    if (!selectedLocation || locations.length === 0 || allTaxes.length === 0) return;
+
+    const loc = locations.find(l => String(l.id) === String(selectedLocation));
+    if (!loc) return;
+
+    let allowedIds: number[] = [];
+    let isExplicitlySet = false;
+    try {
+      if (loc.allowed_taxes_json) {
+        allowedIds = JSON.parse(loc.allowed_taxes_json);
+        isExplicitlySet = Array.isArray(allowedIds);
+      }
+    } catch (e) {
+      allowedIds = [];
+    }
+
+    let filtered: any[] = [];
+    if (!isExplicitlySet && loc.allowed_taxes_json === null) {
+       // Legacy fallback: use company taxes if location has no explicit config
+       let companyEnabledIds = new Set<number>();
+       if (company?.tax_ids_json) {
+         try {
+           const ids = JSON.parse(company.tax_ids_json);
+           if (Array.isArray(ids)) companyEnabledIds = new Set(ids);
+         } catch {}
+       }
+       filtered = allTaxes.filter(t => t.is_active && companyEnabledIds.has(t.id));
+    } else {
+       // Location has explicit tax config (even if it's an empty array)
+       const allowedSet = new Set(allowedIds);
+       filtered = allTaxes.filter(t => t.is_active && allowedSet.has(t.id));
+    }
+    
+    setSystemTaxes(filtered);
+  }, [selectedLocation, locations, allTaxes, company]);
 
   useEffect(() => {
     const current = document.documentElement.classList.contains('dark') ? 'dark' : 'light';

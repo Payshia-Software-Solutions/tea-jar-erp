@@ -15287,6 +15287,15 @@ class SchemaDefinition {
         'Default' => 'exclusive',
         'Extra' => '',
       ),
+      'default_customer_id' => 
+      array (
+        'Field' => 'default_customer_id',
+        'Type' => 'int(11)',
+        'Null' => 'YES',
+        'Key' => '',
+        'Default' => NULL,
+        'Extra' => '',
+      ),
     ),
     'indexes' => 
     array (

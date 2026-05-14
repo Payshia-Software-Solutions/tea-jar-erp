@@ -9,7 +9,8 @@ import { Switch } from "@/components/ui/switch";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { createLocation, updateLocation, ServiceLocation } from "@/lib/api";
-import { Loader2, MapPin, Store, Users, ShoppingBag, Factory, Percent, ArrowLeft, Code2 } from "lucide-react";
+import { fetchCustomers } from "@/lib/api/master-data";
+import { Loader2, MapPin, Store, Users, ShoppingBag, Factory, Percent, ArrowLeft, Code2, User } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { fetchTaxes, TaxRow } from "@/lib/api/finance";
 import { Badge } from "@/components/ui/badge";
@@ -46,6 +47,8 @@ export function LocationForm({ initialData, isEdit = false }: LocationFormProps)
   const [facebookPixelCode, setFacebookPixelCode] = useState("");
   const [availableTaxes, setAvailableTaxes] = useState<TaxRow[]>([]);
   const [taxIds, setTaxIds] = useState<number[]>([]);
+  const [customers, setCustomers] = useState<any[]>([]);
+  const [defaultCustomerId, setDefaultCustomerId] = useState<string>("");
 
   useEffect(() => {
     if (initialData) {
@@ -65,6 +68,7 @@ export function LocationForm({ initialData, isEdit = false }: LocationFormProps)
       setAllowOnline(Boolean(initialData.allow_online));
       setGoogleAnalyticsCode(initialData.google_analytics_code || "");
       setFacebookPixelCode(initialData.facebook_pixel_code || "");
+      setDefaultCustomerId(initialData.default_customer_id ? String(initialData.default_customer_id) : "");
       
       // Handle allowed_taxes_json
       try {
@@ -82,6 +86,7 @@ export function LocationForm({ initialData, isEdit = false }: LocationFormProps)
 
   useEffect(() => {
     fetchTaxes('', { all: true }).then(setAvailableTaxes).catch(() => {});
+    fetchCustomers().then(setCustomers).catch(() => {});
   }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -107,6 +112,7 @@ export function LocationForm({ initialData, isEdit = false }: LocationFormProps)
         allow_online: allowOnline ? 1 : 0,
         google_analytics_code: googleAnalyticsCode.trim() || undefined,
         facebook_pixel_code: facebookPixelCode.trim() || undefined,
+        default_customer_id: defaultCustomerId ? Number(defaultCustomerId) : null,
         tax_ids: taxIds,
       };
 
@@ -353,6 +359,26 @@ export function LocationForm({ initialData, isEdit = false }: LocationFormProps)
               <div className="flex items-center justify-between p-3 bg-emerald-50 dark:bg-emerald-500/10 rounded-lg border border-emerald-100 dark:border-emerald-500/20">
                 <Label className="font-bold cursor-pointer" htmlFor="pos-active">Global POS Enabled</Label>
                 <Switch id="pos-active" checked={isPosActive} onCheckedChange={setIsPosActive} />
+              </div>
+
+              <div className="space-y-2 p-3 bg-slate-50 dark:bg-slate-900 rounded-lg border">
+                <div className="flex items-center gap-2 mb-1">
+                   <User className="w-4 h-4 text-primary" />
+                   <Label className="font-bold">Default POS Customer</Label>
+                </div>
+                <p className="text-[10px] text-muted-foreground mb-2">Used for walk-in sales if no customer is selected.</p>
+                <select
+                  className="w-full bg-white dark:bg-slate-950 border rounded-md h-9 px-3 text-sm focus:ring-2 focus:ring-primary outline-none"
+                  value={defaultCustomerId}
+                  onChange={(e) => setDefaultCustomerId(e.target.value)}
+                >
+                  <option value="">-- No Default Customer --</option>
+                  {customers.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.name} {c.phone ? `(${c.phone})` : ""}
+                    </option>
+                  ))}
+                </select>
               </div>
 
               <div className="space-y-4 pt-2">

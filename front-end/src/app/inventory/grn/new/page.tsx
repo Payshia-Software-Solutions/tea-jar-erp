@@ -43,7 +43,7 @@ export default function NewGrnPage() {
   const autoLoadedPoIdRef = useRef<number | null>(null);
   const [poLocationId, setPoLocationId] = useState<number | null>(null);
   const [poLocationName, setPoLocationName] = useState<string>("");
-  const [locationOptions, setLocationOptions] = useState<Array<{ id: number; name: string }>>([]);
+  const [locationOptions, setLocationOptions] = useState<ServiceLocationRow[]>([]);
   const [selectedLocationId, setSelectedLocationId] = useState<number | null>(null);
 
   const [loading, setLoading] = useState(true);
@@ -53,6 +53,7 @@ export default function NewGrnPage() {
   const [suppliers, setSuppliers] = useState<SupplierRow[]>([]);
   const [parts, setParts] = useState<PartRow[]>([]);
   const [purchaseOrders, setPurchaseOrders] = useState<PurchaseOrderRow[]>([]);
+  const [originalSupplierTaxes, setOriginalSupplierTaxes] = useState<TaxRow[]>([]);
   const [supplierTaxes, setSupplierTaxes] = useState<TaxRow[]>([]);
 
   const [form, setForm] = useState({
@@ -146,19 +147,13 @@ export default function NewGrnPage() {
         const role = String(tokenJson?.role ?? "");
 
         // Locations for this page selector.
-        let locs: Array<{ id: number; name: string }> = [];
+        let locs: ServiceLocationRow[] = [];
         if (role === "Admin") {
           const rows = await fetchLocations();
-          locs = Array.isArray(rows)
-            ? (rows as ServiceLocationRow[])
-                .map((l) => ({ id: Number(l.id), name: String(l.name ?? "") }))
-                .filter((l) => l.id > 0 && l.name)
-            : [];
+          locs = Array.isArray(rows) ? (rows as ServiceLocationRow[]) : [];
         } else {
           const allowed = Array.isArray(tokenJson?.allowed_locations) ? tokenJson.allowed_locations : [];
-          locs = allowed
-            .map((x: any) => ({ id: Number(x?.id), name: String(x?.name ?? "") }))
-            .filter((l: any) => l.id > 0 && l.name);
+          locs = allowed;
         }
         setLocationOptions(locs);
 
@@ -191,18 +186,49 @@ export default function NewGrnPage() {
   useEffect(() => {
     const sid = Number(form.supplier_id || 0);
     if (!sid || !Number.isFinite(sid)) {
-      setSupplierTaxes([]);
+      setOriginalSupplierTaxes([]);
       return;
     }
     void (async () => {
       try {
         const sup = await fetchSupplier(String(sid));
-        setSupplierTaxes(Array.isArray((sup as any)?.taxes) ? ((sup as any).taxes as TaxRow[]) : []);
+        setOriginalSupplierTaxes(Array.isArray((sup as any)?.taxes) ? ((sup as any).taxes as TaxRow[]) : []);
       } catch {
-        setSupplierTaxes([]);
+        setOriginalSupplierTaxes([]);
       }
     })();
   }, [form.supplier_id]);
+
+  useEffect(() => {
+    if (!selectedLocationId || locationOptions.length === 0) {
+      setSupplierTaxes(originalSupplierTaxes);
+      return;
+    }
+
+    const loc = locationOptions.find((l) => Number(l.id) === selectedLocationId);
+    if (!loc) {
+      setSupplierTaxes(originalSupplierTaxes);
+      return;
+    }
+
+    let allowedIds: number[] = [];
+    let isExplicitlySet = false;
+    try {
+      if (loc.allowed_taxes_json) {
+        allowedIds = JSON.parse(loc.allowed_taxes_json);
+        isExplicitlySet = Array.isArray(allowedIds);
+      }
+    } catch (e) {
+      allowedIds = [];
+    }
+
+    if (!isExplicitlySet && loc.allowed_taxes_json === null) {
+      setSupplierTaxes(originalSupplierTaxes);
+    } else {
+      const allowedSet = new Set(allowedIds.map(Number));
+      setSupplierTaxes(originalSupplierTaxes.filter((t) => allowedSet.has(Number(t.id))));
+    }
+  }, [selectedLocationId, locationOptions, originalSupplierTaxes]);
 
   useEffect(() => {
     // Ensure selectedLocationId always points to a valid option (non-PO GRNs must be able to choose locations).
