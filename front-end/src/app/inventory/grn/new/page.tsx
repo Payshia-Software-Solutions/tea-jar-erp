@@ -200,35 +200,8 @@ export default function NewGrnPage() {
   }, [form.supplier_id]);
 
   useEffect(() => {
-    if (!selectedLocationId || locationOptions.length === 0) {
-      setSupplierTaxes(originalSupplierTaxes);
-      return;
-    }
-
-    const loc = locationOptions.find((l) => Number(l.id) === selectedLocationId);
-    if (!loc) {
-      setSupplierTaxes(originalSupplierTaxes);
-      return;
-    }
-
-    let allowedIds: number[] = [];
-    let isExplicitlySet = false;
-    try {
-      if (loc.allowed_taxes_json) {
-        allowedIds = JSON.parse(loc.allowed_taxes_json);
-        isExplicitlySet = Array.isArray(allowedIds);
-      }
-    } catch (e) {
-      allowedIds = [];
-    }
-
-    if (!isExplicitlySet && loc.allowed_taxes_json === null) {
-      setSupplierTaxes(originalSupplierTaxes);
-    } else {
-      const allowedSet = new Set(allowedIds.map(Number));
-      setSupplierTaxes(originalSupplierTaxes.filter((t) => allowedSet.has(Number(t.id))));
-    }
-  }, [selectedLocationId, locationOptions, originalSupplierTaxes]);
+    setSupplierTaxes(originalSupplierTaxes);
+  }, [originalSupplierTaxes]);
 
   useEffect(() => {
     // Ensure selectedLocationId always points to a valid option (non-PO GRNs must be able to choose locations).

@@ -128,29 +128,8 @@ export function PurchaseOrderForm({ editId, initialData }: PurchaseOrderFormProp
   }, [form.supplier_id]);
 
   useEffect(() => {
-    if (!currentLocation) {
-      setSupplierTaxes(originalSupplierTaxes);
-      return;
-    }
-
-    let allowedIds: number[] = [];
-    let isExplicitlySet = false;
-    try {
-      if (currentLocation.allowed_taxes_json) {
-        allowedIds = JSON.parse(currentLocation.allowed_taxes_json);
-        isExplicitlySet = Array.isArray(allowedIds);
-      }
-    } catch (e) {
-      allowedIds = [];
-    }
-
-    if (!isExplicitlySet && currentLocation.allowed_taxes_json === null) {
-      setSupplierTaxes(originalSupplierTaxes);
-    } else {
-      const allowedSet = new Set(allowedIds.map(Number));
-      setSupplierTaxes(originalSupplierTaxes.filter((t) => allowedSet.has(Number(t.id))));
-    }
-  }, [currentLocation, originalSupplierTaxes]);
+    setSupplierTaxes(originalSupplierTaxes);
+  }, [originalSupplierTaxes]);
 
   // Sync currentLocation when form.location_id changes
   useEffect(() => {
@@ -417,19 +396,6 @@ export function PurchaseOrderForm({ editId, initialData }: PurchaseOrderFormProp
                 </div>
               ))}
               
-              {/* Show taxes that are NOT allowed at this location */}
-              {originalSupplierTaxes.length > 0 && originalSupplierTaxes.some(ot => !supplierTaxes.find(st => st.id === ot.id)) && (
-                <div className="pt-2 border-t mt-2">
-                   <p className="text-[10px] text-muted-foreground italic mb-1 text-right">Excluded taxes (not allowed at {currentLocation?.name || 'this location'}):</p>
-                   {originalSupplierTaxes.filter(ot => !supplierTaxes.find(st => st.id === ot.id)).map(ot => (
-                     <div key={ot.id} className="flex justify-between text-[10px] text-muted-foreground/60 line-through">
-                        <span>{ot.code} ({ot.rate_percent}%)</span>
-                        <span>Excluded</span>
-                     </div>
-                   ))}
-                </div>
-              )}
-
               <div className="pt-2 border-t flex justify-between">
                 <span className="font-bold">Grand Total</span>
                 <span className="font-bold text-xl text-primary tabular-nums">{money(taxCalc.grandTotal)}</span>
