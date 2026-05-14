@@ -658,75 +658,70 @@ export default function NewItemPage() {
                         <Input type="number" step="0.001" value={form.carton_tare_weight_kg} onChange={(e) => setForm(p => ({ ...p, carton_tare_weight_kg: e.target.value }))} />
                       </div>
                       <div className="space-y-2">
+                        <Label>Length (cm)</Label>
+                        <Input 
+                          type="number" 
+                          step="0.01" 
+                          value={form.carton_length_cm} 
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            setForm(p => {
+                              const next = { ...p, carton_length_cm: val };
+                              const l = parseFloat(val) || 0;
+                              const w = parseFloat(next.carton_width_cm) || 0;
+                              const h = parseFloat(next.carton_height_cm) || 0;
+                              const vol = (l * w * h) / 1000000;
+                              if (vol > 0) next.volume_cbm = vol.toFixed(6);
+                              return next;
+                            });
+                          }} 
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Width (cm)</Label>
+                        <Input 
+                          type="number" 
+                          step="0.01" 
+                          value={form.carton_width_cm} 
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            setForm(p => {
+                              const next = { ...p, carton_width_cm: val };
+                              const l = parseFloat(next.carton_length_cm) || 0;
+                              const w = parseFloat(val) || 0;
+                              const h = parseFloat(next.carton_height_cm) || 0;
+                              const vol = (l * w * h) / 1000000;
+                              if (vol > 0) next.volume_cbm = vol.toFixed(6);
+                              return next;
+                            });
+                          }} 
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Height (cm)</Label>
+                        <Input 
+                          type="number" 
+                          step="0.01" 
+                          value={form.carton_height_cm} 
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            setForm(p => {
+                              const next = { ...p, carton_height_cm: val };
+                              const l = parseFloat(next.carton_length_cm) || 0;
+                              const w = parseFloat(next.carton_width_cm) || 0;
+                              const h = parseFloat(val) || 0;
+                              const vol = (l * w * h) / 1000000;
+                              if (vol > 0) next.volume_cbm = vol.toFixed(6);
+                              return next;
+                            });
+                          }} 
+                        />
+                      </div>
+                      <div className="space-y-2">
                         <Label>Volume (CBM)</Label>
                         <Input type="number" step="0.000001" value={form.volume_cbm} onChange={(e) => setForm(p => ({ ...p, volume_cbm: e.target.value }))} />
                         <p className="text-[10px] text-muted-foreground">Manual override or calculated</p>
                       </div>
-
-                      {form.packing_type === "Carton" && (
-                        <>
-                          <div className="space-y-2">
-                            <Label>Carton Length (cm)</Label>
-                            <Input 
-                              type="number" 
-                              step="0.01" 
-                              value={form.carton_length_cm} 
-                              onChange={(e) => {
-                                const val = e.target.value;
-                                setForm(p => {
-                                  const next = { ...p, carton_length_cm: val };
-                                  const l = parseFloat(val) || 0;
-                                  const w = parseFloat(next.carton_width_cm) || 0;
-                                  const h = parseFloat(next.carton_height_cm) || 0;
-                                  const vol = (l * w * h) / 1000000;
-                                  if (vol > 0) next.volume_cbm = vol.toFixed(6);
-                                  return next;
-                                });
-                              }} 
-                            />
-                          </div>
-                          <div className="space-y-2">
-                            <Label>Carton Width (cm)</Label>
-                            <Input 
-                              type="number" 
-                              step="0.01" 
-                              value={form.carton_width_cm} 
-                              onChange={(e) => {
-                                const val = e.target.value;
-                                setForm(p => {
-                                  const next = { ...p, carton_width_cm: val };
-                                  const l = parseFloat(next.carton_length_cm) || 0;
-                                  const w = parseFloat(val) || 0;
-                                  const h = parseFloat(next.carton_height_cm) || 0;
-                                  const vol = (l * w * h) / 1000000;
-                                  if (vol > 0) next.volume_cbm = vol.toFixed(6);
-                                  return next;
-                                });
-                              }} 
-                            />
-                          </div>
-                          <div className="space-y-2">
-                            <Label>Carton Height (cm)</Label>
-                            <Input 
-                              type="number" 
-                              step="0.01" 
-                              value={form.carton_height_cm} 
-                              onChange={(e) => {
-                                const val = e.target.value;
-                                setForm(p => {
-                                  const next = { ...p, carton_height_cm: val };
-                                  const l = parseFloat(next.carton_length_cm) || 0;
-                                  const w = parseFloat(next.carton_width_cm) || 0;
-                                  const h = parseFloat(val) || 0;
-                                  const vol = (l * w * h) / 1000000;
-                                  if (vol > 0) next.volume_cbm = vol.toFixed(6);
-                                  return next;
-                                });
-                              }} 
-                            />
-                          </div>
-                        </>
-                      )}
                     </div>
                   </>
                 )}

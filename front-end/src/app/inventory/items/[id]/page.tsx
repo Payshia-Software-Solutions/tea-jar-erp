@@ -146,6 +146,8 @@ export default function ItemDetailPage() {
   const [supplierIds, setSupplierIds] = useState<number[]>([]);
   const [collectionIds, setCollectionIds] = useState<number[]>([]);
   const [allowedLocationIds, setAllowedLocationIds] = useState<number[]>([]);
+  const [supplierQuery, setSupplierQuery] = useState("");
+  const [collectionQuery, setCollectionQuery] = useState("");
 
   useEffect(() => {
     if (!id) return;
@@ -531,6 +533,59 @@ export default function ItemDetailPage() {
                         </SelectContent>
                       </Select>
                     </div>
+
+                    <div className="space-y-2">
+                      <Label>Collections (for POS)</Label>
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <Button type="button" variant="outline" className="w-full justify-between">
+                            <span className="truncate">
+                              {collectionIds.length === 0 ? "Select collections..." : `${collectionIds.length} selected`}
+                            </span>
+                            <LayoutGrid className="w-4 h-4 text-muted-foreground" />
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-[300px] p-3" align="start">
+                          <div className="space-y-2">
+                            <Input 
+                              placeholder="Search collections..." 
+                              value={collectionQuery} 
+                              onChange={(e) => setCollectionQuery(e.target.value)} 
+                              className="h-8 text-sm"
+                            />
+                            <ScrollArea className="h-[200px] pr-2">
+                              <div className="space-y-2">
+                                {collections
+                                  .filter((c) => (c.name ?? "").toLowerCase().includes(collectionQuery.trim().toLowerCase()))
+                                  .map((c) => {
+                                    const cid = Number(c.id);
+                                    const checked = collectionIds.includes(cid);
+                                    return (
+                                      <label key={c.id} className="flex items-center gap-2 text-sm cursor-pointer select-none hover:bg-muted/50 p-1 rounded transition-colors">
+                                        <Checkbox
+                                          checked={checked}
+                                          onCheckedChange={(v) => {
+                                            setCollectionIds((prev) => {
+                                              const next = new Set(prev);
+                                              if (v) next.add(cid);
+                                              else next.delete(cid);
+                                              return Array.from(next).sort((a, b) => a - b);
+                                            });
+                                          }}
+                                        />
+                                        <span className="truncate flex-1">{c.name}</span>
+                                      </label>
+                                    );
+                                  })}
+                                {collections.length === 0 ? (
+                                  <div className="text-xs text-muted-foreground py-4 text-center">No collections found</div>
+                                ) : null}
+                              </div>
+                            </ScrollArea>
+                          </div>
+                        </PopoverContent>
+                      </Popover>
+                    </div>
                     <div className="space-y-2">
                       <Label>Item Type</Label>
                       <Select value={form.item_type} onValueChange={(v: any) => setForm((p) => ({ ...p, item_type: v }))}>
@@ -549,6 +604,49 @@ export default function ItemDetailPage() {
                           {units.map((u) => <SelectItem key={u.id} value={u.name}>{u.name}</SelectItem>)}
                         </SelectContent>
                       </Select>
+                    </div>
+
+                    <div className="space-y-2 col-span-full border-t pt-4">
+                      <Label className="flex items-center gap-2">
+                        <Users className="w-4 h-4 text-muted-foreground" /> Associated Suppliers
+                      </Label>
+                      <div className="rounded-xl border bg-background p-4 space-y-3">
+                        <Input 
+                          placeholder="Search suppliers..." 
+                          value={supplierQuery} 
+                          onChange={(e) => setSupplierQuery(e.target.value)} 
+                          className="h-8 text-sm"
+                        />
+                        <ScrollArea className="h-[140px] pr-2">
+                          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                            {suppliers
+                              .filter((s) => (s.name ?? "").toLowerCase().includes(supplierQuery.trim().toLowerCase()))
+                              .map((s) => {
+                                const sid = Number(s.id);
+                                const checked = supplierIds.includes(sid);
+                                return (
+                                  <label key={s.id} className="flex items-center gap-2 text-xs cursor-pointer select-none hover:bg-muted/50 p-2 rounded-md transition-colors border border-muted-foreground/5 bg-muted/5">
+                                    <Checkbox
+                                      checked={checked}
+                                      onCheckedChange={(v) => {
+                                        setSupplierIds((prev) => {
+                                          const next = new Set(prev);
+                                          if (v) next.add(sid);
+                                          else next.delete(sid);
+                                          return Array.from(next).sort((a, b) => a - b);
+                                        });
+                                      }}
+                                    />
+                                    <span className="truncate flex-1 font-medium">{s.name}</span>
+                                  </label>
+                                );
+                              })}
+                            {suppliers.length === 0 ? (
+                              <div className="text-xs text-muted-foreground py-4 text-center col-span-full">No suppliers found</div>
+                            ) : null}
+                          </div>
+                        </ScrollArea>
+                      </div>
                     </div>
                     
                     <div className="col-span-full grid grid-cols-1 md:grid-cols-3 gap-5 border-t pt-5 mt-2">
@@ -736,15 +834,70 @@ export default function ItemDetailPage() {
                       <Label>HS Code</Label>
                       <Input value={form.hs_code} onChange={(e) => setForm(p => ({ ...p, hs_code: e.target.value }))} />
                    </div>
-                   <div className="space-y-2 lg:col-span-2">
-                      <Label>Volume (CBM)</Label>
-                      <div className="flex gap-2">
-                        <Input type="number" step="0.000001" value={form.volume_cbm} onChange={(e) => setForm(p => ({ ...p, volume_cbm: e.target.value }))} />
-                        <div className="flex items-center gap-1 text-[10px] bg-background border px-2 rounded-md whitespace-nowrap">
-                          {form.carton_length_cm} × {form.carton_width_cm} × {form.carton_height_cm}
-                        </div>
-                      </div>
-                   </div>
+                    <div className="space-y-2">
+                      <Label>Length (cm)</Label>
+                      <Input 
+                        type="number" 
+                        step="0.01" 
+                        value={form.carton_length_cm} 
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setForm(p => {
+                            const next = { ...p, carton_length_cm: val };
+                            const l = parseFloat(val) || 0;
+                            const w = parseFloat(next.carton_width_cm) || 0;
+                            const h = parseFloat(next.carton_height_cm) || 0;
+                            const vol = (l * w * h) / 1000000;
+                            if (vol > 0) next.volume_cbm = vol.toFixed(6);
+                            return next;
+                          });
+                        }} 
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Width (cm)</Label>
+                      <Input 
+                        type="number" 
+                        step="0.01" 
+                        value={form.carton_width_cm} 
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setForm(p => {
+                            const next = { ...p, carton_width_cm: val };
+                            const l = parseFloat(next.carton_length_cm) || 0;
+                            const w = parseFloat(val) || 0;
+                            const h = parseFloat(next.carton_height_cm) || 0;
+                            const vol = (l * w * h) / 1000000;
+                            if (vol > 0) next.volume_cbm = vol.toFixed(6);
+                            return next;
+                          });
+                        }} 
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Height (cm)</Label>
+                      <Input 
+                        type="number" 
+                        step="0.01" 
+                        value={form.carton_height_cm} 
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setForm(p => {
+                            const next = { ...p, carton_height_cm: val };
+                            const l = parseFloat(next.carton_length_cm) || 0;
+                            const w = parseFloat(next.carton_width_cm) || 0;
+                            const h = parseFloat(val) || 0;
+                            const vol = (l * w * h) / 1000000;
+                            if (vol > 0) next.volume_cbm = vol.toFixed(6);
+                            return next;
+                          });
+                        }} 
+                      />
+                    </div>
+                    <div className="space-y-2">
+                       <Label>Volume (CBM)</Label>
+                       <Input type="number" step="0.000001" value={form.volume_cbm} onChange={(e) => setForm(p => ({ ...p, volume_cbm: e.target.value }))} />
+                    </div>
                 </CardContent>
               </Card>
             </TabsContent>

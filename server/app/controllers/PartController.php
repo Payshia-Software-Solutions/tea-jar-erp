@@ -162,6 +162,7 @@ class PartController extends Controller {
             'is_online' => isset($data['is_online']) ? $data['is_online'] : $existing->is_online,
             'out_of_stock' => isset($data['out_of_stock']) ? $data['out_of_stock'] : ($existing->out_of_stock ?? 0),
             'public_description' => array_key_exists('public_description', $data) ? $data['public_description'] : $existing->public_description,
+            'collection_ids' => $collectionIds,
         ];
 
         if ($this->partModel->update($id, $payload, (int)$u['sub'])) {
