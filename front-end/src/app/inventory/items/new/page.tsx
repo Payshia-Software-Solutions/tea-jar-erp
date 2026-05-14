@@ -599,7 +599,7 @@ export default function NewItemPage() {
                       <Select value={form.item_department_id} onValueChange={(v) => setForm(p => ({ ...p, item_department_id: v }))}>
                         <SelectTrigger><SelectValue placeholder="Select Department" /></SelectTrigger>
                         <SelectContent>
-                          {departments.filter(d => !form.item_section_id || d.section_id === parseInt(form.item_section_id)).map(d => (
+                          {departments.filter(d => !form.item_section_id || String(d.section_id) === String(form.item_section_id)).map(d => (
                             <SelectItem key={d.id} value={String(d.id)}>{d.name}</SelectItem>
                           ))}
                         </SelectContent>
