@@ -437,7 +437,7 @@ export const uploadVehicleDocument = async (file: File) => {
 };
 
 export const syncVehicles = async () => {
-  const res = await api('/api/vehiclesync/sync', { method: 'POST' });
+  const res = await api('/api/vehicle-sync/sync', { method: 'POST' });
   if (!res.ok) throw new Error('Sync failed');
   return res.json() as Promise<ApiSuccess<{ success: number; failed: number }>>;
 };

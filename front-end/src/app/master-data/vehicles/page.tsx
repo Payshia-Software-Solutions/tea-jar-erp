@@ -116,7 +116,7 @@ export default function VehiclesPage() {
   const handleSyncVehicles = async () => {
     setIsSyncing(true);
     try {
-      const res = await api('/api/vehiclesync/sync', { method: 'POST' });
+      const res = await api('/api/vehicle-sync/sync', { method: 'POST' });
       const json = await res.json();
       if (json.status === 'success') {
         toast({
