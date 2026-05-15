@@ -1,3 +1,4 @@
+// Fix build error
 "use client";
 
 import React, { useEffect, useMemo, useState } from "react";
@@ -28,6 +29,9 @@ import {
   updateOrderPart,
   type OrderPartRow,
   type PartRow,
+  updateOrderDetails,
+  fetchCategories,
+  fetchChecklistTemplates,
 } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import {
@@ -48,6 +52,9 @@ import {
   Boxes,
   MapPin,
   User,
+  MessageSquare,
+  FileText,
+  Settings2,
 } from "lucide-react";
 import { format } from "date-fns";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -174,14 +181,32 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
   const [selectedPart, setSelectedPart] = useState<PartRow | null>(null);
   const [batches, setBatches] = useState<any[]>([]);
   const [batchesLoading, setBatchesLoading] = useState(false);
+  const [activeChecklistIdx, setActiveChecklistIdx] = useState<number | null>(null);
+
+  // Edit Categories & Checklist
+  const [isEditingCategories, setIsEditingCategories] = useState(false);
+  const [isEditingChecklist, setIsEditingChecklist] = useState(false);
+  const [allCategories, setAllCategories] = useState<any[]>([]);
+  const [allChecklistTemplates, setAllChecklistTemplates] = useState<any[]>([]);
+  const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
+  const [selectedChecklist, setSelectedChecklist] = useState<string[]>([]);
+  const [isUpdating, setIsUpdating] = useState(false);
 
   useEffect(() => {
     const run = async () => {
       setLoading(true);
       setError(null);
       try {
-        const o = await fetchOrder(String(id));
+        const [o, cats, templates] = await Promise.all([
+          fetchOrder(String(id)),
+          fetchCategories().catch(() => []),
+          fetchChecklistTemplates().catch(() => []),
+        ]);
         setOrder(o);
+        setAllCategories(cats);
+        setAllChecklistTemplates(templates);
+        setSelectedCategories(o.categories || []);
+        setSelectedChecklist(o.checklist || []);
       } catch (e: any) {
         setOrder(null);
         setError(e?.message || "Failed to load order");
@@ -191,6 +216,47 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
     };
     if (id) void run();
   }, [id]);
+
+  const data = useMemo(() => {
+    const o: any = order || {};
+    const createdAt = parseMysqlDatetime(o.created_at);
+    const expectedAt = parseMysqlDatetime(o.expected_time);
+
+    return {
+      id: o.id ?? id,
+      status: String(o.status || "Pending"),
+      priority: String(o.priority || "Medium"),
+      vehicleModel: String(o.vehicle_model || "Repair Order"),
+      vehicleIdentifier: String(o.vehicle_identifier || ""),
+      mileage: o.mileage ?? null,
+      problem: String(o.problem_description || ""),
+      comments: String(o.comments || ""),
+      bay: String(o.location || ""),
+      technician: String(o.technician || ""),
+      createdAt,
+      expectedAt,
+      releaseAt: parseMysqlDatetime(o.release_time),
+      releaseRaw: String(o.release_time || ""),
+      categories: safeJsonArray(o.categories_json),
+      checklist: safeJsonArray(o.checklist_json),
+      checklistDone: safeChecklistDone(o.checklist_done_json),
+      completionComments: String(o.completion_comments || ""),
+      attachments: safeJsonArray(o.attachments_json),
+    };
+  }, [order, id]);
+
+  // Re-sync selection state when dialogs open to ensure we don't lose existing data
+  useEffect(() => {
+    if (isEditingCategories) {
+      setSelectedCategories(data.categories || []);
+    }
+  }, [isEditingCategories, data.categories]);
+
+  useEffect(() => {
+    if (isEditingChecklist) {
+      setSelectedChecklist(data.checklist || []);
+    }
+  }, [isEditingChecklist, data.checklist]);
 
   const loadParts = async () => {
     if (!id) return;
@@ -239,33 +305,6 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
     }
   }, [addPartId, partsMaster, order?.location_id]);
 
-  const data = useMemo(() => {
-    const o: any = order || {};
-    const createdAt = parseMysqlDatetime(o.created_at);
-    const expectedAt = parseMysqlDatetime(o.expected_time);
-
-    return {
-      id: o.id ?? id,
-      status: String(o.status || "Pending"),
-      priority: String(o.priority || "Medium"),
-      vehicleModel: String(o.vehicle_model || "Repair Order"),
-      vehicleIdentifier: String(o.vehicle_identifier || ""),
-      mileage: o.mileage ?? null,
-      problem: String(o.problem_description || ""),
-      comments: String(o.comments || ""),
-      bay: String(o.location || ""),
-      technician: String(o.technician || ""),
-      createdAt,
-      expectedAt,
-      releaseAt: parseMysqlDatetime(o.release_time),
-      releaseRaw: String(o.release_time || ""),
-      categories: safeJsonArray(o.categories_json),
-      checklist: safeJsonArray(o.checklist_json),
-      checklistDone: safeChecklistDone(o.checklist_done_json),
-      completionComments: String(o.completion_comments || ""),
-      attachments: safeJsonArray(o.attachments_json),
-    };
-  }, [order, id]);
 
   const remaining = useMemo(() => timeRemaining(data.expectedAt), [data.expectedAt]);
   const isLocked = data.status === "Completed" || data.status === "Cancelled";
@@ -304,6 +343,36 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
     const url = `/orders/print/${encodeURIComponent(String(data.id))}?autoprint=1`;
     const w = window.open(url, "_blank", "noopener,noreferrer");
     if (!w) router.push(url);
+  };
+
+  const onPrintCompletion = () => {
+    const url = `/orders/completion-print/${encodeURIComponent(String(data.id))}?autoprint=1`;
+    const w = window.open(url, "_blank", "noopener,noreferrer");
+    if (!w) router.push(url);
+  };
+
+  const onUpdateDetails = async (payload: { categories?: string[]; checklist?: string[] }) => {
+    if (!id || isUpdating) return;
+    setIsUpdating(true);
+    try {
+      await updateOrderDetails(String(id), payload);
+      const updated = await fetchOrder(String(id));
+      setOrder(updated);
+      toast({ 
+        title: "Order Updated", 
+        description: "Your changes have been saved successfully." 
+      });
+      setIsEditingCategories(false);
+      setIsEditingChecklist(false);
+    } catch (err: any) {
+      toast({ 
+        title: "Update Failed", 
+        description: err.message || "Failed to update order details", 
+        variant: "destructive" 
+      });
+    } finally {
+      setIsUpdating(false);
+    }
   };
 
   const handleComplete = async () => {
@@ -479,9 +548,15 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
                 Complete Job
               </Button>
             ) : null}
+            {data.status === "Completed" && (
+              <Button variant="default" size="sm" className="gap-2 bg-primary hover:bg-primary/90" onClick={onPrintCompletion}>
+                <FileText className="w-4 h-4" />
+                Print Report
+              </Button>
+            )}
             <Button variant="outline" size="sm" className="gap-2" onClick={onPrint}>
               <Printer className="w-4 h-4" />
-              Print
+              Thermal
             </Button>
           </div>
         </div>
@@ -641,9 +716,16 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
 
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
                   <Card className="border shadow-none lg:col-span-5">
-                    <CardHeader className="pb-3">
-                      <CardTitle className="text-base">Categories</CardTitle>
-                      <CardDescription>Tags for reporting and routing</CardDescription>
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                      <div>
+                        <CardTitle className="text-base">Categories</CardTitle>
+                        <CardDescription>Tags for reporting and routing</CardDescription>
+                      </div>
+                      {!isLocked && (
+                        <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-400 hover:text-primary" onClick={() => setIsEditingCategories(true)}>
+                          <Settings2 className="w-4 h-4" />
+                        </Button>
+                      )}
                     </CardHeader>
                     <CardContent>
                       {data.categories.length ? (
@@ -661,9 +743,16 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
                   </Card>
 
                   <Card className="border shadow-none lg:col-span-7">
-                    <CardHeader className="pb-3">
-                      <CardTitle className="text-base">Checklist</CardTitle>
-                      <CardDescription>Items to verify for this repair</CardDescription>
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                      <div>
+                        <CardTitle className="text-base">Checklist</CardTitle>
+                        <CardDescription>Items to verify for this repair</CardDescription>
+                      </div>
+                      {!isLocked && (
+                        <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-400 hover:text-primary" onClick={() => setIsEditingChecklist(true)}>
+                          <Settings2 className="w-4 h-4" />
+                        </Button>
+                      )}
                     </CardHeader>
                     <CardContent>
                       {checklistState.length ? (
@@ -671,28 +760,35 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
                           <div className="space-y-2">
                             {checklistState.map((c, idx) => (
                               <div key={`${c.item}-${idx}`} className="rounded-lg border bg-muted/5 p-3 space-y-2">
-                                <label className="flex items-start gap-3">
-                                  <Checkbox
-                                    checked={c.checked}
-                                    disabled={isLocked}
-                                    onCheckedChange={(v) => {
-                                      const next = [...checklistState];
-                                      next[idx] = { ...next[idx], checked: Boolean(v) };
-                                      setChecklistState(next);
-                                    }}
-                                  />
-                                  <div className="text-sm leading-tight font-medium">{c.item}</div>
-                                </label>
-                                <Input
-                                  placeholder="Optional comment"
-                                  value={c.comment ?? ""}
-                                  disabled={isLocked}
-                                  onChange={(e) => {
-                                    const next = [...checklistState];
-                                    next[idx] = { ...next[idx], comment: e.target.value };
-                                    setChecklistState(next);
-                                  }}
-                                />
+                                  <div 
+                                    className={cn(
+                                      "flex items-start justify-between gap-3 p-3 rounded-lg border transition-all cursor-pointer",
+                                      c.checked ? "bg-green-50/50 border-green-200 dark:bg-green-950/20 dark:border-green-900/50" : "bg-muted/5 hover:bg-muted/10"
+                                    )}
+                                    onClick={() => !isLocked && setActiveChecklistIdx(idx)}
+                                  >
+                                    <div className="flex items-start gap-3">
+                                      <Checkbox
+                                        checked={c.checked}
+                                        disabled={isLocked}
+                                        onCheckedChange={(v) => {
+                                          const next = [...checklistState];
+                                          next[idx] = { ...next[idx], checked: Boolean(v) };
+                                          setChecklistState(next);
+                                        }}
+                                        onClick={(e) => e.stopPropagation()}
+                                      />
+                                      <div className="space-y-1">
+                                        <div className="text-sm leading-tight font-medium">{c.item}</div>
+                                        {c.comment && (
+                                          <div className="text-xs text-muted-foreground line-clamp-1 italic">
+                                            "{c.comment}"
+                                          </div>
+                                        )}
+                                      </div>
+                                    </div>
+                                    <MessageSquare className={cn("w-4 h-4 shrink-0 mt-0.5", c.comment ? "text-primary" : "text-muted-foreground/40")} />
+                                  </div>
                               </div>
                             ))}
                           </div>
@@ -896,7 +992,13 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
                 <CardDescription>Print or go back to queue</CardDescription>
               </CardHeader>
               <CardContent className="space-y-3">
-                <Button className="w-full gap-2" onClick={onPrint}>
+                {data.status === "Completed" && (
+                  <Button className="w-full gap-2 bg-primary hover:bg-primary/90" onClick={onPrintCompletion}>
+                    <FileText className="w-4 h-4" />
+                    Print Completion Report (A4)
+                  </Button>
+                )}
+                <Button variant="outline" className="w-full gap-2 text-slate-600 border-slate-200" onClick={onPrint}>
                   <Printer className="w-4 h-4" />
                   Print Thermal Receipt
                 </Button>
@@ -1016,6 +1118,56 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
         </DialogContent>
       </Dialog>
 
+      <Dialog open={activeChecklistIdx !== null} onOpenChange={(v) => !v && setActiveChecklistIdx(null)}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>Checklist Item Details</DialogTitle>
+            <DialogDescription>Update the status and add comments for this task.</DialogDescription>
+          </DialogHeader>
+          
+          {activeChecklistIdx !== null && checklistState[activeChecklistIdx] && (
+            <div className="space-y-6 py-4">
+              <div className="flex items-center justify-between p-4 rounded-xl border bg-muted/30">
+                <div className="space-y-0.5">
+                  <Label className="text-base">{checklistState[activeChecklistIdx].item}</Label>
+                  <p className="text-xs text-muted-foreground">Mark this task as completed</p>
+                </div>
+                <Checkbox
+                  className="h-6 w-6"
+                  checked={checklistState[activeChecklistIdx].checked}
+                  onCheckedChange={(v) => {
+                    const next = [...checklistState];
+                    next[activeChecklistIdx] = { ...next[activeChecklistIdx], checked: Boolean(v) };
+                    setChecklistState(next);
+                  }}
+                />
+              </div>
+
+              <div className="space-y-3">
+                <Label>Notes & Observations</Label>
+                <Textarea
+                  placeholder="E.g. Brake pads are 50% worn, suggested replacement in next service..."
+                  value={checklistState[activeChecklistIdx].comment || ""}
+                  rows={5}
+                  className="resize-none"
+                  onChange={(e) => {
+                    const next = [...checklistState];
+                    next[activeChecklistIdx] = { ...next[activeChecklistIdx], comment: e.target.value };
+                    setChecklistState(next);
+                  }}
+                />
+              </div>
+            </div>
+          )}
+
+          <DialogFooter>
+            <Button className="w-full" onClick={() => setActiveChecklistIdx(null)}>
+              Done
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       <Dialog open={completeOpen} onOpenChange={setCompleteOpen}>
         <DialogContent className="sm:max-w-[640px]">
           <DialogHeader>
@@ -1041,6 +1193,129 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
             <Button variant="outline" className="flex-1" onClick={() => setCompleteOpen(false)}>Cancel</Button>
             <Button className="flex-1" onClick={handleComplete} disabled={completing}>
               {completing ? "Completing..." : "Complete & Print"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Categories Dialog */}
+      <Dialog open={isEditingCategories} onOpenChange={setIsEditingCategories}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Manage Service Categories</DialogTitle>
+            <DialogDescription>
+              Select the service types applicable to this repair order.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid grid-cols-2 gap-2 py-4 max-h-[300px] overflow-y-auto pr-2">
+            {allCategories.map((cat) => (
+              <div 
+                key={cat.id} 
+                className={cn(
+                  "flex items-center gap-2 p-2 border rounded-md cursor-pointer transition-colors",
+                  selectedCategories.includes(cat.name) 
+                    ? "bg-primary/10 border-primary text-primary" 
+                    : "hover:bg-slate-50 border-slate-100"
+                )}
+                onClick={() => {
+                  setSelectedCategories(prev => 
+                    prev.includes(cat.name) 
+                      ? prev.filter(n => n !== cat.name) 
+                      : [...prev, cat.name]
+                  );
+                }}
+              >
+                <div className={cn(
+                  "w-4 h-4 rounded-sm border flex items-center justify-center",
+                  selectedCategories.includes(cat.name) ? "bg-primary border-primary text-white" : "border-slate-300"
+                )}>
+                  {selectedCategories.includes(cat.name) && <CheckCircle2 className="w-3 h-3" />}
+                </div>
+                <span className="text-xs font-medium">{cat.name}</span>
+              </div>
+            ))}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsEditingCategories(false)} disabled={isUpdating}>
+              Cancel
+            </Button>
+            <Button onClick={() => onUpdateDetails({ categories: selectedCategories })} disabled={isUpdating}>
+              {isUpdating ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+              Save Changes
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Checklist Dialog */}
+      <Dialog open={isEditingChecklist} onOpenChange={setIsEditingChecklist}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Manage Technical Checklist</DialogTitle>
+            <DialogDescription>
+              Select additional inspection points from the master template.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="grid grid-cols-1 gap-2 py-4 max-h-[350px] overflow-y-auto pr-2">
+            {allChecklistTemplates.map((item) => {
+              const label = item.description || item.name || "Unnamed Item";
+              const isAlreadySaved = data.checklist.includes(label);
+              const isSelected = selectedChecklist.includes(label);
+              
+              return (
+                <div 
+                  key={item.id} 
+                  className={cn(
+                    "flex items-center gap-3 p-3 border rounded-md transition-colors",
+                    isAlreadySaved 
+                      ? "bg-slate-50 border-slate-200 opacity-80 cursor-not-allowed" 
+                      : "cursor-pointer hover:bg-slate-50 border-slate-100",
+                    isSelected && !isAlreadySaved ? "bg-primary/5 border-primary/40 text-primary" : ""
+                  )}
+                  onClick={() => {
+                    if (isAlreadySaved) return;
+                    setSelectedChecklist(prev => 
+                      prev.includes(label) 
+                        ? prev.filter(n => n !== label) 
+                        : [...prev, label]
+                    );
+                  }}
+                >
+                  <div className={cn(
+                    "w-5 h-5 rounded-sm border flex items-center justify-center shrink-0",
+                    isSelected ? "bg-primary border-primary text-white" : "border-slate-300",
+                    isAlreadySaved ? "bg-slate-400 border-slate-400" : ""
+                  )}>
+                    {isSelected && <CheckCircle2 className="w-3.5 h-3.5" />}
+                  </div>
+                  <div className="space-y-0.5">
+                    <div className="flex items-center gap-2">
+                      <span className={cn(
+                        "text-xs font-bold uppercase tracking-tight",
+                        isAlreadySaved ? "text-slate-500" : ""
+                      )}>
+                        {label}
+                      </span>
+                      {isAlreadySaved && (
+                        <Badge variant="outline" className="text-[9px] h-3.5 px-1 bg-slate-100 text-slate-500 border-slate-300">
+                          Saved
+                        </Badge>
+                      )}
+                    </div>
+                    {item.category && <p className="text-[10px] text-slate-500">{item.category}</p>}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsEditingChecklist(false)} disabled={isUpdating}>
+              Cancel
+            </Button>
+            <Button onClick={() => onUpdateDetails({ checklist: selectedChecklist })} disabled={isUpdating}>
+              {isUpdating ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+              Update Checklist
             </Button>
           </DialogFooter>
         </DialogContent>

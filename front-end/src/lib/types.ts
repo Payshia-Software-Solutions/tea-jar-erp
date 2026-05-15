@@ -40,6 +40,13 @@ export interface Vehicle {
   year: number;
   vin: string;
   image_filename?: string | null;
+  source?: 'manual' | 'api';
+  external_id?: string | null;
+  external_make?: string | null;
+  external_model?: string | null;
+  last_sync_at?: string | null;
+  current_mileage?: number;
+  mileage_last_synced_at?: string | null;
   created_at: string;
 }
 

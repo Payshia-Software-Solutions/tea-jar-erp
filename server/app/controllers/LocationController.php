@@ -55,7 +55,7 @@ class LocationController extends Controller {
         $data = json_decode(file_get_contents('php://input'), true) ?: [];
         $name = trim((string)($data['name'] ?? ''));
         $type = trim((string)($data['location_type'] ?? 'service'));
-        if (!in_array($type, ['service','warehouse'], true)) $type = 'service';
+        if (!in_array($type, ['service','warehouse','fleet','sales','factory','hq'], true)) $type = 'service';
         if ($name === '') {
             $this->error('Name is required', 400);
             return;
@@ -100,7 +100,7 @@ class LocationController extends Controller {
         $data = json_decode(file_get_contents('php://input'), true) ?: [];
         $name = trim((string)($data['name'] ?? ''));
         $type = trim((string)($data['location_type'] ?? 'service'));
-        if (!in_array($type, ['service','warehouse'], true)) $type = 'service';
+        if (!in_array($type, ['service','warehouse','fleet','sales','factory','hq'], true)) $type = 'service';
         if ($name === '') {
             $this->error('Name is required', 400);
             return;

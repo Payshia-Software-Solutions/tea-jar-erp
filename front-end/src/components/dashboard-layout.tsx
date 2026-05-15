@@ -476,11 +476,11 @@ export function DashboardLayout({ children, fullWidth = true, title }: { childre
             </div>
           </SidebarHeader>
           <SidebarContent className="px-2 py-4 gap-1">
-                        <SidebarGroup className="p-0">
+                        {!canSeeCoreFeatures ? null : (
+            <SidebarGroup className="p-0">
               <SidebarGroupContent>
                 <SidebarMenu>
-                  {!canSeeCoreFeatures ? null : (
-                    <SidebarMenuItem>
+<SidebarMenuItem>
                       <SidebarMenuButton
                         type="button"
                         onClick={() => setIsCoreFeaturesOpen((v) => !v)}
@@ -516,16 +516,16 @@ export function DashboardLayout({ children, fullWidth = true, title }: { childre
                         </SidebarMenuSub>
                       ) : null}
                     </SidebarMenuItem>
-                  )}
                 </SidebarMenu>
               </SidebarGroupContent>
             </SidebarGroup>
+            )}
 
+            {!canSeeServiceCenter ? null : (
             <SidebarGroup className="p-0">
               <SidebarGroupContent>
                 <SidebarMenu>
-                  {!canSeeServiceCenter ? null : (
-                    <SidebarMenuItem>
+<SidebarMenuItem>
                       <SidebarMenuButton
                         type="button"
                         onClick={() => setIsServiceCenterOpen((v) => !v)}
@@ -561,16 +561,16 @@ export function DashboardLayout({ children, fullWidth = true, title }: { childre
                         </SidebarMenuSub>
                       ) : null}
                     </SidebarMenuItem>
-                  )}
                 </SidebarMenu>
               </SidebarGroupContent>
             </SidebarGroup>
+            )}
 
+            {!canSeeVendors ? null : (
             <SidebarGroup className="p-0">
               <SidebarGroupContent>
                 <SidebarMenu>
-                  {!canSeeVendors ? null : (
-                    <SidebarMenuItem>
+<SidebarMenuItem>
                       <SidebarMenuButton
                         type="button"
                         onClick={() => setIsVendorsOpen((v) => !v)}
@@ -606,16 +606,16 @@ export function DashboardLayout({ children, fullWidth = true, title }: { childre
                         </SidebarMenuSub>
                       ) : null}
                     </SidebarMenuItem>
-                  )}
                 </SidebarMenu>
               </SidebarGroupContent>
             </SidebarGroup>
+            )}
 
+            {!canSeeInventory ? null : (
             <SidebarGroup className="p-0">
               <SidebarGroupContent>
                 <SidebarMenu>
-                  {!canSeeInventory ? null : (
-                    <SidebarMenuItem>
+<SidebarMenuItem>
                       <SidebarMenuButton
                         type="button"
                         onClick={() => setIsInventoryOpen((v) => !v)}
@@ -651,16 +651,16 @@ export function DashboardLayout({ children, fullWidth = true, title }: { childre
                         </SidebarMenuSub>
                       ) : null}
                     </SidebarMenuItem>
-                  )}
                 </SidebarMenu>
               </SidebarGroupContent>
             </SidebarGroup>
+            )}
 
+            {!canSeeCrm ? null : (
             <SidebarGroup className="p-0">
               <SidebarGroupContent>
                 <SidebarMenu>
-                  {!canSeeCrm ? null : (
-                    <SidebarMenuItem>
+<SidebarMenuItem>
                       <SidebarMenuButton
                         type="button"
                         onClick={() => setIsCrmOpen((v) => !v)}
@@ -696,16 +696,16 @@ export function DashboardLayout({ children, fullWidth = true, title }: { childre
                         </SidebarMenuSub>
                       ) : null}
                     </SidebarMenuItem>
-                  )}
                 </SidebarMenu>
               </SidebarGroupContent>
             </SidebarGroup>
+            )}
 
+            {!canSeeSales ? null : (
             <SidebarGroup className="p-0">
               <SidebarGroupContent>
                 <SidebarMenu>
-                  {!canSeeSales ? null : (
-                    <SidebarMenuItem>
+<SidebarMenuItem>
                       <SidebarMenuButton
                         type="button"
                         onClick={() => setIsSalesOpen((v) => !v)}
@@ -741,16 +741,16 @@ export function DashboardLayout({ children, fullWidth = true, title }: { childre
                         </SidebarMenuSub>
                       ) : null}
                     </SidebarMenuItem>
-                  )}
                 </SidebarMenu>
               </SidebarGroupContent>
             </SidebarGroup>
+            )}
 
+            {!canSeeMarketing ? null : (
             <SidebarGroup className="p-0">
               <SidebarGroupContent>
                 <SidebarMenu>
-                  {!canSeeMarketing ? null : (
-                    <SidebarMenuItem>
+<SidebarMenuItem>
                       <SidebarMenuButton
                         type="button"
                         onClick={() => setIsMarketingOpen((v) => !v)}
@@ -786,16 +786,16 @@ export function DashboardLayout({ children, fullWidth = true, title }: { childre
                         </SidebarMenuSub>
                       ) : null}
                     </SidebarMenuItem>
-                  )}
                 </SidebarMenu>
               </SidebarGroupContent>
             </SidebarGroup>
+            )}
 
+            {!canSeeEcommerce ? null : (
             <SidebarGroup className="p-0">
               <SidebarGroupContent>
                 <SidebarMenu>
-                  {!canSeeEcommerce ? null : (
-                    <SidebarMenuItem>
+<SidebarMenuItem>
                       <SidebarMenuButton
                         type="button"
                         onClick={() => setIsEcommerceOpen((v) => !v)}
@@ -831,17 +831,16 @@ export function DashboardLayout({ children, fullWidth = true, title }: { childre
                         </SidebarMenuSub>
                       ) : null}
                     </SidebarMenuItem>
-                  )}
                 </SidebarMenu>
               </SidebarGroupContent>
             </SidebarGroup>
+            )}
 
+            {!canSeeAccounting ? null : (
             <SidebarGroup className="p-0">
-
               <SidebarGroupContent>
                 <SidebarMenu>
-                  {!canSeeAccounting ? null : (
-                    <SidebarMenuItem>
+<SidebarMenuItem>
                       <SidebarMenuButton
                         type="button"
                         onClick={() => setIsAccountingOpen((v) => !v)}
@@ -877,16 +876,16 @@ export function DashboardLayout({ children, fullWidth = true, title }: { childre
                         </SidebarMenuSub>
                       ) : null}
                     </SidebarMenuItem>
-                  )}
                 </SidebarMenu>
               </SidebarGroupContent>
             </SidebarGroup>
+            )}
 
+            {!canSeeProduction ? null : (
             <SidebarGroup className="p-0">
               <SidebarGroupContent>
                 <SidebarMenu>
-                  {!canSeeProduction ? null : (
-                    <SidebarMenuItem>
+<SidebarMenuItem>
                       <SidebarMenuButton
                         type="button"
                         onClick={() => setIsProductionOpen((v) => !v)}
@@ -922,16 +921,16 @@ export function DashboardLayout({ children, fullWidth = true, title }: { childre
                         </SidebarMenuSub>
                       ) : null}
                     </SidebarMenuItem>
-                  )}
                 </SidebarMenu>
               </SidebarGroupContent>
             </SidebarGroup>
+            )}
 
+            {!canSeeHrm ? null : (
             <SidebarGroup className="p-0">
               <SidebarGroupContent>
                 <SidebarMenu>
-                  {!canSeeHrm ? null : (
-                    <SidebarMenuItem>
+<SidebarMenuItem>
                       <SidebarMenuButton
                         type="button"
                         onClick={() => setIsHrmOpen((v) => !v)}
@@ -967,16 +966,16 @@ export function DashboardLayout({ children, fullWidth = true, title }: { childre
                         </SidebarMenuSub>
                       ) : null}
                     </SidebarMenuItem>
-                  )}
                 </SidebarMenu>
               </SidebarGroupContent>
             </SidebarGroup>
+            )}
 
+            {!canSeeFrontOffice ? null : (
             <SidebarGroup className="p-0">
               <SidebarGroupContent>
                 <SidebarMenu>
-                  {!canSeeFrontOffice ? null : (
-                    <SidebarMenuItem>
+<SidebarMenuItem>
                       <SidebarMenuButton
                         type="button"
                         onClick={() => setIsFrontOfficeOpen((v) => !v)}
@@ -1012,16 +1011,16 @@ export function DashboardLayout({ children, fullWidth = true, title }: { childre
                         </SidebarMenuSub>
                       ) : null}
                     </SidebarMenuItem>
-                  )}
                 </SidebarMenu>
               </SidebarGroupContent>
             </SidebarGroup>
+            )}
 
+            {!canSeeBanquet ? null : (
             <SidebarGroup className="p-0">
               <SidebarGroupContent>
                 <SidebarMenu>
-                  {!canSeeBanquet ? null : (
-                    <SidebarMenuItem>
+<SidebarMenuItem>
                       <SidebarMenuButton
                         type="button"
                         onClick={() => setIsBanquetOpen((v) => !v)}
@@ -1057,16 +1056,16 @@ export function DashboardLayout({ children, fullWidth = true, title }: { childre
                         </SidebarMenuSub>
                       ) : null}
                     </SidebarMenuItem>
-                  )}
                 </SidebarMenu>
               </SidebarGroupContent>
             </SidebarGroup>
+            )}
 
+            {!canSeeMasterData ? null : (
             <SidebarGroup className="p-0">
               <SidebarGroupContent>
                 <SidebarMenu>
-                  {!canSeeMasterData ? null : (
-                    <SidebarMenuItem>
+<SidebarMenuItem>
                       <SidebarMenuButton
                         type="button"
                         onClick={() => setIsMasterDataOpen((v) => !v)}
@@ -1105,10 +1104,10 @@ export function DashboardLayout({ children, fullWidth = true, title }: { childre
                         </SidebarMenuSub>
                       ) : null}
                     </SidebarMenuItem>
-                  )}
                 </SidebarMenu>
               </SidebarGroupContent>
             </SidebarGroup>
+            )}
 
             <SidebarGroup className="mt-auto p-0">
               <SidebarMenu>

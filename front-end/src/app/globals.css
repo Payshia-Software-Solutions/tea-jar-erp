@@ -127,3 +127,11 @@
     background: hsl(var(--sidebar-foreground) / 0.38);
   }
 }
+
+@media print {
+  .no-print,
+  .print-hidden,
+  [data-no-print="true"] {
+    display: none !important;
+  }
+}

@@ -70,9 +70,6 @@ export const serviceCenterItems: NavItem[] = [
   { icon: CheckCircle2, label: "Completed Orders", href: "/orders/completed", perm: "orders.read" },
   { icon: Grid, label: "Bays Board", href: "/dashboard/bays", perm: "bays.read" },
   { icon: Car, label: "Vehicles List", href: "/master-data/vehicles", perm: "vehicles.read" },
-  { icon: Tag, label: "Brands", href: "/master-data/brands", perm: "brands.read" },
-  { icon: Tag, label: "Vehicle Makes", href: "/master-data/makes", perm: "makes.read" },
-  { icon: Layers, label: "Vehicle Models", href: "/master-data/models", perm: "models.read" },
   { icon: Users, label: "Technicians", href: "/master-data/technicians", perm: "technicians.read" },
   { icon: Grid, label: "Service Bays", href: "/master-data/bays", perm: "bays.read" },
   { icon: Tags, label: "Repair Categories", href: "/master-data/categories", perm: "categories.read" },
@@ -128,6 +125,9 @@ export const masterDataItems: NavItem[] = [
   { icon: Truck, label: "Shipping Carriers", href: "/master-data/shipping-carriers", perm: "parts.read" },
   { icon: Grid, label: "Departments", href: "/master-data/departments", perm: "departments.read" },
   { icon: Grid, label: "Restaurant Tables", href: "/master-data/tables", perm: "tables.read" },
+  { icon: Tag, label: "Brands", href: "/master-data/brands", perm: "brands.read" },
+  { icon: Tag, label: "Vehicle Makes", href: "/master-data/makes", perm: "makes.read" },
+  { icon: Layers, label: "Vehicle Models", href: "/master-data/models", perm: "models.read" },
 ];
 
 export const accountingItems: NavItem[] = [

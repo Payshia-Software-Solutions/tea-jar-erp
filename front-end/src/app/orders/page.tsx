@@ -176,11 +176,20 @@ export default function OrderQueuePage() {
 
   const handleOpenAssign = (order: RepairOrder) => {
     setSelectedOrder(order);
+    // Default release time to today + 2 hours if not set
+    let initialRelease = order.releaseTime || '';
+    if (!initialRelease) {
+      const now = new Date();
+      now.setHours(now.getHours() + 2); // suggest 2 hours from now
+      now.setMinutes(0);
+      initialRelease = format(now, "yyyy-MM-dd'T'HH:mm");
+    }
+
     setAssignment({
       bay: order.location || '' as BayLocation,
       technician: order.technician || '',
       proposedTime: order.proposedTime || '',
-      releaseTime: order.releaseTime || ''
+      releaseTime: initialRelease
     });
     setAssignStep('bay');
     setIsAssignDialogOpen(true);
@@ -598,36 +607,27 @@ export default function OrderQueuePage() {
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <Label className="text-xs font-bold uppercase text-muted-foreground">Release Date</Label>
-                      <StandaloneDatePicker
-                        value={assignment.releaseTime ? assignment.releaseTime.split('T')[0] : ''}
-                        onChange={(d) => {
+                      <Input
+                        type="date"
+                        value={assignment.releaseTime?.split('T')[0] || ''}
+                        onChange={(e) => {
+                          const date = e.target.value;
                           const existingTime = assignment.releaseTime?.includes('T') ? assignment.releaseTime.split('T')[1] : '12:00';
-                          setAssignment({ ...assignment, releaseTime: `${format(d, 'yyyy-MM-dd')}T${existingTime}` });
+                          setAssignment({ ...assignment, releaseTime: `${date}T${existingTime}` });
                         }}
                       />
                     </div>
                     <div className="space-y-2">
                       <Label className="text-xs font-bold uppercase text-muted-foreground">Release Time</Label>
-                      <Popover>
-                        <PopoverTrigger asChild>
-                          <Button variant="outline" className="w-full justify-start text-left font-normal h-10 px-3 truncate">
-                            {assignment.releaseTime?.includes('T') ? (
-                              format(new Date(assignment.releaseTime), "p")
-                            ) : (
-                              <span className="text-muted-foreground">Set Time</span>
-                            )}
-                          </Button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-auto p-0 border-none shadow-2xl" align="end">
-                          <AnalogTimePicker 
-                            value={assignment.releaseTime?.includes('T') ? assignment.releaseTime.split('T')[1].substring(0, 5) : '12:00'}
-                            onChange={(t) => {
-                              const existingDate = assignment.releaseTime?.includes('T') ? assignment.releaseTime.split('T')[0] : format(new Date(), 'yyyy-MM-dd');
-                              setAssignment({ ...assignment, releaseTime: `${existingDate}T${t}` });
-                            }}
-                          />
-                        </PopoverContent>
-                      </Popover>
+                      <Input
+                        type="time"
+                        value={assignment.releaseTime?.includes('T') ? assignment.releaseTime.split('T')[1].substring(0, 5) : '12:00'}
+                        onChange={(e) => {
+                          const time = e.target.value;
+                          const existingDate = assignment.releaseTime?.includes('T') ? assignment.releaseTime.split('T')[0] : new Date().toISOString().split('T')[0];
+                          setAssignment({ ...assignment, releaseTime: `${existingDate}T${time}` });
+                        }}
+                      />
                     </div>
                   </div>
                   <p className="text-[11px] text-muted-foreground italic">

@@ -87,7 +87,7 @@ export function BizFlowAiAssistant() {
     }, [messages]);
 
     // Hide assistant in POS and Print Pages
-    if (pathname?.includes('/cms/pos') || pathname?.includes('/shipping/costing/print')) {
+    if (pathname?.includes('/cms/pos') || pathname?.includes('/print')) {
         return null;
     }
 

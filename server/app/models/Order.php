@@ -11,6 +11,7 @@ class Order extends Model {
         // This mirrors InstallController::ensureSchema() for repair_orders.
         $cols = [
             'location_id' => "INT NULL",
+            'from_location_id' => "INT NULL",
             'vehicle_id' => "INT NULL",
             'vehicle_identifier' => "VARCHAR(100) NULL",
             'mileage' => "INT NULL",
@@ -90,11 +91,13 @@ class Order extends Model {
             SELECT ro.*, 
                    v.vin as vehicle_vin, v.make as vehicle_make, v.model as vehicle_model_v, v.year as vehicle_year,
                    c.name as customer_real_name, c.phone as customer_real_phone,
-                   d.name as department_name
+                   d.name as department_name,
+                   l.name as location_name, l.address as location_address, l.phone as location_phone, l.tax_no as location_tax_no
             FROM " . $this->table . " ro
             LEFT JOIN vehicles v ON ro.vehicle_id = v.id
             LEFT JOIN customers c ON v.customer_id = c.id
             LEFT JOIN departments d ON v.department_id = d.id
+            LEFT JOIN service_locations l ON ro.location_id = l.id
             WHERE ro.id = :id
         ");
         $this->db->bind(':id', $id);
@@ -107,11 +110,13 @@ class Order extends Model {
             SELECT ro.*, 
                    v.vin as vehicle_vin, v.make as vehicle_make, v.model as vehicle_model_v, v.year as vehicle_year,
                    c.name as customer_real_name, c.phone as customer_real_phone,
-                   d.name as department_name
+                   d.name as department_name,
+                   l.name as location_name, l.address as location_address, l.phone as location_phone, l.tax_no as location_tax_no
             FROM " . $this->table . " ro
             LEFT JOIN vehicles v ON ro.vehicle_id = v.id
             LEFT JOIN customers c ON v.customer_id = c.id
             LEFT JOIN departments d ON v.department_id = d.id
+            LEFT JOIN service_locations l ON ro.location_id = l.id
             WHERE ro.id = :id AND ro.location_id = :location_id 
             LIMIT 1
         ");
@@ -125,13 +130,14 @@ class Order extends Model {
         $this->ensureRepairOrderColumns();
         $this->db->query("
             INSERT INTO {$this->table}
-            (location_id, customer_name, vehicle_model, problem_description, status, vehicle_id, vehicle_identifier, mileage, priority, expected_time, release_time, comments, categories_json, checklist_json, attachments_json, location, technician, created_by, updated_by)
+            (location_id, from_location_id, customer_name, vehicle_model, problem_description, status, vehicle_id, vehicle_identifier, mileage, priority, expected_time, release_time, comments, categories_json, checklist_json, attachments_json, location, technician, created_by, updated_by)
             VALUES
-            (:location_id, :customer_name, :vehicle_model, :problem_description, :status, :vehicle_id, :vehicle_identifier, :mileage, :priority, :expected_time, :release_time, :comments, :categories_json, :checklist_json, :attachments_json, :location, :technician, :created_by, :updated_by)
+            (:location_id, :from_location_id, :customer_name, :vehicle_model, :problem_description, :status, :vehicle_id, :vehicle_identifier, :mileage, :priority, :expected_time, :release_time, :comments, :categories_json, :checklist_json, :attachments_json, :location, :technician, :created_by, :updated_by)
         ");
         
         // Bind values
         $this->db->bind(':location_id', (int)$locationId);
+        $this->db->bind(':from_location_id', isset($data['from_location_id']) ? (int)$data['from_location_id'] : null);
         $this->db->bind(':customer_name', $data['customer_name']);
         $this->db->bind(':vehicle_model', $data['vehicle_model']);
         $this->db->bind(':problem_description', $data['problem_description']);

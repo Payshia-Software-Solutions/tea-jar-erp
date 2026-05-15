@@ -109,6 +109,12 @@ class Database {
         return $this->stmt->fetch(PDO::FETCH_OBJ);
     }
 
+    // Get single value (first column of first row)
+    public function singleColumn() {
+        $this->execute();
+        return $this->stmt->fetchColumn();
+    }
+
     // Get row count
     public function rowCount() {
         return $this->stmt->rowCount();

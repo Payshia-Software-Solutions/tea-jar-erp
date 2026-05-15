@@ -68,7 +68,11 @@ export default function SystemSettingsPage() {
     stripe_is_sandbox: "1",
     online_sales_enabled: "0",
     online_sales_cod: "1",
-    online_sales_ipg: "1"
+    online_sales_ipg: "1",
+    FLEET_API_URL: "",
+    FLEET_API_TOKEN: "",
+    MILEAGE_API_URL: "",
+    MILEAGE_API_TOKEN: ""
   });
 
   const loadSettings = async () => {
@@ -205,7 +209,7 @@ export default function SystemSettingsPage() {
       </div>
 
       <Tabs defaultValue="mail" className="space-y-6">
-        <TabsList className="grid grid-cols-4 w-full bg-muted/50 p-1 rounded-xl h-14">
+        <TabsList className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 w-full bg-muted/50 p-1 rounded-xl h-auto md:h-14 gap-1">
           <TabsTrigger value="mail" className="rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm transition-all flex items-center gap-2">
             <Mail className="w-4 h-4" /> Email
           </TabsTrigger>
@@ -217,6 +221,9 @@ export default function SystemSettingsPage() {
           </TabsTrigger>
           <TabsTrigger value="payments" className="rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm transition-all flex items-center gap-2">
             <CreditCard className="w-4 h-4" /> Payments
+          </TabsTrigger>
+          <TabsTrigger value="external-apis" className="rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm transition-all flex items-center gap-2">
+            <Terminal className="w-4 h-4" /> External APIs
           </TabsTrigger>
         </TabsList>
 
@@ -925,7 +932,105 @@ export default function SystemSettingsPage() {
               </CardFooter>
             </Card>
           </TabsContent>
-        </Tabs>
+        <TabsContent value="external-apis">
+          <Card className="border-none shadow-lg overflow-hidden">
+            <CardHeader className="bg-primary/[0.03] border-b pb-4">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-primary/10 rounded-lg text-primary">
+                  <Terminal className="w-5 h-5" />
+                </div>
+                <div>
+                  <CardTitle className="text-lg">External API Integrations</CardTitle>
+                  <CardDescription>Manage endpoints and authentication tokens for third-party service connections.</CardDescription>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent className="p-6">
+              <div className="grid gap-8">
+                <div className="space-y-6">
+                  <div className="flex items-center gap-2 text-sm font-black uppercase tracking-widest text-muted-foreground/60 border-b pb-2">
+                    <Truck className="w-4 h-4" />
+                    Fleet Management (Export API)
+                  </div>
+                  
+                  <div className="grid gap-6 md:grid-cols-2">
+                    <div className="grid gap-2">
+                      <Label htmlFor="FLEET_API_URL">API Endpoint URL</Label>
+                      <Input 
+                        id="FLEET_API_URL" 
+                        placeholder="http://220.247.236.239/api/Export_API/vehicales_INFO.php" 
+                        value={settings.FLEET_API_URL} 
+                        onChange={(e) => handleChange('FLEET_API_URL', e.target.value)} 
+                      />
+                      <p className="text-[10px] text-muted-foreground">The base URL for fetching vehicle information from the external fleet system.</p>
+                    </div>
+                    <div className="grid gap-2">
+                      <Label htmlFor="FLEET_API_TOKEN">Authentication Token</Label>
+                      <div className="relative">
+                        <Input 
+                          id="FLEET_API_TOKEN" 
+                          type="password" 
+                          placeholder="••••••••••••••••" 
+                          value={settings.FLEET_API_TOKEN} 
+                          onChange={(e) => handleChange('FLEET_API_TOKEN', e.target.value)} 
+                        />
+                      </div>
+                      <p className="text-[10px] text-muted-foreground">The secure token used to authorize requests to the fleet API.</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="space-y-6 pt-4">
+                  <div className="flex items-center gap-2 text-sm font-black uppercase tracking-widest text-muted-foreground/60 border-b pb-2">
+                    <Smartphone className="w-4 h-4" />
+                    Vehicle Mileage & Odometer API
+                  </div>
+                  
+                  <div className="grid gap-6 md:grid-cols-2">
+                    <div className="grid gap-2">
+                      <Label htmlFor="MILEAGE_API_URL">Mileage API Endpoint</Label>
+                      <Input 
+                        id="MILEAGE_API_URL" 
+                        placeholder="https://api.gps-provider.com/v1/mileage" 
+                        value={settings.MILEAGE_API_URL} 
+                        onChange={(e) => handleChange('MILEAGE_API_URL', e.target.value)} 
+                      />
+                      <p className="text-[10px] text-muted-foreground">URL to fetch real-time mileage or odometer readings for vehicles.</p>
+                    </div>
+                    <div className="grid gap-2">
+                      <Label htmlFor="MILEAGE_API_TOKEN">Mileage API Token</Label>
+                      <Input 
+                        id="MILEAGE_API_TOKEN" 
+                        type="password" 
+                        placeholder="••••••••••••••••" 
+                        value={settings.MILEAGE_API_TOKEN} 
+                        onChange={(e) => handleChange('MILEAGE_API_TOKEN', e.target.value)} 
+                      />
+                      <p className="text-[10px] text-muted-foreground">Authorization token for the mileage service.</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="p-4 bg-muted/20 rounded-xl border border-dashed flex flex-col items-center justify-center py-10 text-center">
+                   <div className="p-3 bg-muted rounded-full mb-3">
+                     <Plus className="w-6 h-6 text-muted-foreground/50" />
+                   </div>
+                   <h4 className="text-sm font-bold text-muted-foreground">Add New Integration</h4>
+                   <p className="text-xs text-muted-foreground max-w-xs mt-1">
+                     Additional API integrations (e.g., GPS tracking, fuel management) can be configured here as they are added to the system.
+                   </p>
+                </div>
+              </div>
+            </CardContent>
+            <CardFooter className="bg-muted/30 border-t p-6 flex justify-end">
+              <Button onClick={save} disabled={saving} size="lg" className="px-8 shadow-md">
+                {saving ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Save className="w-4 h-4 mr-2" />}
+                Save API Configurations
+              </Button>
+            </CardFooter>
+          </Card>
+        </TabsContent>
+      </Tabs>
     </DashboardLayout>
   );
 }

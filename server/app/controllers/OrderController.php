@@ -67,6 +67,7 @@ class OrderController extends Controller {
                 'comments' => $data['comments'] ?? null,
                 'location' => $data['location'] ?? null,
                 'technician' => $data['technician'] ?? null,
+                'from_location_id' => $data['from_location_id'] ?? null,
             ];
 
             // Store checklist/categories as JSON strings (TEXT columns).
@@ -87,6 +88,9 @@ class OrderController extends Controller {
             }
 
             $locId = $this->currentLocationId($u);
+            if (!empty($data['to_location_id'])) {
+                $locId = (int)$data['to_location_id'];
+            }
             $newId = $this->orderModel->addOrder($payload, (int)$u['sub'], $locId);
             if ($newId) {
                 $payload['id'] = (int)$newId;
@@ -209,6 +213,52 @@ class OrderController extends Controller {
         $db->bind(':loc', $locId);
         if ($db->execute()) {
             $this->success(['id' => (int)$id, 'release_time' => $release], 'Release time updated');
+        } else {
+            $this->error('Update failed');
+        }
+    }
+
+    // POST /api/order/update_details/1
+    // Body: { categories?: Array, checklist?: Array }
+    public function update_details($id = null) {
+        $u = $this->requirePermission('orders.write');
+        if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') {
+            $this->error('Method Not Allowed', 405);
+        }
+        if (!$id) $this->error('Order ID required', 400);
+
+        $data = json_decode(file_get_contents('php://input'), true) ?: [];
+        $locId = $this->currentLocationId($u);
+
+        $payload = [];
+        if (isset($data['categories']) && is_array($data['categories'])) {
+            $payload['categories_json'] = json_encode(array_values($data['categories']));
+        }
+        if (isset($data['checklist']) && is_array($data['checklist'])) {
+            $payload['checklist_json'] = json_encode(array_values($data['checklist']));
+        }
+
+        if (empty($payload)) {
+            $this->error('No fields to update', 400);
+        }
+
+        $setParts = [];
+        foreach ($payload as $key => $val) {
+            $setParts[] = "$key = :$key";
+        }
+        $setStr = implode(', ', $setParts);
+
+        $db = new Database();
+        $db->query("UPDATE repair_orders SET $setStr, updated_by = :u WHERE id = :id AND location_id = :loc");
+        foreach ($payload as $key => $val) {
+            $db->bind(":$key", $val);
+        }
+        $db->bind(':u', (int)$u['sub']);
+        $db->bind(':id', (int)$id);
+        $db->bind(':loc', $locId);
+
+        if ($db->execute()) {
+            $this->success($payload, 'Order details updated');
         } else {
             $this->error('Update failed');
         }

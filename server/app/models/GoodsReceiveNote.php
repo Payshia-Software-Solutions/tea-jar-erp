@@ -391,7 +391,7 @@ class GoodsReceiveNote extends Model {
 
                 // Increase stock and update avg cost price:
                 // avg_cost = (current_qty*current_cost + received_qty*unit_cost) / (current_qty + received_qty)
-                $this->db->query("SELECT stock_quantity, cost_price FROM parts WHERE id = :id FOR UPDATE");
+                $this->db->query("SELECT stock_quantity, cost_price, is_fifo, is_expiry FROM parts WHERE id = :id FOR UPDATE");
                 $this->db->bind(':id', $partId);
                 $p = $this->db->single();
                 if (!$p) {

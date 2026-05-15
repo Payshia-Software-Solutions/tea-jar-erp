@@ -19,9 +19,13 @@ class VehicleController extends Controller {
             return;
         }
         
+        $page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
+        $limit = isset($_GET['limit']) ? (int)$_GET['limit'] : 10;
         $filter = $_GET['filter'] ?? 'all';
-        $vehicles = $this->vehicleModel->getAll($filter);
-        $this->success($vehicles);
+        $search = $_GET['search'] ?? '';
+
+        $result = $this->vehicleModel->getPaginated($page, $limit, $filter, $search);
+        $this->success($result);
     }
 
     // POST /api/vehicle/create

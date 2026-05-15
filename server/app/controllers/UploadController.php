@@ -296,4 +296,40 @@ class UploadController extends Controller {
             'url' => $url,
         ], 'Uploaded successfully');
     }
+
+    // POST /api/upload/vehicle_document
+    public function vehicle_document() {
+        $u = $this->requirePermission('vehicles.write');
+        if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') {
+            $this->error('Method Not Allowed', 405);
+        }
+
+        $f = $this->requireFile('file');
+        $filename = $this->safeFilename('doc', $f['name'] ?? 'file');
+        $dir = trim((string)CONTENT_DOCUMENTS_DIR, '/');
+
+        try {
+            $ftp = new FtpStorage();
+            $ftp->upload($f['tmp_name'], $dir, $filename);
+        } catch (Exception $e) {
+            $this->error('FTP upload failed', 500);
+        }
+
+        $this->auditModel->write([
+            'user_id' => (int)$u['sub'],
+            'action' => 'upload',
+            'entity' => 'vehicle_document',
+            'entity_id' => null,
+            'method' => $_SERVER['REQUEST_METHOD'] ?? '',
+            'path' => $_SERVER['REQUEST_URI'] ?? '',
+            'ip' => $_SERVER['REMOTE_ADDR'] ?? '',
+            'user_agent' => $_SERVER['HTTP_USER_AGENT'] ?? '',
+            'details' => json_encode(['filename' => $filename]),
+        ]);
+
+        $this->success([
+            'filename' => $filename,
+            'url' => rtrim(CONTENT_BASE_URL, '/') . '/' . trim(CONTENT_DOCUMENTS_DIR, '/') . '/' . $filename,
+        ], 'Uploaded');
+    }
 }

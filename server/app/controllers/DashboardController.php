@@ -206,7 +206,21 @@ class DashboardController extends Controller {
             'recentCompletions' => $recent,
             'serviceBaysByStatus' => $baysByStatus,
             'serviceBaysTotal' => $bayTotal,
+            'expiringDocuments' => $this->getExpiringDocs(),
         ]);
+    }
+
+    private function getExpiringDocs() {
+        $this->db->query("
+            SELECT d.*, v.make, v.model, v.vin
+            FROM vehicle_documents d
+            JOIN vehicles v ON d.vehicle_id = v.id
+            WHERE d.expiry_date <= DATE_ADD(CURDATE(), INTERVAL 30 DAY)
+              AND d.expiry_date >= CURDATE()
+            ORDER BY d.expiry_date ASC
+            LIMIT 5
+        ");
+        return $this->db->resultSet() ?: [];
     }
 
     // GET /api/dashboard/sales

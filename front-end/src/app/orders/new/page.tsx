@@ -29,8 +29,12 @@ import {
   fetchChecklistTemplates,
   fetchVehicles,
   uploadOrderAttachment,
+  api,
+  fetchLocations,
+  type ServiceLocation
 } from "@/lib/api";
 import type { Vehicle } from "@/lib/types";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import {
   Calendar as CalendarIcon,
@@ -43,6 +47,7 @@ import {
   Gauge,
   Loader2,
   Plus,
+  Pencil,
   Search,
   X,
 } from "lucide-react";
@@ -75,9 +80,12 @@ export default function NewOrderPage() {
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [checklistTemplates, setChecklistTemplates] = useState<ChecklistTemplate[]>([]);
   const [availableCategories, setAvailableCategories] = useState<RepairCategory[]>([]);
+  const [locations, setLocations] = useState<ServiceLocation[]>([]);
 
   const [formData, setFormData] = useState({
     vehicleId: "",
+    fromLocationId: "",
+    toLocationId: "",
     mileage: "",
     priority: "Medium",
     expectedDate: "",
@@ -108,9 +116,9 @@ export default function NewOrderPage() {
   const vehicleLabel = useMemo(() => {
     if (!selectedVehicle) return "";
     const v: any = selectedVehicle as any;
-    const vin = v.vin ? ` VIN: ${v.vin}` : "";
-    const year = v.year ? ` ${v.year}` : "";
-    return `${v.make ?? ""} ${v.model ?? ""}${year}${vin}`.trim();
+    const identifier = v.vin || `Vehicle #${v.id}`;
+    const details = [v.make, v.model, v.year].filter(Boolean).join(" ");
+    return details ? `${identifier} (${details})` : identifier;
   }, [selectedVehicle]);
 
   const ownerLabel = useMemo(() => {
@@ -158,17 +166,22 @@ export default function NewOrderPage() {
     return dt.toLocaleString();
   }, [formData.expectedDate, formData.expectedClock]);
 
+  const [fetchingMileage, setFetchingMileage] = useState(false);
+  const [isMileageAutoFetched, setIsMileageAutoFetched] = useState(false);
+
   const loadData = async () => {
     setLoading(true);
     try {
-      const [v, t, c] = await Promise.all([
-        fetchVehicles(),
+      const [v, t, c, locs] = await Promise.all([
+        fetchVehicles(1, 1000), // Fetch up to 1000 vehicles to ensure search works across the fleet
         fetchChecklistTemplates(),
         fetchCategories(),
+        fetchLocations(),
       ]);
-      setVehicles(Array.isArray(v) ? v : []);
+      setVehicles(v && Array.isArray(v.data) ? v.data : []);
       setChecklistTemplates(Array.isArray(t) ? t : []);
       setAvailableCategories(Array.isArray(c) ? c : []);
+      setLocations(Array.isArray(locs) ? locs : []);
     } catch {
       toast({
         title: "Error",
@@ -184,6 +197,51 @@ export default function NewOrderPage() {
     void loadData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Live Mileage Fetch when vehicle selected
+  useEffect(() => {
+    const fetchLiveMileage = async () => {
+      if (!selectedVehicle || (selectedVehicle as any).source !== 'api' || !(selectedVehicle as any).vin) {
+        return;
+      }
+      setFetchingMileage(true);
+      try {
+        const vin = (selectedVehicle as any).vin;
+        const encodedVin = encodeURIComponent(vin);
+        const res = await api(`/api/vehicle-sync/get-mileage/${encodedVin}`);
+        const json = await res.json();
+        
+        console.log(`Mileage API [${vin}]:`, json);
+        
+        if (json.status === 'success' && json.data?.mileage) {
+          setFormData(prev => ({ ...prev, mileage: String(json.data.mileage) }));
+          setIsMileageAutoFetched(true);
+          toast({
+            title: "Mileage Fetched",
+            description: `Live odometer reading: ${json.data.mileage} KM`,
+          });
+        } else {
+          console.warn("Mileage fetch failed:", json);
+          // Don't show toast for "not found" to avoid annoying the user if it's just not available
+        }
+      } catch (err) {
+        console.error("Mileage fetch error:", err);
+        const errorMsg = (err as Error).message || "Unknown connection error";
+        toast({
+          title: "Sync Error",
+          description: `Fleet API: ${errorMsg}`,
+          variant: "destructive"
+        });
+      } finally {
+        setFetchingMileage(false);
+      }
+    };
+
+    if (formData.vehicleId) {
+      setIsMileageAutoFetched(false); // Reset on vehicle change
+      void fetchLiveMileage();
+    }
+  }, [formData.vehicleId, selectedVehicle]);
 
   const toggleChecklist = (desc: string) => {
     setSelectedChecklist((prev) =>
@@ -271,27 +329,17 @@ export default function NewOrderPage() {
     }
 
     const v: any = selectedVehicle as any;
-    const vehicleModel = `${v.make ?? ""} ${v.model ?? ""}`.trim();
+    // Fallback chain for vehicle description: ERP Make/Model -> External Make/Model -> VIN -> Label
+    const erpModel = `${v.make ?? ""} ${v.model ?? ""}`.trim();
+    const extModel = `${v.external_make ?? ""} ${v.external_model ?? ""}`.trim();
+    const vehicleModel = erpModel || extModel || v.vin || vehicleLabel || "Unknown Vehicle";
     const expectedLocal =
       formData.expectedDate.trim() !== ""
         ? `${formData.expectedDate}T${(formData.expectedClock || "09:00").trim()}`
         : "";
 
-    // Open a placeholder tab synchronously (still part of the click event),
-    // so browsers don't block it as a popup after the async API call.
-    let printTab: Window | null = null;
-    try {
-      printTab = window.open("about:blank", "_blank", "noopener,noreferrer");
-      if (printTab && printTab.document) {
-        printTab.document.title = "Preparing Receipt...";
-        printTab.document.body.innerHTML =
-          "<div style='font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial; padding: 20px; color: #334155'>Preparing receipt...</div>";
-      }
-    } catch {
-      printTab = null;
-    }
-
     setSubmitting(true);
+    let printTab: Window | null = null;
     try {
       setAttachmentUploading(true);
       const attachmentFilenames: string[] = [];
@@ -316,6 +364,8 @@ export default function NewOrderPage() {
         categories: selectedCategories,
         checklist: selectedChecklist,
         attachments: attachmentFilenames,
+        from_location_id: formData.fromLocationId ? Number(formData.fromLocationId) : null,
+        to_location_id: formData.toLocationId ? Number(formData.toLocationId) : null,
       });
 
       const createdId = (res && res.status === "success" && res.data && (res.data.id ?? res.data.order_id))
@@ -326,42 +376,30 @@ export default function NewOrderPage() {
         title: "Order Created",
         description: `Repair Order created for ${vehicleLabel || vehicleModel}.`,
       });
+
+      // Redirect first to ensure the main window moves to the list
+      router.push("/orders");
+
       if (createdId) {
         const url = `/orders/print/${encodeURIComponent(createdId)}?autoprint=1`;
-        if (printTab && !printTab.closed) {
-          printTab.location.href = url;
-        } else {
-          const w = window.open(url, "_blank", "noopener,noreferrer");
-          printTab = w ?? null;
-        }
-        if (!printTab) {
+        
+        // Open the print receipt in a new tab
+        const w = window.open(url, "_blank", "noopener,noreferrer");
+        if (!w) {
           toast({
             title: "Popup blocked",
             description: "Allow popups to auto-open the print receipt.",
             variant: "destructive",
           });
         }
-        router.push("/orders");
-      } else {
-        if (printTab && !printTab.closed) {
-          try {
-            printTab.close();
-          } catch {
-            // ignore
-          }
-        }
-        router.push("/orders");
       }
-    } catch {
+    } catch (err: any) {
       setAttachmentUploading(false);
-      if (printTab && !printTab.closed) {
-        try {
-          printTab.close();
-        } catch {
-          // ignore
-        }
-      }
-      toast({ title: "Error", description: "Failed to create order.", variant: "destructive" });
+      toast({ 
+        title: "Error", 
+        description: err.message || "Failed to create order.", 
+        variant: "destructive" 
+      });
     } finally {
       setSubmitting(false);
     }
@@ -480,10 +518,12 @@ export default function NewOrderPage() {
                                   >
                                     <div className="flex items-start justify-between gap-3 font-medium">
                                       <div className="min-w-0">
-                                        <div className="font-semibold truncate">{label || `Vehicle #${vv.id}`}</div>
-                                        {sub ? (
-                                          <div className="text-xs text-muted-foreground mt-0.5 truncate">{sub}</div>
-                                        ) : null}
+                                        <div className="font-bold text-base tracking-tight text-primary truncate">
+                                          {vv.vin || `ID: ${vv.id}`}
+                                        </div>
+                                        <div className="text-xs font-semibold text-slate-600 dark:text-slate-400 mt-0.5 truncate">
+                                          {[vv.make, vv.model, vv.year].filter(Boolean).join(" ")}
+                                        </div>
                                         <div className="flex items-center gap-2 mt-2">
                                           <div className="text-[10px] text-muted-foreground uppercase tracking-widest font-bold">
                                             ID: {vv.id}
@@ -542,6 +582,41 @@ export default function NewOrderPage() {
 
                   <div className="lg:col-span-5 space-y-4">
                     <div className="space-y-2">
+                      <Label>From Location (Optional)</Label>
+                      <Select value={formData.fromLocationId} onValueChange={(val) => setFormData(p => ({ ...p, fromLocationId: val === "none" ? "" : val }))}>
+                        <SelectTrigger className="w-full">
+                          <SelectValue placeholder="Where is the vehicle coming from?" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="none">-- Unknown / External --</SelectItem>
+                          {locations.map((loc) => (
+                            <SelectItem key={loc.id} value={String(loc.id)}>
+                              {loc.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <p className="text-[10px] text-muted-foreground">Select origin if part of an internal fleet transfer.</p>
+                    </div>
+                    <div className="space-y-2">
+                      <Label>To Service Center Location</Label>
+                      <Select value={formData.toLocationId} onValueChange={(val) => setFormData(p => ({ ...p, toLocationId: val === "none" ? "" : val }))}>
+                        <SelectTrigger className="w-full">
+                          <SelectValue placeholder="Which service center will process this?" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="none">-- Current Logged In Location --</SelectItem>
+                          {locations.map((loc) => (
+                            <SelectItem key={loc.id} value={String(loc.id)}>
+                              {loc.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <p className="text-[10px] text-muted-foreground">Leave empty to use your current session location.</p>
+                    </div>
+
+                    <div className="space-y-2">
                       <Label htmlFor="mileage">Mileage</Label>
                       <div className="relative">
                         <Gauge className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
@@ -549,13 +624,32 @@ export default function NewOrderPage() {
                           id="mileage"
                           type="number"
                           placeholder="e.g. 45000"
-                          required
+                          readOnly={isMileageAutoFetched}
                           value={formData.mileage}
                           onChange={(e) => setFormData({ ...formData, mileage: e.target.value })}
-                          className="pl-9 pr-12 h-12 rounded-xl"
+                          className={cn(
+                            "pl-9 pr-12 h-12 rounded-xl",
+                            isMileageAutoFetched && "bg-slate-50 border-slate-200 text-slate-500 cursor-not-allowed font-bold"
+                          )}
                         />
-                        <div className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">
-                          km
+                        <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-2">
+                          {isMileageAutoFetched && (
+                            <Button 
+                              type="button" 
+                              variant="ghost" 
+                              size="icon" 
+                              className="h-6 w-6 text-slate-400 hover:text-primary"
+                              onClick={() => setIsMileageAutoFetched(false)}
+                              title="Edit manually"
+                            >
+                              <Pencil className="w-3 h-3" />
+                            </Button>
+                          )}
+                          {fetchingMileage ? (
+                            <Loader2 className="w-3.5 h-3.5 animate-spin text-primary" />
+                          ) : (
+                            <span className="text-xs text-muted-foreground font-bold">KM</span>
+                          )}
                         </div>
                       </div>
                     </div>

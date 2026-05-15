@@ -112,6 +112,18 @@ export const assignOrder = async (id: string, payload: { bay_name?: string; bay_
   return res.json();
 };
 
+export const updateOrderDetails = async (id: string, payload: { categories?: string[]; checklist?: string[] }) => {
+  const res = await api(`/api/order/update_details/${encodeURIComponent(String(id))}`, {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) {
+    const j = await res.json().catch(() => null);
+    throw new Error(j?.message || 'Failed to update order details');
+  }
+  return res.json();
+};
+
 export interface OrderPartRow {
   id: number;
   order_id: number;

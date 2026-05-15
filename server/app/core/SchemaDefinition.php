@@ -15101,7 +15101,7 @@ class SchemaDefinition {
       'location_type' => 
       array (
         'Field' => 'location_type',
-        'Type' => 'enum(\'service\',\'warehouse\')',
+        'Type' => 'varchar(50)',
         'Null' => 'NO',
         'Key' => '',
         'Default' => 'service',
@@ -18473,6 +18473,124 @@ class SchemaDefinition {
       ),
     ),
   ),
+  'vehicle_documents' => 
+  array (
+    'name' => 'vehicle_documents',
+    'columns' => 
+    array (
+      'id' => 
+      array (
+        'Field' => 'id',
+        'Type' => 'int(11)',
+        'Null' => 'NO',
+        'Key' => 'PRI',
+        'Default' => NULL,
+        'Extra' => 'auto_increment',
+      ),
+      'vehicle_id' => 
+      array (
+        'Field' => 'vehicle_id',
+        'Type' => 'int(11)',
+        'Null' => 'NO',
+        'Key' => 'MUL',
+        'Default' => NULL,
+        'Extra' => '',
+      ),
+      'document_type' => 
+      array (
+        'Field' => 'document_type',
+        'Type' => 'varchar(100)',
+        'Null' => 'NO',
+        'Key' => '',
+        'Default' => NULL,
+        'Extra' => '',
+      ),
+      'document_number' => 
+      array (
+        'Field' => 'document_number',
+        'Type' => 'varchar(100)',
+        'Null' => 'YES',
+        'Key' => '',
+        'Default' => NULL,
+        'Extra' => '',
+      ),
+      'file_path' => 
+      array (
+        'Field' => 'file_path',
+        'Type' => 'varchar(255)',
+        'Null' => 'YES',
+        'Key' => '',
+        'Default' => NULL,
+        'Extra' => '',
+      ),
+      'expiry_date' => 
+      array (
+        'Field' => 'expiry_date',
+        'Type' => 'date',
+        'Null' => 'YES',
+        'Key' => '',
+        'Default' => NULL,
+        'Extra' => '',
+      ),
+      'status' => 
+      array (
+        'Field' => 'status',
+        'Type' => 'enum(\'Active\',\'Archived\')',
+        'Null' => 'YES',
+        'Key' => '',
+        'Default' => 'Active',
+        'Extra' => '',
+      ),
+      'reminder_sent' => 
+      array (
+        'Field' => 'reminder_sent',
+        'Type' => 'tinyint(1)',
+        'Null' => 'YES',
+        'Key' => '',
+        'Default' => '0',
+        'Extra' => '',
+      ),
+      'created_at' => 
+      array (
+        'Field' => 'created_at',
+        'Type' => 'timestamp',
+        'Null' => 'NO',
+        'Key' => '',
+        'Default' => 'current_timestamp()',
+        'Extra' => '',
+      ),
+      'updated_at' => 
+      array (
+        'Field' => 'updated_at',
+        'Type' => 'timestamp',
+        'Null' => 'NO',
+        'Key' => '',
+        'Default' => 'current_timestamp()',
+        'Extra' => 'on update current_timestamp()',
+      ),
+    ),
+    'indexes' => 
+    array (
+      'PRIMARY' => 
+      array (
+        'Key_name' => 'PRIMARY',
+        'Non_unique' => 0,
+        'Columns' => 
+        array (
+          0 => 'id',
+        ),
+      ),
+      'vehicle_id' => 
+      array (
+        'Key_name' => 'vehicle_id',
+        'Non_unique' => 1,
+        'Columns' => 
+        array (
+          0 => 'vehicle_id',
+        ),
+      ),
+    ),
+  ),
   'vehicle_makes' => 
   array (
     'name' => 'vehicle_makes',
@@ -18730,6 +18848,114 @@ class SchemaDefinition {
         'Type' => 'int(11)',
         'Null' => 'YES',
         'Key' => 'MUL',
+        'Default' => NULL,
+        'Extra' => '',
+      ),
+      'source' => 
+      array (
+        'Field' => 'source',
+        'Type' => 'varchar(20)',
+        'Null' => 'YES',
+        'Key' => '',
+        'Default' => 'manual',
+        'Extra' => '',
+      ),
+      'external_id' => 
+      array (
+        'Field' => 'external_id',
+        'Type' => 'varchar(100)',
+        'Null' => 'YES',
+        'Key' => '',
+        'Default' => NULL,
+        'Extra' => '',
+      ),
+      'category' => 
+      array (
+        'Field' => 'category',
+        'Type' => 'varchar(100)',
+        'Null' => 'YES',
+        'Key' => '',
+        'Default' => NULL,
+        'Extra' => '',
+      ),
+      'work_type' => 
+      array (
+        'Field' => 'work_type',
+        'Type' => 'varchar(100)',
+        'Null' => 'YES',
+        'Key' => '',
+        'Default' => NULL,
+        'Extra' => '',
+      ),
+      'external_location' => 
+      array (
+        'Field' => 'external_location',
+        'Type' => 'varchar(100)',
+        'Null' => 'YES',
+        'Key' => '',
+        'Default' => NULL,
+        'Extra' => '',
+      ),
+      'driver_name' => 
+      array (
+        'Field' => 'driver_name',
+        'Type' => 'varchar(100)',
+        'Null' => 'YES',
+        'Key' => '',
+        'Default' => NULL,
+        'Extra' => '',
+      ),
+      'fuel_capacity' => 
+      array (
+        'Field' => 'fuel_capacity',
+        'Type' => 'varchar(50)',
+        'Null' => 'YES',
+        'Key' => '',
+        'Default' => NULL,
+        'Extra' => '',
+      ),
+      'last_sync_at' => 
+      array (
+        'Field' => 'last_sync_at',
+        'Type' => 'datetime',
+        'Null' => 'YES',
+        'Key' => '',
+        'Default' => NULL,
+        'Extra' => '',
+      ),
+      'external_make' => 
+      array (
+        'Field' => 'external_make',
+        'Type' => 'varchar(100)',
+        'Null' => 'YES',
+        'Key' => '',
+        'Default' => NULL,
+        'Extra' => '',
+      ),
+      'external_model' => 
+      array (
+        'Field' => 'external_model',
+        'Type' => 'varchar(100)',
+        'Null' => 'YES',
+        'Key' => '',
+        'Default' => NULL,
+        'Extra' => '',
+      ),
+      'current_mileage' => 
+      array (
+        'Field' => 'current_mileage',
+        'Type' => 'int(11)',
+        'Null' => 'YES',
+        'Key' => '',
+        'Default' => '0',
+        'Extra' => '',
+      ),
+      'mileage_last_synced_at' => 
+      array (
+        'Field' => 'mileage_last_synced_at',
+        'Type' => 'datetime',
+        'Null' => 'YES',
+        'Key' => '',
         'Default' => NULL,
         'Extra' => '',
       ),

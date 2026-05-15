@@ -279,7 +279,6 @@ export function PurchaseOrderForm({ editId, initialData }: PurchaseOrderFormProp
                     ))}
                   </SelectContent>
                 </Select>
-                <p className="text-[10px] text-muted-foreground italic">Determines allowed taxes for this PO</p>
               </div>
               <div className="space-y-2">
                 <Label>Ordered Date</Label>

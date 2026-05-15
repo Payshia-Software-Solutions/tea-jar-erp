@@ -16,6 +16,7 @@ import { fetchTaxes, TaxRow } from "@/lib/api/finance";
 import { Badge } from "@/components/ui/badge";
 import { Check, Plus } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 interface LocationFormProps {
   initialData?: ServiceLocation;
@@ -29,7 +30,7 @@ export function LocationForm({ initialData, isEdit = false }: LocationFormProps)
 
   // Form State
   const [name, setName] = useState("");
-  const [locationType, setLocationType] = useState<"service" | "warehouse">("service");
+  const [locationType, setLocationType] = useState<string>("service");
   const [address, setAddress] = useState("");
   const [phone, setPhone] = useState("");
   const [taxNo, setTaxNo] = useState("");
@@ -171,24 +172,19 @@ export function LocationForm({ initialData, isEdit = false }: LocationFormProps)
                 </div>
                 <div className="space-y-2">
                   <Label>Type</Label>
-                  <div className="flex gap-2">
-                    <Button
-                      type="button"
-                      variant={locationType === "service" ? "default" : "outline"}
-                      className="flex-1"
-                      onClick={() => setLocationType("service")}
-                    >
-                      Fleet Management Hub
-                    </Button>
-                    <Button
-                      type="button"
-                      variant={locationType === "warehouse" ? "default" : "outline"}
-                      className="flex-1"
-                      onClick={() => setLocationType("warehouse")}
-                    >
-                      Warehouse
-                    </Button>
-                  </div>
+                  <Select value={locationType} onValueChange={setLocationType}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select type" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="fleet">Fleet Management Hub</SelectItem>
+                      <SelectItem value="warehouse">Warehouse</SelectItem>
+                      <SelectItem value="sales">Sales Outlet</SelectItem>
+                      <SelectItem value="service">Service Center</SelectItem>
+                      <SelectItem value="factory">Factory / Production</SelectItem>
+                      <SelectItem value="hq">Headquarters</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="loc-phone">Phone Number</Label>
