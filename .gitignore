@@ -1,4 +1,7 @@
 # Local secrets / environment-specific config
 /server/config/config.php
 /nexus-portal-server/app/core/Config.php
+/local-printer
+/local-printer-py/build
+/local-printer-py/dist
 
