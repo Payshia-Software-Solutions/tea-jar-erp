@@ -9,7 +9,7 @@ import {
   DialogDescription 
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Printer, FileText, CheckCircle2 } from "lucide-react";
+import { Printer, FileText, CheckCircle2, Loader2 } from "lucide-react";
 import { usePOS } from "../../context/POSContext";
 
 export const PrintSelectionDialog: React.FC = () => {
@@ -20,74 +20,164 @@ export const PrintSelectionDialog: React.FC = () => {
     reloadData 
   } = usePOS();
 
-  const handlePrint = (type: 'standard' | 'inclusive') => {
+  const [isPrinting, setIsPrinting] = React.useState<string | null>(null);
+  const [targetPrinter, setTargetPrinter] = React.useState<string>("");
+  
+  const handlePrint = async (type: 'standard' | 'inclusive') => {
     if (!lastInvoiceId) return;
+    setIsPrinting(type);
     
-    const baseUrl = `/cms/invoices/${lastInvoiceId}/receipt?autoprint=1`;
-    const url = type === 'inclusive' ? `${baseUrl}&tax_inclusive=1` : baseUrl;
+    const baseReceiptUrl = `/cms/invoices/${lastInvoiceId}/receipt`;
+    const url = type === 'inclusive' ? `${baseReceiptUrl}?tax_inclusive=1` : baseReceiptUrl;
     
-    window.open(url, '_blank');
-    setPrintSelectionOpen(false);
-  };
+    // Check for Windows + Silent Bridge
+    const isWindows = !/Android/i.test(navigator.userAgent);
+    const { isPrinterServiceAvailable, silentPrint } = await import("@/lib/api/silent-print");
+    const bridgeAvailable = await isPrinterServiceAvailable();
 
-  const handleClose = () => {
-    setPrintSelectionOpen(false);
-    // Optional: reloadData() if we want to reset the POS completely after selection
+    try {
+        // 1. Lookup the printer name mapping AND Global Printing Mode
+        const settingsRes = await fetch('http://localhost/rapair-management/server/public/api/printer/get_settings');
+        const settingsData = await settingsRes.json();
+        
+        let printingMode = "Silent";
+        if (settingsData.success && settingsData.data) {
+            const mapping = settingsData.data.find((m: any) => m.printer_type === 'Receipt');
+            if (mapping) setTargetPrinter(mapping.printer_name);
+
+            const modeSetting = settingsData.data.find((m: any) => m.printer_type === 'PrintingMode');
+            if (modeSetting) printingMode = modeSetting.printer_name;
+        }
+
+        // IF GLOBAL SETTING IS 'BROWSER', or bridge is down, or not Windows
+        if (printingMode === 'Browser' || !bridgeAvailable || !isWindows) {
+            // Add autoprint=1 ONLY for browser mode so it opens the dialog automatically
+            const browserUrl = url.includes('?') ? `${url}&autoprint=1` : `${url}?autoprint=1`;
+            window.open(browserUrl, '_blank');
+            setIsPrinting(null);
+            setPrintSelectionOpen(false);
+            return;
+        }
+
+        // 2. Create a hidden iframe to capture the rendered receipt HTML
+        const iframe = document.createElement('iframe');
+        iframe.style.display = 'none';
+        document.body.appendChild(iframe);
+        iframe.src = url;
+
+        // 3. Wait for the receipt content to be fully rendered
+        await new Promise((resolve) => {
+            const checkInterval = setInterval(async () => {
+                const doc = iframe.contentDocument || iframe.contentWindow?.document;
+                if (doc && doc.querySelector('.receipt')) {
+                    clearInterval(checkInterval);
+                    
+                    setTimeout(async () => {
+                        const styles = Array.from(doc.querySelectorAll('style')).map(s => s.outerHTML).join('\n');
+                        const clone = doc.body.cloneNode(true) as HTMLElement;
+                        clone.querySelectorAll('nextjs-portal, .no-print, button, .print\\:hidden, #__next-build-watcher').forEach(el => el.remove());
+                        
+                        const body = clone.innerHTML;
+                        const fullHtml = `<html><head>${styles}</head><body>${body}</body></html>`;
+                        
+                        const result = await silentPrint(fullHtml, 'Receipt', '80mm', `Invoice #${lastInvoiceId}`);
+                        if (result.printer) setTargetPrinter(result.printer);
+                        
+                        document.body.removeChild(iframe);
+                        resolve(true);
+                    }, 500);
+                }
+            }, 100);
+
+            setTimeout(() => {
+                clearInterval(checkInterval);
+                if (document.body.contains(iframe)) document.body.removeChild(iframe);
+                resolve(false);
+            }, 10000);
+        });
+        
+        setTimeout(() => setPrintSelectionOpen(false), 500);
+    } catch (error) {
+        console.error("Print failed:", error);
+        window.open(url, '_blank');
+    } finally {
+        setIsPrinting(null);
+    }
   };
 
   return (
     <Dialog open={printSelectionOpen} onOpenChange={setPrintSelectionOpen}>
-      <DialogContent className="sm:max-w-md rounded-3xl p-6 border-none shadow-2xl overflow-hidden">
-        <div className="flex flex-col items-center text-center space-y-4">
-          <div className="w-16 h-16 bg-emerald-100 dark:bg-emerald-900/30 rounded-full flex items-center justify-center mb-2">
-            <CheckCircle2 className="w-8 h-8 text-emerald-600" />
+      <DialogContent className="sm:max-w-[480px] p-0 overflow-hidden border-none bg-slate-50/95 backdrop-blur-xl shadow-2xl">
+        <div className="p-8 space-y-8">
+          <div className="flex flex-col items-center text-center space-y-4">
+            <div className="w-16 h-16 bg-emerald-500/10 rounded-full flex items-center justify-center">
+              <CheckCircle2 className="w-10 h-10 text-emerald-500" />
+            </div>
+            <div className="space-y-1">
+              <DialogTitle className="text-2xl font-black text-slate-900 tracking-tight">
+                CHECKOUT SUCCESSFUL!
+              </DialogTitle>
+              <DialogDescription className="text-slate-500 font-medium">
+                Invoice #{lastInvoiceId} has been processed. Select your preferred receipt format to print.
+              </DialogDescription>
+            </div>
           </div>
-          
-          <DialogHeader>
-            <DialogTitle className="text-2xl font-black uppercase tracking-tight">Checkout Successful!</DialogTitle>
-            <DialogDescription className="text-sm font-medium">
-              Invoice #{lastInvoiceId} has been processed. Select your preferred receipt format to print.
-            </DialogDescription>
-          </DialogHeader>
 
-          <div className="grid grid-cols-1 gap-3 w-full pt-4">
-            <Button 
-              variant="outline" 
-              className="h-20 justify-start px-6 gap-4 border-2 hover:border-primary hover:bg-primary/5 transition-all group rounded-2xl"
+          <div className="grid gap-4">
+            <Button
+              variant="outline"
+              className={`h-24 justify-start p-6 space-x-6 border-2 transition-all relative overflow-hidden group ${
+                isPrinting === 'standard' ? 'border-primary bg-primary/5' : 'hover:border-primary/50 hover:bg-white'
+              }`}
               onClick={() => handlePrint('standard')}
+              disabled={isPrinting !== null}
             >
-              <div className="p-3 bg-slate-100 dark:bg-slate-800 rounded-xl group-hover:bg-primary/10 transition-colors">
-                <Printer className="w-6 h-6 text-slate-600 group-hover:text-primary" />
+              <div className={`p-3 rounded-xl transition-colors ${
+                isPrinting === 'standard' ? 'bg-primary/20' : 'bg-slate-100 group-hover:bg-primary/10'
+              }`}>
+                {isPrinting === 'standard' ? <Loader2 className="w-6 h-6 animate-spin text-primary" /> : <Printer className="w-6 h-6 text-slate-600 group-hover:text-primary" />}
               </div>
-              <div className="text-left">
-                <p className="font-black text-sm uppercase">Standard Receipt</p>
-                <p className="text-[10px] text-muted-foreground font-bold">Item prices shown without tax. Taxes listed separately at bottom.</p>
+              <div className="flex flex-col items-start text-left">
+                <span className="font-bold text-slate-900 group-hover:text-primary transition-colors">
+                  {isPrinting === 'standard' ? `PRINTING TO ${targetPrinter.toUpperCase()}...` : 'STANDARD RECEIPT'}
+                </span>
+                <span className="text-xs text-slate-500 font-medium">Item prices shown without tax. Taxes listed separately at bottom.</span>
               </div>
             </Button>
 
-            <Button 
-              variant="outline" 
-              className="h-20 justify-start px-6 gap-4 border-2 hover:border-indigo-500 hover:bg-indigo-500/5 transition-all group rounded-2xl"
+            <Button
+              variant="outline"
+              className={`h-24 justify-start p-6 space-x-6 border-2 transition-all relative overflow-hidden group ${
+                isPrinting === 'inclusive' ? 'border-primary bg-primary/5' : 'hover:border-primary/50 hover:bg-white'
+              }`}
               onClick={() => handlePrint('inclusive')}
+              disabled={isPrinting !== null}
             >
-              <div className="p-3 bg-slate-100 dark:bg-slate-800 rounded-xl group-hover:bg-indigo-500/10 transition-colors">
-                <FileText className="w-6 h-6 text-slate-600 group-hover:text-indigo-500" />
+              <div className={`p-3 rounded-xl transition-colors ${
+                isPrinting === 'inclusive' ? 'bg-primary/20' : 'bg-slate-100 group-hover:bg-primary/10'
+              }`}>
+                {isPrinting === 'inclusive' ? <Loader2 className="w-6 h-6 animate-spin text-primary" /> : <FileText className="w-6 h-6 text-slate-600 group-hover:text-primary" />}
               </div>
-              <div className="text-left">
-                <p className="font-black text-sm uppercase">Tax Inclusive Receipt</p>
-                <p className="text-[10px] text-muted-foreground font-bold">Each item price includes applicable taxes for clarity.</p>
+              <div className="flex flex-col items-start text-left">
+                <span className="font-bold text-slate-900 group-hover:text-primary transition-colors">
+                  {isPrinting === 'inclusive' ? `PRINTING TO ${targetPrinter.toUpperCase()}...` : 'TAX INCLUSIVE RECEIPT'}
+                </span>
+                <span className="text-xs text-slate-500 font-medium">Each item price includes applicable taxes for clarity.</span>
               </div>
             </Button>
           </div>
 
-          <div className="w-full pt-4">
-             <Button 
-                variant="ghost" 
-                className="w-full font-bold text-muted-foreground hover:text-foreground"
-                onClick={handleClose}
-             >
-                Skip Printing
-             </Button>
+          <div className="flex justify-center pt-2">
+            <Button 
+              variant="ghost" 
+              className="text-slate-500 font-bold hover:text-slate-900"
+              onClick={() => {
+                setPrintSelectionOpen(false);
+                reloadData();
+              }}
+            >
+              Skip Printing
+            </Button>
           </div>
         </div>
       </DialogContent>

@@ -1344,3 +1344,36 @@ WHERE `issue_date` >= DATE_FORMAT(DATE_ADD(LAST_DAY(CURDATE()), INTERVAL 1 DAY),
 [2026-04-30 11:15:16] STEP 2: PREPARING
 [2026-04-30 11:15:16] STEP 3: EXECUTING
 [2026-04-30 11:15:16] STEP 4: SUCCESS, RETURNING 1 ROWS
+[2026-05-15 13:27:59] STEP 1: RECEIVED SQL
+SQL: SELECT 
+    p.id AS part_id,
+    p.part_name,
+    SUM(ii.quantity)        AS total_quantity_sold,
+    SUM(ii.line_total)      AS total_sales_amount
+FROM `invoice_items` AS ii
+JOIN `parts` AS p
+      ON ii.item_id = p.id
+      AND ii.item_type = 'part'          -- ensure we are counting parts only
+JOIN `invoices` AS i
+      ON ii.invoice_id = i.id
+      AND i.status = 'paid'              -- optional: consider only paid invoices
+GROUP BY p.id, p.part_name
+ORDER BY total_quantity_sold DESC
+LIMIT 10;
+[2026-05-15 13:27:59] STEP 2: PREPARING
+[2026-05-15 13:27:59] STEP 3: EXECUTING
+[2026-05-15 13:27:59] STEP 4: SUCCESS, RETURNING 3 ROWS
+[2026-05-15 13:28:45] STEP 1: RECEIVED SQL
+SQL: SELECT 
+    ro.vehicle_model,
+    COUNT(*) AS repair_order_count
+FROM 
+    `repair_orders` AS ro
+GROUP BY 
+    ro.vehicle_model
+ORDER BY 
+    repair_order_count DESC
+LIMIT 1;
+[2026-05-15 13:28:45] STEP 2: PREPARING
+[2026-05-15 13:28:45] STEP 3: EXECUTING
+[2026-05-15 13:28:45] STEP 4: SUCCESS, RETURNING 1 ROWS

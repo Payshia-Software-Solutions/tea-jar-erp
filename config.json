@@ -1,0 +1,6 @@
+{
+    "printerName": "Microsoft Print to PDF",
+    "port": 5001,
+    "paperWidth": "80mm",
+    "useBrowserPrint": false
+}

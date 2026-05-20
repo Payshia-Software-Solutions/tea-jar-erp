@@ -204,13 +204,13 @@ export const updateBayStatus = async (id: string | number, status: string) => {
   return res.json() as Promise<ApiSuccess<null>>;
 };
 
-export const createChecklistTemplate = async (payload: { description: string }) => {
+export const createChecklistTemplate = async (payload: { description: string; standard_mileage?: number; extended_description?: string }) => {
   const res = await api('/api/checklistrepo/create', { method: 'POST', body: JSON.stringify(payload) });
   if (!res.ok) throw new Error('Failed to create checklist item');
   return res.json() as Promise<ApiSuccess<null>>;
 };
 
-export const updateChecklistTemplate = async (id: string | number, payload: { description: string }) => {
+export const updateChecklistTemplate = async (id: string | number, payload: { description: string; standard_mileage?: number; extended_description?: string }) => {
   const res = await api(`/api/checklistrepo/update/${id}`, { method: 'POST', body: JSON.stringify(payload) });
   if (!res.ok) throw new Error('Failed to update checklist item');
   return res.json() as Promise<ApiSuccess<null>>;

@@ -31,11 +31,14 @@ class ChecklistrepoController extends Controller {
         $raw = file_get_contents('php://input');
         $data = json_decode($raw, true);
         $description = trim((string)($data['description'] ?? ''));
+        $mileage = isset($data['standard_mileage']) && $data['standard_mileage'] !== '' ? (int)$data['standard_mileage'] : null;
+        $extendedDesc = trim((string)($data['extended_description'] ?? ''));
+
         if ($description === '') {
             $this->error('Description is required', 400);
             return;
         }
-        $ok = $this->templateModel->create($description, (int)$u['sub']);
+        $ok = $this->templateModel->create($description, $mileage, $extendedDesc, (int)$u['sub']);
         if ($ok) {
             $this->auditModel->write([
                 'user_id' => (int)$u['sub'],
@@ -68,11 +71,14 @@ class ChecklistrepoController extends Controller {
         $raw = file_get_contents('php://input');
         $data = json_decode($raw, true);
         $description = trim((string)($data['description'] ?? ''));
+        $mileage = isset($data['standard_mileage']) && $data['standard_mileage'] !== '' ? (int)$data['standard_mileage'] : null;
+        $extendedDesc = trim((string)($data['extended_description'] ?? ''));
+
         if ($description === '') {
             $this->error('Description is required', 400);
             return;
         }
-        $ok = $this->templateModel->update($id, $description, (int)$u['sub']);
+        $ok = $this->templateModel->update($id, $description, $mileage, $extendedDesc, (int)$u['sub']);
         if ($ok) {
             $this->success(null, 'Template updated');
         } else {

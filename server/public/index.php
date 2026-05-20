@@ -90,5 +90,6 @@ require_once '../app/helpers/ShippingCarrierSchema.php';
 // Ensure schema is up to date
 CityPostalSchema::ensure();
 ShippingCarrierSchema::ensure();
+SystemSchema::ensure();
 
 $init = new App();

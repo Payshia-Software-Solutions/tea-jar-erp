@@ -43,7 +43,8 @@ import {
   Utensils,
   Calculator,
   FolderTree,
-  Ticket
+  Ticket,
+  Printer
 } from "lucide-react";
 
 export type NavItem = {
@@ -74,6 +75,9 @@ export const serviceCenterItems: NavItem[] = [
   { icon: Grid, label: "Service Bays", href: "/master-data/bays", perm: "bays.read" },
   { icon: Tags, label: "Repair Categories", href: "/master-data/categories", perm: "categories.read" },
   { icon: CheckSquare, label: "Checklist Items", href: "/master-data/checklists", perm: "checklists.read" },
+  { icon: Tag, label: "Vehicle Makes", href: "/master-data/makes", perm: "makes.read" },
+  { icon: Layers, label: "Vehicle Models", href: "/master-data/models", perm: "models.read" },
+  { icon: Grid, label: "Departments", href: "/master-data/departments", perm: "departments.read" },
 ];
 
 export const vendorItems: NavItem[] = [
@@ -123,11 +127,8 @@ export const masterDataItems: NavItem[] = [
   { icon: Percent, label: "Taxes", href: "/master-data/taxes", perm: "taxes.read" },
   { icon: Landmark, label: "Banks & Branches", href: "/master-data/banks", perm: "banks.read" },
   { icon: Truck, label: "Shipping Carriers", href: "/master-data/shipping-carriers", perm: "parts.read" },
-  { icon: Grid, label: "Departments", href: "/master-data/departments", perm: "departments.read" },
   { icon: Grid, label: "Restaurant Tables", href: "/master-data/tables", perm: "tables.read" },
   { icon: Tag, label: "Brands", href: "/master-data/brands", perm: "brands.read" },
-  { icon: Tag, label: "Vehicle Makes", href: "/master-data/makes", perm: "makes.read" },
-  { icon: Layers, label: "Vehicle Models", href: "/master-data/models", perm: "models.read" },
 ];
 
 export const accountingItems: NavItem[] = [
@@ -197,6 +198,7 @@ export const adminNavItems: NavItem[] = [
   { icon: Database, label: "Locations", href: "/admin/locations" },
   { icon: Settings, label: "Company", href: "/admin/company" },
   { icon: Settings, label: "System Settings", href: "/admin/settings/system" },
+  { icon: Printer, label: "Printer Setup", href: "/admin/settings/printers" },
   { icon: Truck, label: "Shipping Management", href: "/admin/shipping" },
   { icon: Layers, label: "Database Schema", href: "/admin/schema" },
   { icon: ShieldCheck, label: "Table Verification", href: "/reports/database" },

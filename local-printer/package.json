@@ -1,0 +1,22 @@
+{
+  "name": "local-printer-service",
+  "version": "1.0.0",
+  "description": "Silent print service for POS thermal printers",
+  "main": "server.js",
+  "bin": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "build": "pkg . --targets node18-win-x64 --output bizzflow-printer.exe"
+  },
+  "dependencies": {
+    "body-parser": "^1.20.2",
+    "cors": "^2.8.5",
+    "express": "^4.18.2",
+    "pdf-to-printer": "latest",
+    "puppeteer-core": "^22.6.0",
+    "systray2": "^2.1.4"
+  },
+  "devDependencies": {
+    "pkg": "^5.8.1"
+  }
+}

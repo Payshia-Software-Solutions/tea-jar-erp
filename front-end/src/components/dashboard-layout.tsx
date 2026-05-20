@@ -332,13 +332,13 @@ export function DashboardLayout({ children, fullWidth = true, title }: { childre
 
   const hasPerm = (perm?: string) => {
     if (!perm) return true;
-    if (!permissionKeys) return true; // render immediately; will filter once loaded
+    if (!permissionKeys) return false; // wait until loaded to prevent flash of full menu
     if (permissionKeys.includes('*')) return true;
     return permissionKeys.includes(perm);
   };
 
   const isModuleAllowed = (module: string) => {
-    if (!saasModules) return true; // Wait for load
+    if (!saasModules) return false; // wait until loaded to prevent flash
     if (saasModules.includes('*')) return true;
     return saasModules.includes(module);
   };

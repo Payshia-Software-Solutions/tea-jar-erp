@@ -183,3 +183,11 @@
 [2026-04-30T09:14:51.086Z] API RESPONSE [SUCCESS]: {"status":"success","message":"Success","data":{"invoices":["id","invoice_no","order_id","online_order_id","reservation_id","location_id","customer_id","billing_address","shipping_address","issue_date
 [2026-04-30T09:15:15.969Z] API REQUEST: http://localhost/rapair-management/server/public/api/intelligence/query
 [2026-04-30T09:15:16.522Z] API RESPONSE [SUCCESS]: {"status":"success","message":"Success","data":[{"forecast_start_date":"2026-05-01","forecast_end_date":"2026-05-31","forecast_revenue":null}]}
+[2026-05-15T11:27:51.944Z] API REQUEST: http://localhost/rapair-management/server/public/api/intelligence/schema
+[2026-05-15T11:27:52.411Z] API RESPONSE [SUCCESS]: {"status":"success","message":"Success","data":{"invoices":["id","invoice_no","order_id","online_order_id","reservation_id","banquet_booking_id","recurring_template_id","location_id","customer_id","bi
+[2026-05-15T11:27:58.859Z] API REQUEST: http://localhost/rapair-management/server/public/api/intelligence/query
+[2026-05-15T11:27:59.201Z] API RESPONSE [SUCCESS]: {"status":"success","message":"Success","data":[{"part_id":2,"part_name":"Brake Pads","total_quantity_sold":"247.00","total_sales_amount":"11115.00"},{"part_id":3,"part_name":"Transmission Fluid","tot
+[2026-05-15T11:28:20.405Z] API REQUEST: http://localhost/rapair-management/server/public/api/intelligence/schema
+[2026-05-15T11:28:20.739Z] API RESPONSE [SUCCESS]: {"status":"success","message":"Success","data":{"invoices":["id","invoice_no","order_id","online_order_id","reservation_id","banquet_booking_id","recurring_template_id","location_id","customer_id","bi
+[2026-05-15T11:28:45.051Z] API REQUEST: http://localhost/rapair-management/server/public/api/intelligence/query
+[2026-05-15T11:28:45.836Z] API RESPONSE [SUCCESS]: {"status":"success","message":"Success","data":[{"vehicle_model":"Toyota Camry","repair_order_count":3}]}

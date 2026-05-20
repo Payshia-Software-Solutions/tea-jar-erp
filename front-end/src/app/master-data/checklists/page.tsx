@@ -24,7 +24,14 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 
-type TemplateRow = { id: number; description: string; created_at: string; updated_at: string };
+type TemplateRow = { 
+  id: number; 
+  description: string; 
+  standard_mileage?: number; 
+  extended_description?: string; 
+  created_at: string; 
+  updated_at: string 
+};
 
 export default function ChecklistItemsPage() {
   const { toast } = useToast();
@@ -35,6 +42,8 @@ export default function ChecklistItemsPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [editId, setEditId] = useState<number | null>(null);
   const [description, setDescription] = useState("");
+  const [mileage, setMileage] = useState("");
+  const [extendedDescription, setExtendedDescription] = useState("");
 
   const load = async () => {
     setLoading(true);
@@ -61,12 +70,16 @@ export default function ChecklistItemsPage() {
   const openAdd = () => {
     setEditId(null);
     setDescription("");
+    setMileage("");
+    setExtendedDescription("");
     setIsDialogOpen(true);
   };
 
   const openEdit = (t: TemplateRow) => {
     setEditId(t.id);
     setDescription(t.description);
+    setMileage(t.standard_mileage ? String(t.standard_mileage) : "");
+    setExtendedDescription(t.extended_description || "");
     setIsDialogOpen(true);
   };
 
@@ -76,11 +89,17 @@ export default function ChecklistItemsPage() {
     if (!trimmed) return;
     setIsSubmitting(true);
     try {
+      const payload = { 
+        description: trimmed, 
+        standard_mileage: mileage ? parseInt(mileage) : undefined,
+        extended_description: extendedDescription.trim() || undefined
+      };
+      
       if (editId) {
-        await updateChecklistTemplate(String(editId), { description: trimmed });
+        await updateChecklistTemplate(String(editId), payload);
         toast({ title: "Updated", description: "Template updated" });
       } else {
-        await createChecklistTemplate({ description: trimmed });
+        await createChecklistTemplate(payload);
         toast({ title: "Created", description: "Template created" });
       }
       setIsDialogOpen(false);
@@ -153,7 +172,19 @@ export default function ChecklistItemsPage() {
                         <div className="p-2 bg-rose-50 rounded-lg text-rose-600 shrink-0">
                           <ListChecks className="w-4 h-4" />
                         </div>
-                        <span className="text-sm font-medium leading-tight line-clamp-2">{t.description}</span>
+                        <div className="flex flex-col min-w-0">
+                          <span className="text-sm font-bold leading-tight line-clamp-1">{t.description}</span>
+                          {t.standard_mileage && (
+                            <span className="text-[10px] text-rose-600 font-bold uppercase tracking-wider mt-0.5">
+                              Interval: {t.standard_mileage.toLocaleString()} KM
+                            </span>
+                          )}
+                          {t.extended_description && (
+                            <span className="text-[11px] text-muted-foreground line-clamp-1 mt-0.5 italic">
+                              {t.extended_description}
+                            </span>
+                          )}
+                        </div>
                       </div>
                       <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                         <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-primary" onClick={() => openEdit(t)}>
@@ -181,8 +212,22 @@ export default function ChecklistItemsPage() {
             </DialogHeader>
             <div className="grid gap-4 py-4">
               <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="desc" className="text-right">Item</Label>
-                <Input id="desc" className="col-span-3" value={description} onChange={(e) => setDescription(e.target.value)} required />
+                <Label htmlFor="desc" className="text-right">Item Name</Label>
+                <Input id="desc" className="col-span-3" value={description} onChange={(e) => setDescription(e.target.value)} placeholder="e.g. Tire Change" required />
+              </div>
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="mileage" className="text-right">Interval (KM)</Label>
+                <Input id="mileage" type="number" className="col-span-3" value={mileage} onChange={(e) => setMileage(e.target.value)} placeholder="Optional mileage interval" />
+              </div>
+              <div className="grid grid-cols-4 items-start gap-4">
+                <Label htmlFor="ext-desc" className="text-right mt-2">Details</Label>
+                <textarea 
+                  id="ext-desc" 
+                  className="col-span-3 flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50" 
+                  value={extendedDescription} 
+                  onChange={(e) => setExtendedDescription(e.target.value)} 
+                  placeholder="Optional detailed instructions or description"
+                />
               </div>
             </div>
             <DialogFooter>

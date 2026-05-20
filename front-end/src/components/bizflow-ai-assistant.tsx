@@ -86,8 +86,13 @@ export function BizFlowAiAssistant() {
         }
     }, [messages]);
 
-    // Hide assistant in POS and Print Pages
-    if (pathname?.includes('/cms/pos') || pathname?.includes('/print')) {
+    // Completely remove assistant from POS, Print, Receipt, and Invoice pages
+    const isPrintPage = pathname?.includes('/cms/pos') || 
+                        pathname?.includes('/print') || 
+                        pathname?.includes('/receipt') || 
+                        pathname?.includes('/invoices');
+
+    if (isPrintPage) {
         return null;
     }
 
@@ -140,7 +145,7 @@ export function BizFlowAiAssistant() {
     };
 
     return (
-        <div className="z-50">
+        <div className="z-50 print:hidden">
             <AnimatePresence>
                 {isOpen && (
                     <motion.div

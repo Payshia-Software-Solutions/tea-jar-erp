@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useRef, Suspense } from "react";
 import { useRouter, useParams, useSearchParams } from "next/navigation";
 import { fetchPaymentReceiptDetails, fetchCompany, contentUrl, type CompanyRow } from "@/lib/api";
+import { silentPrint, isPrinterServiceAvailable } from "@/lib/api/silent-print";
 import { Button } from "@/components/ui/button";
 import { Loader2, Printer, X, Phone, Mail, MapPin, Receipt, CheckCircle2, CreditCard, Banknote, Building2 } from "lucide-react";
 
@@ -39,8 +40,50 @@ function PrintContent() {
   useEffect(() => {
     if (autoPrint && !loading && receipt && !printedRef.current) {
       printedRef.current = true;
-      const timer = setTimeout(() => {
+      
+      const trySilentPrint = async () => {
+        const isAvailable = await isPrinterServiceAvailable();
+        if (isAvailable) {
+          // Get the HTML content specifically for the receipt
+          const receiptEl = document.querySelector('.receipt');
+          if (receiptEl) {
+            const html = `
+              <html>
+                <head>
+                  <style>
+                    body { font-family: 'Courier New', Courier, monospace; width: 80mm; margin: 0; padding: 0; }
+                    .receipt { width: 100%; max-width: 80mm; margin: 0 auto; padding: 4px 0; font-size: 11px; color: #000; }
+                    .center { text-align: center; }
+                    .right { text-align: right; }
+                    .bold { font-weight: bold; }
+                    .hr { border: none; border-top: 1px dashed #000; margin: 5px 0; }
+                    .hr-solid { border: none; border-top: 1px solid #000; margin: 5px 0; }
+                    .row { display: flex; justify-content: space-between; margin: 1px 0; }
+                    .shop-name { font-size: 16px; font-weight: bold; letter-spacing: 1px; margin-bottom: 2px; }
+                    .tag { font-size: 10px; color: #333; }
+                  </style>
+                </head>
+                <body>
+                  <div class="receipt">
+                    ${receiptEl.innerHTML}
+                  </div>
+                </body>
+              </html>
+            `;
+            const success = await silentPrint(html);
+            if (success) {
+              window.close();
+              return;
+            }
+          }
+        }
+        
+        // Fallback to standard print dialog
         window.print();
+      };
+
+      const timer = setTimeout(() => {
+        void trySilentPrint();
       }, 1000);
       return () => clearTimeout(timer);
     }
