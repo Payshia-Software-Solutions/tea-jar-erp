@@ -11,6 +11,9 @@ import { useToast } from "@/hooks/use-toast";
 import { Search, Loader2, AlertCircle, ListOrdered, History, ChevronDown, ChevronRight, Calendar, Archive, Layers } from "lucide-react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { fetchReportStockBalance, fetchLocations, LocationStockBalanceRow, ServiceLocation } from "@/lib/api";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { api } from "@/lib/api/index";
 
 export default function StockPage() {
   const { toast } = useToast();
@@ -23,6 +26,56 @@ export default function StockPage() {
   const [locationId, setLocationId] = useState<number>(1);
   const [expandedItems, setExpandedItems] = useState<Set<number>>(new Set());
 
+  // Classify Batch Modal States
+  const [classifyModalOpen, setClassifyModalOpen] = useState(false);
+  const [classifyPartId, setClassifyPartId] = useState<number>(0);
+  const [classifyPartName, setClassifyPartName] = useState<string>("");
+  const [classifyMaxQty, setClassifyMaxQty] = useState<number>(0);
+  const [classifyQty, setClassifyQty] = useState<string>("");
+  const [classifyBatchNo, setClassifyBatchNo] = useState<string>("");
+  const [classifyMfgDate, setClassifyMfgDate] = useState<string>("");
+  const [classifyExpDate, setClassifyExpDate] = useState<string>("");
+  const [classifySourceBatchId, setClassifySourceBatchId] = useState<number | null>(null);
+  const [classifying, setClassifying] = useState(false);
+
+  const handleClassifySubmit = async () => {
+    if (!classifyQty || Number(classifyQty) <= 0) {
+      toast({ title: "Validation Error", description: "Quantity must be greater than 0", variant: "destructive" });
+      return;
+    }
+    if (Number(classifyQty) > classifyMaxQty) {
+      toast({ title: "Validation Error", description: `Quantity cannot exceed unclassified stock (${classifyMaxQty})`, variant: "destructive" });
+      return;
+    }
+    setClassifying(true);
+    try {
+      const payload = {
+        part_id: classifyPartId,
+        location_id: locationId,
+        qty: Number(classifyQty),
+        source_batch_id: classifySourceBatchId,
+        batch_number: classifyBatchNo,
+        mfg_date: classifyMfgDate,
+        expiry_date: classifyExpDate
+      };
+      const res = await api('/api/part/classify_batch', {
+        method: 'POST',
+        body: JSON.stringify(payload)
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.message || 'Classification failed');
+      }
+      toast({ title: "Success", description: "Stock successfully assigned to batch." });
+      setClassifyModalOpen(false);
+      void load({ locationId, q: query.trim() });
+    } catch (e: any) {
+      toast({ title: "Error", description: e.message || "Failed to classify batch", variant: "destructive" });
+    } finally {
+      setClassifying(false);
+    }
+  };
+
   // Movements are now shown on a separate page.
 
   const load = async (opts: { locationId?: number; q?: string } = {}) => {
@@ -30,7 +83,7 @@ export default function StockPage() {
     try {
       const lid = Number(opts.locationId ?? locationId ?? 1) || 1;
       const q = String(opts.q ?? query ?? "");
-      const data = await fetchReportStockBalance({ locationId: lid, q, batches: true });
+      const data = await fetchReportStockBalance({ location_id: String(lid), q, batches: true } as any);
       setItems(Array.isArray(data) ? data : []);
     } catch (e: any) {
       toast({ title: "Error", description: e?.message || "Failed to load stock", variant: "destructive" });
@@ -312,10 +365,30 @@ export default function StockPage() {
                                               </div>
                                             )}
                                           </TableCell>
-                                          <TableCell className="py-2 text-right">
+                                          <TableCell className="py-2 text-right align-top">
                                             <div className={`text-xs font-black tabular-nums ${isUnclassified ? 'text-orange-600 dark:text-orange-400' : ''}`}>
                                               {Number(b.quantity_on_hand).toLocaleString(undefined, { minimumFractionDigits: 3, maximumFractionDigits: 3 })}
                                             </div>
+                                            {isUnclassified && (
+                                              <Button 
+                                                variant="outline" 
+                                                size="sm" 
+                                                className="mt-2 h-7 text-[10px]"
+                                                onClick={() => {
+                                                  setClassifyPartId(p.id);
+                                                  setClassifyPartName(p.part_name);
+                                                  setClassifyMaxQty(Number(b.quantity_on_hand));
+                                                  setClassifyQty(String(b.quantity_on_hand));
+                                                  setClassifySourceBatchId(b.id || null);
+                                                  setClassifyBatchNo("");
+                                                  setClassifyMfgDate("");
+                                                  setClassifyExpDate("");
+                                                  setClassifyModalOpen(true);
+                                                }}
+                                              >
+                                                Assign to Batch
+                                              </Button>
+                                            )}
                                           </TableCell>
                                         </TableRow>
                                       );
@@ -335,6 +408,67 @@ export default function StockPage() {
           </CardContent>
         </Card>
       </div>
+
+      <Dialog open={classifyModalOpen} onOpenChange={setClassifyModalOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Assign Batch</DialogTitle>
+            <DialogDescription>
+              Assign unclassified stock to a specific batch for {classifyPartName}.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid gap-2">
+              <Label htmlFor="c-qty">Quantity (Max: {classifyMaxQty})</Label>
+              <Input 
+                id="c-qty"
+                type="number"
+                step="0.001"
+                min="0.001"
+                max={classifyMaxQty}
+                value={classifyQty}
+                onChange={(e) => setClassifyQty(e.target.value)}
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="c-batch">Batch Number</Label>
+              <Input 
+                id="c-batch"
+                placeholder="Leave empty to auto-generate"
+                value={classifyBatchNo}
+                onChange={(e) => setClassifyBatchNo(e.target.value)}
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="grid gap-2">
+                <Label htmlFor="c-mfg">Manufacture Date</Label>
+                <Input 
+                  id="c-mfg"
+                  type="date"
+                  value={classifyMfgDate}
+                  onChange={(e) => setClassifyMfgDate(e.target.value)}
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="c-exp">Expiry Date</Label>
+                <Input 
+                  id="c-exp"
+                  type="date"
+                  value={classifyExpDate}
+                  onChange={(e) => setClassifyExpDate(e.target.value)}
+                />
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setClassifyModalOpen(false)} disabled={classifying}>Cancel</Button>
+            <Button onClick={handleClassifySubmit} disabled={classifying}>
+              {classifying ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
+              Assign Stock
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </DashboardLayout>
   );
 }
