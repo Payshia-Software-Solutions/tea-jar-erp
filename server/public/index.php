@@ -19,6 +19,8 @@ $allowedOrigins = [
     'http://localhost:3000',
     'http://localhost:9002',
     'https://kdu-service.netlify.app',
+    'https://bizzflow.nebulync.com',
+    'http://bizzflow.nebulync.com',
 ];
 
 if ($origin && in_array($origin, $allowedOrigins, true)) {
