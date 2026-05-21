@@ -263,8 +263,8 @@ class PartController extends Controller {
         }
 
         // Validate unclassified quantity using the same logic as UI
-        $this->loadModel('InventoryBatch');
-        $batches = clone $this->InventoryBatch->getAvailableBatches($partId, $locId);
+        $inventoryBatchModel = $this->model('InventoryBatch');
+        $batches = $inventoryBatchModel->getAvailableBatches($partId, $locId);
         $unclassified = 0;
         foreach ($batches as $b) {
             $match = false;
