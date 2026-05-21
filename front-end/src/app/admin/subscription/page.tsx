@@ -68,11 +68,35 @@ export default function SubscriptionPage() {
     })).sort((a, b) => a.label.localeCompare(b.label));
   }, [saasData, availablePlans]);
 
-  const loadSaas = async () => {
+  const loadSaas = async (force: boolean = false) => {
     try {
+      const CACHE_KEY = 'saas_config_cache';
+      const CACHE_TIME_KEY = 'saas_config_cache_time';
+      const ONE_DAY = 24 * 60 * 60 * 1000;
+
+      if (!force) {
+        const cachedStr = window.localStorage.getItem(CACHE_KEY);
+        const cachedTime = window.localStorage.getItem(CACHE_TIME_KEY);
+        
+        if (cachedStr && cachedTime) {
+          const isExpired = Date.now() - parseInt(cachedTime, 10) > ONE_DAY;
+          if (!isExpired) {
+            try {
+              const data = JSON.parse(cachedStr);
+              setSaasData(data);
+              return;
+            } catch (e) {
+              // ignore parse errors and fetch fresh
+            }
+          }
+        }
+      }
+
       const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || ''}/api/saas/config`);
       const data = await res.json();
       if (data.status === 'success') {
+        window.localStorage.setItem(CACHE_KEY, JSON.stringify(data.data));
+        window.localStorage.setItem(CACHE_TIME_KEY, Date.now().toString());
         setSaasData(data.data);
       }
     } catch (err) {
@@ -100,6 +124,10 @@ export default function SubscriptionPage() {
       const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || ''}/api/saas/sync`);
       const data = await res.json();
       if (data.status === 'success') {
+        const CACHE_KEY = 'saas_config_cache';
+        const CACHE_TIME_KEY = 'saas_config_cache_time';
+        window.localStorage.setItem(CACHE_KEY, JSON.stringify(data.data));
+        window.localStorage.setItem(CACHE_TIME_KEY, Date.now().toString());
         setSaasData(data.data);
       }
     } catch (err) {
@@ -151,6 +179,12 @@ export default function SubscriptionPage() {
     return currentModules.some((m: string) => m.toLowerCase() === modId.toLowerCase());
   }
 
+  const handleRefreshCache = async () => {
+    setLoading(true);
+    await loadSaas(true);
+    // Because loadSaas sets loading to false in finally block, we don't need to do it here
+  };
+
   if (loading) {
     return (
       <DashboardLayout title="Subscription & Billing">
@@ -191,15 +225,26 @@ export default function SubscriptionPage() {
            <Badge variant="outline" className="px-2 py-1 bg-blue-500/5 text-blue-400 border-blue-500/20 font-black tracking-widest text-[10px]">
               #01-SG
            </Badge>
-           <Button 
-                variant="outline" 
-                onClick={handleSync}
-                disabled={syncing}
-                className="h-9 px-4 rounded-xl border-border dark:border-white/5 bg-background dark:bg-white/5 hover:bg-accent/10 text-[10px] font-black tracking-widest gap-2 ml-auto lg:ml-0"
-            >
-                <RefreshCw className={syncing ? "animate-spin w-4 h-4" : "w-4 h-4"} />
-                {syncing ? 'Syncing' : 'Sync Now'}
-            </Button>
+           <div className="flex items-center gap-2 ml-auto lg:ml-0">
+             <Button 
+                  variant="outline" 
+                  onClick={handleRefreshCache}
+                  disabled={loading}
+                  className="h-9 px-4 rounded-xl border-border dark:border-white/5 bg-background dark:bg-white/5 hover:bg-accent/10 text-[10px] font-black tracking-widest gap-2"
+              >
+                  <RefreshCw className={loading ? "animate-spin w-4 h-4" : "w-4 h-4"} />
+                  {loading ? 'Refreshing' : 'Refresh Cache'}
+              </Button>
+             <Button 
+                  variant="outline" 
+                  onClick={handleSync}
+                  disabled={syncing}
+                  className="h-9 px-4 rounded-xl border-border dark:border-white/5 bg-background dark:bg-white/5 hover:bg-accent/10 text-[10px] font-black tracking-widest gap-2"
+              >
+                  <RefreshCw className={syncing ? "animate-spin w-4 h-4" : "w-4 h-4"} />
+                  {syncing ? 'Syncing' : 'Sync Now'}
+              </Button>
+           </div>
         </div>
       </div>
 

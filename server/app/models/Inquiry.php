@@ -101,7 +101,7 @@ class Inquiry extends Model {
 
     public function create($data) {
         // Generate Inquiry Number
-        $inquiryNo = $this->generateInquiryNumber();
+        $inquiryNo = $this->generateInquiryNumber($data['location_id'] ?? 1);
         
         $this->db->query("
             INSERT INTO {$this->table} (
@@ -213,20 +213,9 @@ class Inquiry extends Model {
         return $this->db->execute();
     }
 
-    private function generateInquiryNumber() {
-        $this->db->query("SELECT prefix, next_number, padding FROM document_sequences WHERE doc_type = 'inquiry' FOR UPDATE");
-        $seq = $this->db->single();
-        
-        if (!$seq) {
-            return 'INQ-' . str_pad(1, 6, '0', STR_PAD_LEFT);
-        }
-
-        $number = $seq->prefix . str_pad($seq->next_number, $seq->padding, '0', STR_PAD_LEFT);
-        
-        $this->db->query("UPDATE document_sequences SET next_number = next_number + 1 WHERE doc_type = 'inquiry'");
-        $this->db->execute();
-        
-        return $number;
+    private function generateInquiryNumber($locationId = 1) {
+        require_once '../app/helpers/DocumentSequenceHelper.php';
+        return DocumentSequenceHelper::getStandardDocNo('INQ', $locationId);
     }
 
     public function unlinkConvertedTo($id) {

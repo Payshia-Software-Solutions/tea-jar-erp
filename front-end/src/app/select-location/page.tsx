@@ -6,8 +6,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
-import { Loader2, MapPin, ArrowRight } from "lucide-react";
+import { Loader2, MapPin, ArrowRight, Search } from "lucide-react";
 import { fetchLocations, type ServiceLocationRow } from "@/lib/api";
+import { Input } from "@/components/ui/input";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 type AllowedLocation = { id: number; name: string };
 
@@ -27,6 +29,7 @@ export default function SelectLocationPage() {
   const [loading, setLoading] = useState(true);
   const [locations, setLocations] = useState<AllowedLocation[]>([]);
   const [selectedId, setSelectedId] = useState<string>("");
+  const [searchQuery, setSearchQuery] = useState("");
 
   useEffect(() => {
     const token = window.localStorage.getItem("auth_token");
@@ -89,7 +92,7 @@ export default function SelectLocationPage() {
       // Full reload so all modules re-initialize with X-Location-Id context.
       window.location.href = ret;
     }
-  }, [loading, locations, selectedId, router]);
+  }, [loading, locations, selectedId, router, searchParams]);
 
   const selected = useMemo(() => {
     const id = Number(selectedId);
@@ -106,10 +109,19 @@ export default function SelectLocationPage() {
     window.location.href = ret;
   };
 
+  const filteredLocations = useMemo(() => {
+    if (!searchQuery.trim()) return locations;
+    const query = searchQuery.toLowerCase();
+    return locations.filter(l => 
+      l.name.toLowerCase().includes(query) || 
+      String(l.id).includes(query)
+    );
+  }, [locations, searchQuery]);
+
   return (
     <div className="min-h-screen flex items-center justify-center p-4 bg-background">
-      <Card className="w-full max-w-lg border-none shadow-xl rounded-2xl overflow-hidden">
-        <CardHeader className="text-center pb-4 space-y-2">
+      <Card className="w-full max-w-4xl border-none shadow-xl rounded-2xl overflow-hidden flex flex-col">
+        <CardHeader className="text-center pb-4 space-y-2 shrink-0">
           <div className="w-64 h-24 mx-auto">
             <img 
               src="/bizzflow-logo.png" 
@@ -119,7 +131,7 @@ export default function SelectLocationPage() {
           </div>
           <CardDescription>Select the location you want to work in</CardDescription>
         </CardHeader>
-        <CardContent className="space-y-4">
+        <CardContent className="space-y-4 flex flex-col">
           {loading ? (
             <div className="flex items-center justify-center py-10 text-muted-foreground">
               <Loader2 className="w-6 h-6 animate-spin text-primary mr-2" />
@@ -127,37 +139,65 @@ export default function SelectLocationPage() {
             </div>
           ) : (
             <>
-              <RadioGroup value={selectedId} onValueChange={setSelectedId} className="gap-3">
-                {locations.map((l) => (
-                  <div
-                    key={l.id}
-                    className="flex items-center justify-between rounded-xl border p-4 hover:bg-muted/20 transition-colors"
-                  >
-                    <div className="flex items-center gap-3">
-                      <RadioGroupItem value={String(l.id)} id={`loc-${l.id}`} />
-                      <Label htmlFor={`loc-${l.id}`} className="cursor-pointer">
-                        <div className="font-semibold">{l.name}</div>
-                        <div className="text-xs text-muted-foreground">Location ID: {l.id}</div>
-                      </Label>
-                    </div>
-                  </div>
-                ))}
-              </RadioGroup>
-
-              <Button
-                className="w-full bg-primary hover:bg-primary/90 py-6 text-lg rounded-xl font-bold"
-                onClick={continueToApp}
-                disabled={!selectedId}
-              >
-                Continue
-                <ArrowRight className="w-5 h-5 ml-2" />
-              </Button>
-
-              {selected ? (
-                <div className="text-xs text-muted-foreground text-center">
-                  Current selection: <span className="font-semibold text-foreground">{selected.name}</span>
+              {locations.length > 5 && (
+                <div className="relative shrink-0 max-w-md mx-auto w-full">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                  <Input 
+                    placeholder="Search locations..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="pl-9 h-10 rounded-xl bg-muted/50 border-none"
+                  />
                 </div>
-              ) : null}
+              )}
+              
+              <ScrollArea className="flex-1 pr-4 -mr-4 h-[350px]">
+                <RadioGroup value={selectedId} onValueChange={setSelectedId} className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 pb-2">
+                  {filteredLocations.map((l) => (
+                    <div
+                      key={l.id}
+                      className={`flex items-start rounded-xl border-2 p-5 transition-colors cursor-pointer relative ${
+                        selectedId === String(l.id) 
+                          ? "border-primary bg-primary/5" 
+                          : "border-border hover:bg-muted/20"
+                      }`}
+                      onClick={() => setSelectedId(String(l.id))}
+                    >
+                      <div className="flex items-start gap-3 w-full">
+                        <RadioGroupItem value={String(l.id)} id={`loc-${l.id}`} className="mt-1 shrink-0" />
+                        <div className="flex-1 min-w-0">
+                          <Label htmlFor={`loc-${l.id}`} className="cursor-pointer font-semibold block text-[13px] leading-tight break-words">
+                            {l.name}
+                          </Label>
+                          <div className="text-[11px] text-muted-foreground mt-1">Location ID: {l.id}</div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                  {filteredLocations.length === 0 && (
+                    <div className="col-span-full text-center py-8 text-sm text-muted-foreground">
+                      No locations found matching "{searchQuery}"
+                    </div>
+                  )}
+                </RadioGroup>
+              </ScrollArea>
+
+              <div className="shrink-0 space-y-4 pt-4 max-w-md mx-auto w-full">
+                <Button
+                  className="w-full bg-primary hover:bg-primary/90 py-6 text-lg rounded-xl font-bold shadow-md"
+                  onClick={continueToApp}
+                  disabled={!selectedId}
+                >
+                  Continue
+                  <ArrowRight className="w-5 h-5 ml-2" />
+                </Button>
+
+                {selected ? (
+                  <div className="text-xs text-muted-foreground text-center">
+                    Current selection: <span className="font-semibold text-foreground">{selected.name}</span>
+                  </div>
+                ) : null}
+              </div>
             </>
           )}
         </CardContent>

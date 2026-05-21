@@ -32,6 +32,7 @@ import {
   updateOrderDetails,
   fetchCategories,
   fetchChecklistTemplates,
+  uploadOrderAttachment,
 } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import {
@@ -174,9 +175,12 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
   const [completionNotes, setCompletionNotes] = useState("");
   const [completeOpen, setCompleteOpen] = useState(false);
   const [completing, setCompleting] = useState(false);
+  const [reopening, setReopening] = useState(false);
   const [releaseTime, setReleaseTime] = useState("");
   const [savingRelease, setSavingRelease] = useState(false);
   const [editingLineId, setEditingLineId] = useState<number | null>(null);
+  const [attachmentFiles, setAttachmentFiles] = useState<File[]>([]);
+  const [attachmentUploading, setAttachmentUploading] = useState(false);
   const [editQty, setEditQty] = useState<string>("");
   const [selectedPart, setSelectedPart] = useState<PartRow | null>(null);
   const [batches, setBatches] = useState<any[]>([]);
@@ -403,6 +407,25 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
     }
   };
 
+  const handleReopenJob = async () => {
+    if (!id) return;
+    if (data.status !== "Completed") return;
+    if (!confirm("Are you sure you want to reopen this job? It will be marked as 'In Progress'.")) return;
+    setReopening(true);
+    try {
+      await updateOrder(String(id), { status: "In Progress" });
+      setOrder((prev: any) => ({
+        ...(prev || {}),
+        status: "In Progress",
+      }));
+      toast({ title: "Reopened", description: "Order is now In Progress." });
+    } catch (e: any) {
+      toast({ title: "Reopen failed", description: e?.message || "Failed to reopen order", variant: "destructive" });
+    } finally {
+      setReopening(false);
+    }
+  };
+
   const handleReleaseSave = async () => {
     if (!id) return;
     if (isLocked) {
@@ -497,6 +520,32 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
       toast({ title: "Error", description: e?.message || "Remove failed", variant: "destructive" });
     } finally {
       setSavingPart(false);
+    }
+  };
+
+  const handleUploadAttachments = async () => {
+    if (attachmentFiles.length === 0) return;
+    setAttachmentUploading(true);
+    try {
+      const attachmentFilenames: string[] = [];
+      for (const f of attachmentFiles) {
+        const up = await uploadOrderAttachment(f);
+        if (up?.status === "success" && up.data?.filename) {
+          attachmentFilenames.push(up.data.filename);
+        }
+      }
+      if (attachmentFilenames.length > 0) {
+        const existing = Array.isArray(order.attachments) ? order.attachments : [];
+        const newAttachments = [...existing, ...attachmentFilenames];
+        await updateOrder(id, { attachments: newAttachments });
+        setOrder({ ...order, attachments: newAttachments });
+        setAttachmentFiles([]);
+        toast({ title: "Success", description: "Attachments uploaded." });
+      }
+    } catch (e: any) {
+      toast({ title: "Error", description: e.message || "Failed to upload attachments", variant: "destructive" });
+    } finally {
+      setAttachmentUploading(false);
     }
   };
 
@@ -917,6 +966,33 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
                     ) : (
                       <div className="text-sm text-muted-foreground">No attachments</div>
                     )}
+                    
+                    {!isLocked && (
+                      <div className="mt-4 space-y-2 border-t pt-4">
+                        <Label>Add New Attachments</Label>
+                        <div className="flex gap-2">
+                          <Input
+                            type="file"
+                            multiple
+                            onChange={(e) => {
+                              const files = Array.from(e.target.files ?? []);
+                              setAttachmentFiles(files);
+                            }}
+                          />
+                          <Button 
+                            disabled={attachmentFiles.length === 0 || attachmentUploading} 
+                            onClick={handleUploadAttachments}
+                          >
+                            {attachmentUploading ? <Loader2 className="w-4 h-4 animate-spin" /> : "Upload"}
+                          </Button>
+                        </div>
+                        {attachmentFiles.length > 0 && (
+                          <div className="text-xs text-muted-foreground">
+                            {attachmentFiles.length} file(s) selected
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </CardContent>
                 </Card>
               </CardContent>
@@ -992,11 +1068,28 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
                 <CardDescription>Print or go back to queue</CardDescription>
               </CardHeader>
               <CardContent className="space-y-3">
-                {data.status === "Completed" && (
-                  <Button className="w-full gap-2 bg-primary hover:bg-primary/90" onClick={onPrintCompletion}>
-                    <FileText className="w-4 h-4" />
-                    Print Completion Report (A4)
+                {!isLocked && (
+                  <Button className="w-full gap-2 bg-green-600 hover:bg-green-700 text-white" onClick={() => setCompleteOpen(true)}>
+                    <CheckCircle2 className="w-4 h-4" />
+                    Complete Job
                   </Button>
+                )}
+                {data.status === "Completed" && (
+                  <>
+                    <Button className="w-full gap-2 bg-primary hover:bg-primary/90" onClick={onPrintCompletion}>
+                      <FileText className="w-4 h-4" />
+                      Print Completion Report (A4)
+                    </Button>
+                    <Button 
+                      variant="outline" 
+                      className="w-full gap-2 text-orange-600 border-orange-200 hover:bg-orange-50 hover:text-orange-700" 
+                      onClick={handleReopenJob}
+                      disabled={reopening}
+                    >
+                      <AlertCircle className="w-4 h-4" />
+                      {reopening ? "Reopening..." : "Reopen Job"}
+                    </Button>
+                  </>
                 )}
                 <Button variant="outline" className="w-full gap-2 text-slate-600 border-slate-200" onClick={onPrint}>
                   <Printer className="w-4 h-4" />

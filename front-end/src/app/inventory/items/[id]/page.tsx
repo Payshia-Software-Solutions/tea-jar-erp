@@ -153,8 +153,8 @@ export default function ItemDetailPage() {
     if (!id) return;
     setLoading(true);
     setError(null);
-    try {
-      const loadData = async () => {
+    const loadData = async () => {
+      try {
         // Use individual catch blocks to ensure one failing call doesn't block everything
         const [p, u, b, s, c, locationsRes, batchesRes, attrRes, pkgsRes, sectionsRes, deptsRes, catsRes] = await Promise.all([
           fetchPart(String(id)),
@@ -252,14 +252,14 @@ export default function ItemDetailPage() {
           const aLocs = p.allowed_locations ? String(p.allowed_locations).split(",").map(Number).filter(n => !isNaN(n)) : [];
           setAllowedLocationIds(aLocs);
         }
-      };
-      loadData();
-    } catch (err: any) {
-      console.error(err);
-      setError(err.message || "An unexpected error occurred while loading product data.");
-    } finally {
-      setLoading(false);
-    }
+      } catch (err: any) {
+        console.error(err);
+        setError(err.message || "An unexpected error occurred while loading product data.");
+      } finally {
+        setLoading(false);
+      }
+    };
+    loadData();
   }, [id, toast]);
 
   const load = async () => {

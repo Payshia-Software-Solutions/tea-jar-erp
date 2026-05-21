@@ -174,6 +174,11 @@ interface POSContextType {
   lastInvoiceId: number | null;
   setLastInvoiceId: (val: number | null) => void;
 
+  guestPrintSelectionOpen: boolean;
+  setGuestPrintSelectionOpen: (val: boolean) => void;
+  guestPrintOrderId: number | null;
+  setGuestPrintOrderId: (val: number | null) => void;
+
   // Reservation Link
   reservationDialogOpen: boolean;
   setReservationDialogOpen: (val: boolean) => void;
@@ -280,6 +285,10 @@ export const POSProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   // Print Selection State
   const [printSelectionOpen, setPrintSelectionOpen] = useState(false);
   const [lastInvoiceId, setLastInvoiceId] = useState<number | null>(null);
+
+  // Guest Print Selection State
+  const [guestPrintSelectionOpen, setGuestPrintSelectionOpen] = useState(false);
+  const [guestPrintOrderId, setGuestPrintOrderId] = useState<number | null>(null);
 
   // Reservation State
   const [reservationDialogOpen, setReservationDialogOpen] = useState(false);
@@ -1019,6 +1028,10 @@ export const POSProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       setPrintSelectionOpen,
       lastInvoiceId,
       setLastInvoiceId,
+      guestPrintSelectionOpen,
+      setGuestPrintSelectionOpen,
+      guestPrintOrderId,
+      setGuestPrintOrderId,
       reservationDialogOpen,
       setReservationDialogOpen,
       handleAddToReservation

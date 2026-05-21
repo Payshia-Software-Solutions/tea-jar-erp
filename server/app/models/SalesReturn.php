@@ -58,7 +58,7 @@ class SalesReturn extends Model {
             $this->db->exec("START TRANSACTION");
 
             // 1. Generate Return Number
-            $returnNo = $this->generateReturnNo();
+            $returnNo = $this->generateReturnNo($data['location_id'] ?? 1);
             
             // 2. Create Return Header
             $this->db->query("
@@ -175,16 +175,8 @@ class SalesReturn extends Model {
         }
     }
 
-    private function generateReturnNo() {
-        $this->db->query("SELECT prefix, next_number, padding FROM document_sequences WHERE doc_type = 'SR' FOR UPDATE");
-        $seq = $this->db->single();
-        if (!$seq) return 'SR-' . time();
-
-        $returnNo = $seq->prefix . str_pad($seq->next_number, $seq->padding, '0', STR_PAD_LEFT);
-
-        $this->db->query("UPDATE document_sequences SET next_number = next_number + 1 WHERE doc_type = 'SR'");
-        $this->db->execute();
-
-        return $returnNo;
+    private function generateReturnNo($locationId = 1) {
+        require_once '../app/helpers/DocumentSequenceHelper.php';
+        return DocumentSequenceHelper::getStandardDocNo('SR', $locationId);
     }
 }

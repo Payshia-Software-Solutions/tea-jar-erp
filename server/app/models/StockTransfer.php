@@ -8,41 +8,9 @@ class StockTransfer extends Model {
         InventorySchema::ensure();
     }
 
-    private function nextDocNumber($docType) {
-        // Short sequential number allocation using document_sequences (safe under concurrency).
-        $this->ensureSchema();
-        $type = strtoupper(trim((string)$docType));
-        if ($type === '') $type = 'TR';
-
-        $this->db->query("SELECT prefix, next_number, padding FROM document_sequences WHERE doc_type = :t FOR UPDATE");
-        $this->db->bind(':t', $type);
-        $row = $this->db->single();
-        if (!$row) {
-            // Best-effort seed, then retry.
-            try {
-                $this->db->query("INSERT IGNORE INTO document_sequences (doc_type, prefix, next_number, padding) VALUES (:t, :p, 1, 6)");
-                $this->db->bind(':t', $type);
-                $this->db->bind(':p', $type . '-');
-                $this->db->execute();
-            } catch (Exception $e) {}
-
-            $this->db->query("SELECT prefix, next_number, padding FROM document_sequences WHERE doc_type = :t FOR UPDATE");
-            $this->db->bind(':t', $type);
-            $row = $this->db->single();
-            if (!$row) return $type . "-000001";
-        }
-
-        $prefix = (string)($row->prefix ?? ($type . '-'));
-        $next = (int)($row->next_number ?? 1);
-        $pad = (int)($row->padding ?? 6);
-        if ($next <= 0) $next = 1;
-        if ($pad <= 0) $pad = 6;
-
-        $this->db->query("UPDATE document_sequences SET next_number = next_number + 1 WHERE doc_type = :t");
-        $this->db->bind(':t', $type);
-        $this->db->execute();
-
-        return $prefix . str_pad((string)$next, $pad, '0', STR_PAD_LEFT);
+    private function nextDocNumber($docType, $locationId = 1) {
+        require_once __DIR__ . '/../helpers/DocumentSequenceHelper.php';
+        return DocumentSequenceHelper::getStandardDocNo($docType, $locationId);
     }
 
     private function movementQtyIfAny($locationId, $partId) {
@@ -111,10 +79,10 @@ class StockTransfer extends Model {
         return $avail;
     }
 
-    private function genNumber() {
+    private function genNumber($locationId = 1) {
         // Keep old method as a fallback; prefer sequential doc numbers.
         try {
-            return $this->nextDocNumber('TR');
+            return $this->nextDocNumber('TR', $locationId);
         } catch (Exception $e) {
             $dt = new DateTime('now');
             $stamp = $dt->format('Ymd');
@@ -219,7 +187,7 @@ class StockTransfer extends Model {
         if (count($processedItems) === 0) return ['error' => 'No valid items provided for transfer'];
 
         $num = trim((string)($data['transfer_number'] ?? ''));
-        if ($num === '') $num = $this->genNumber();
+        if ($num === '') $num = $this->genNumber($fromId);
         $requestedAt = $data['requested_at'] ?? null;
         if (!$requestedAt) $requestedAt = (new DateTime('now'))->format('Y-m-d H:i:s');
 

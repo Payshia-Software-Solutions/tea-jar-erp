@@ -20,7 +20,8 @@ import {
   Clock,
   RefreshCw,
   Gift,
-  Home
+  Home,
+  Printer
 } from "lucide-react";
 import { 
   Select, 
@@ -82,7 +83,9 @@ export const SidebarCart: React.FC = () => {
     appliedPromotion,
     setAppliedPromotion,
     setIsPromotionPromptOpen,
-    setReservationDialogOpen
+    setReservationDialogOpen,
+    setGuestPrintSelectionOpen,
+    setGuestPrintOrderId
   } = usePOS();
 
   const [heldOrdersOpen, setHeldOrdersOpen] = React.useState(false);
@@ -149,7 +152,20 @@ export const SidebarCart: React.FC = () => {
                                           <div className="text-xs text-muted-foreground mt-1 font-bold">LKR {order.grand_total} • {order.items_count} Items</div>
                                           <div className="text-[10px] text-orange-500 mt-1 uppercase font-black">{order.order_type} | {new Date(order.created_at).toLocaleTimeString()}</div>
                                       </div>
-                                      <ArrowRight className="w-5 h-5 opacity-0 group-hover:opacity-100 transition-opacity -translate-x-4 group-hover:translate-x-0" />
+                                      <div className="flex items-center gap-3">
+                                          <button 
+                                              onClick={(e) => { 
+                                                  e.stopPropagation(); 
+                                                  setGuestPrintOrderId(order.id);
+                                                  setGuestPrintSelectionOpen(true);
+                                              }}
+                                              className="p-2 rounded-xl hover:bg-orange-100 dark:hover:bg-orange-500/20 text-orange-500 transition-colors opacity-0 group-hover:opacity-100 z-10"
+                                              title="Print Guest Bill"
+                                          >
+                                              <Printer className="w-5 h-5" />
+                                          </button>
+                                          <ArrowRight className="w-5 h-5 opacity-0 group-hover:opacity-100 transition-opacity -translate-x-4 group-hover:translate-x-0" />
+                                      </div>
                                   </div>
                               ))}
                           </div>

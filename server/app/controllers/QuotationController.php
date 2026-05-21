@@ -38,9 +38,9 @@ class QuotationController extends Controller {
         if (!$data) $this->error('Invalid input', 400);
 
         // Generate Quotation Number
-        $data['quotation_no'] = $this->generateQuotationNumber();
         $data['userId'] = $u['sub'];
         $data['location_id'] = $this->currentLocationId($u);
+        $data['quotation_no'] = $this->generateQuotationNumber($data['location_id']);
 
         $quotationId = $this->quotationModel->create($data);
         if ($quotationId) {
@@ -89,7 +89,7 @@ class QuotationController extends Controller {
 
         // Prepare Invoice Data
         $invData = [
-            'invoice_no' => $this->generateInvoiceNumber(),
+            'invoice_no' => $this->generateInvoiceNumber($quotation->location_id),
             'customer_id' => $quotation->customer_id,
             'location_id' => $quotation->location_id,
             'issue_date' => date('Y-m-d'),
@@ -143,21 +143,13 @@ class QuotationController extends Controller {
         }
     }
 
-    private function generateInvoiceNumber() {
-        $db = new Database();
-        $db->query("SELECT invoice_no FROM invoices ORDER BY id DESC LIMIT 1");
-        $row = $db->single();
-        $lastNo = $row ? $row->invoice_no : 'INV-0000';
-        $num = (int)str_replace('INV-', '', $lastNo);
-        return 'INV-' . str_pad($num + 1, 4, '0', STR_PAD_LEFT);
+    private function generateInvoiceNumber($locationId = 1) {
+        require_once '../app/helpers/DocumentSequenceHelper.php';
+        return DocumentSequenceHelper::getStandardDocNo('INV', $locationId);
     }
 
-    private function generateQuotationNumber() {
-        $db = new Database();
-        $db->query("SELECT quotation_no FROM quotations ORDER BY id DESC LIMIT 1");
-        $row = $db->single();
-        $lastNo = $row ? $row->quotation_no : 'QT-0000';
-        $num = (int)str_replace('QT-', '', $lastNo);
-        return 'QT-' . str_pad($num + 1, 4, '0', STR_PAD_LEFT);
+    private function generateQuotationNumber($locationId = 1) {
+        require_once '../app/helpers/DocumentSequenceHelper.php';
+        return DocumentSequenceHelper::getStandardDocNo('QTN', $locationId);
     }
 }

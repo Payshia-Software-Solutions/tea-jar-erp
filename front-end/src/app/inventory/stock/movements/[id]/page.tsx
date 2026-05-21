@@ -34,6 +34,9 @@ export default function StockMovementsPage() {
   const [movementsLoading, setMovementsLoading] = useState(false);
   const [movements, setMovements] = useState<any[]>([]);
   const [selectedMovementId, setSelectedMovementId] = useState<number | null>(null);
+  const [page, setPage] = useState(1);
+  const [pageSize] = useState(50);
+  const [totalMovements, setTotalMovements] = useState(0);
   const [locStock, setLocStock] = useState<LocationStock | null>(null);
   const [locStockLoading, setLocStockLoading] = useState(false);
 
@@ -48,19 +51,30 @@ export default function StockMovementsPage() {
     }
   };
 
-  const loadMovements = async (pid: string, locId: number, from?: string, to?: string) => {
+  const loadMovements = async (pid: string, locId: number, from?: string, to?: string, pageNum: number = 1) => {
     setMovementsLoading(true);
     setMovements([]);
     setSelectedMovementId(null);
     try {
+      const offset = (pageNum - 1) * pageSize;
       const data = await fetchPartMovements(
         pid,
-        500,
+        pageSize,
         locId,
         (from ?? fromDate) || undefined,
-        (to ?? toDate) || undefined
+        (to ?? toDate) || undefined,
+        offset
       );
-      const rows = Array.isArray(data) ? data : [];
+      
+      let rows: any[] = [];
+      if (data && data.data && Array.isArray(data.data)) {
+        rows = data.data;
+        setTotalMovements(Number(data.total) || 0);
+      } else if (Array.isArray(data)) {
+        rows = data;
+        setTotalMovements(data.length);
+      }
+      
       setMovements(rows);
       const first = rows.length > 0 ? rows[0] : null;
       if (first && typeof first.id === "number") setSelectedMovementId(first.id);
@@ -131,7 +145,8 @@ export default function StockMovementsPage() {
         setPart((p as any) ?? null);
 
         // Load movements after default dates are set
-        await loadMovements(String(id), initLoc, defaultFrom, defaultTo);
+        await loadMovements(String(id), initLoc, defaultFrom, defaultTo, 1);
+        setPage(1);
         await loadLocationStock(String(id), initLoc);
       } catch (e: any) {
         toast({ title: "Error", description: e?.message || "Failed to load part/movements", variant: "destructive" });
@@ -147,7 +162,8 @@ export default function StockMovementsPage() {
   useEffect(() => {
     if (!id) return;
     if (!fromDate || !toDate) return;
-    void loadMovements(String(id), locationId);
+    void loadMovements(String(id), locationId, undefined, undefined, 1);
+    setPage(1);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [fromDate, toDate]);
 
@@ -199,7 +215,8 @@ export default function StockMovementsPage() {
                 if (!Number.isFinite(v) || v <= 0) return;
                 setLocationId(v);
                 if (id) {
-                  void loadMovements(String(id), v);
+                  setPage(1);
+                  void loadMovements(String(id), v, undefined, undefined, 1);
                   void loadLocationStock(String(id), v);
                 }
               }}
@@ -288,6 +305,27 @@ export default function StockMovementsPage() {
                   )}
                 </TableBody>
               </Table>
+              <div className="p-4 border-t flex items-center justify-between">
+                <div className="text-sm text-muted-foreground">
+                  Showing {movements.length > 0 ? (page - 1) * pageSize + 1 : 0} - {Math.min(page * pageSize, totalMovements)} of {totalMovements}
+                </div>
+                <div className="flex items-center gap-2">
+                  <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => {
+                    const newPage = page - 1;
+                    setPage(newPage);
+                    void loadMovements(String(id), locationId, undefined, undefined, newPage);
+                  }}>
+                    Previous
+                  </Button>
+                  <Button variant="outline" size="sm" disabled={page * pageSize >= totalMovements} onClick={() => {
+                    const newPage = page + 1;
+                    setPage(newPage);
+                    void loadMovements(String(id), locationId, undefined, undefined, newPage);
+                  }}>
+                    Next
+                  </Button>
+                </div>
+              </div>
             </CardContent>
           </Card>
 

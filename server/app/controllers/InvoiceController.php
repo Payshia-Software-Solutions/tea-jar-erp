@@ -100,7 +100,7 @@ class InvoiceController extends Controller {
         }
 
         // Generate Invoice Number
-        $invoiceNo = $this->generateInvoiceNo();
+        $invoiceNo = $this->generateInvoiceNo($data['location_id'] ?? $this->currentLocationId($u));
         $data['invoice_no'] = $invoiceNo;
         $data['userId'] = $u['sub'];
 
@@ -325,22 +325,9 @@ class InvoiceController extends Controller {
         }
     }
 
-    private function generateInvoiceNo() {
-        $db = new Database();
-        $db->query("SELECT prefix, next_number, padding FROM document_sequences WHERE doc_type = 'INV' FOR UPDATE");
-        $seq = $db->single();
-        
-        if (!$seq) {
-            return 'INV-' . time();
-        }
-
-        $invoiceNo = $seq->prefix . str_pad($seq->next_number, $seq->padding, '0', STR_PAD_LEFT);
-
-        // Update sequence
-        $db->query("UPDATE document_sequences SET next_number = next_number + 1 WHERE doc_type = 'INV'");
-        $db->execute();
-
-        return $invoiceNo;
+    private function generateInvoiceNo($locationId = 1) {
+        require_once '../app/helpers/DocumentSequenceHelper.php';
+        return DocumentSequenceHelper::getStandardDocNo('INV', $locationId);
     }
 
     public function convert_to_recurring($id = null) {

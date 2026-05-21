@@ -181,8 +181,16 @@ export default function NewOrderPage() {
       setVehicles(v && Array.isArray(v.data) ? v.data : []);
       setChecklistTemplates(Array.isArray(t) ? t : []);
       setAvailableCategories(Array.isArray(c) ? c : []);
-      setLocations(Array.isArray(locs) ? locs : []);
-    } catch {
+      const locArray = Array.isArray(locs) ? locs : [];
+      setLocations(locArray);
+      
+      const defaultLocId = typeof window !== 'undefined' ? window.localStorage.getItem('location_id') : null;
+      if (defaultLocId) {
+        setFormData(prev => ({
+          ...prev,
+          fromLocationId: prev.fromLocationId || defaultLocId,
+        }));
+      }
       toast({
         title: "Error",
         description: "Failed to load master data for order creation.",
@@ -313,6 +321,22 @@ export default function NewOrderPage() {
       toast({
         title: "Missing",
         description: "Problem description is required.",
+        variant: "destructive",
+      });
+      return;
+    }
+    if (!formData.fromLocationId) {
+      toast({
+        title: "Missing",
+        description: "From Location is required.",
+        variant: "destructive",
+      });
+      return;
+    }
+    if (!formData.toLocationId) {
+      toast({
+        title: "Missing",
+        description: "To Service Center Location is required.",
         variant: "destructive",
       });
       return;
@@ -582,13 +606,12 @@ export default function NewOrderPage() {
 
                   <div className="lg:col-span-5 space-y-4">
                     <div className="space-y-2">
-                      <Label>From Location (Optional)</Label>
-                      <Select value={formData.fromLocationId} onValueChange={(val) => setFormData(p => ({ ...p, fromLocationId: val === "none" ? "" : val }))}>
+                      <Label>From Location</Label>
+                      <Select value={formData.fromLocationId} onValueChange={(val) => setFormData(p => ({ ...p, fromLocationId: val }))}>
                         <SelectTrigger className="w-full">
                           <SelectValue placeholder="Where is the vehicle coming from?" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="none">-- Unknown / External --</SelectItem>
                           {locations.map((loc) => (
                             <SelectItem key={loc.id} value={String(loc.id)}>
                               {loc.name}
@@ -596,24 +619,21 @@ export default function NewOrderPage() {
                           ))}
                         </SelectContent>
                       </Select>
-                      <p className="text-[10px] text-muted-foreground">Select origin if part of an internal fleet transfer.</p>
                     </div>
                     <div className="space-y-2">
                       <Label>To Service Center Location</Label>
-                      <Select value={formData.toLocationId} onValueChange={(val) => setFormData(p => ({ ...p, toLocationId: val === "none" ? "" : val }))}>
+                      <Select value={formData.toLocationId} onValueChange={(val) => setFormData(p => ({ ...p, toLocationId: val }))}>
                         <SelectTrigger className="w-full">
                           <SelectValue placeholder="Which service center will process this?" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="none">-- Current Logged In Location --</SelectItem>
-                          {locations.map((loc) => (
+                          {locations.filter(l => l.location_type === 'service').map((loc) => (
                             <SelectItem key={loc.id} value={String(loc.id)}>
                               {loc.name}
                             </SelectItem>
                           ))}
                         </SelectContent>
                       </Select>
-                      <p className="text-[10px] text-muted-foreground">Leave empty to use your current session location.</p>
                     </div>
 
                     <div className="space-y-2">

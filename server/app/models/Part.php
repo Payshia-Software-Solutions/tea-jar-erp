@@ -645,12 +645,14 @@ class Part extends Model {
         }
     }
 
-    public function listMovements($partId, $limit = 200, $locationId = 0, $from = null, $to = null) {
+    public function listMovements($partId, $limit = 200, $locationId = 0, $from = null, $to = null, $offset = 0) {
         $this->ensureSchema();
         $pid = (int)$partId;
         $lim = (int)$limit;
         if ($lim <= 0) $lim = 200;
         if ($lim > 1000) $lim = 1000;
+        $off = (int)$offset;
+        if ($off < 0) $off = 0;
         $locId = (int)$locationId;
         if ($locId < 0) $locId = 0;
         $fromDt = is_string($from) && trim($from) !== '' ? trim($from) : null;
@@ -659,6 +661,14 @@ class Part extends Model {
         $where = "WHERE sm.part_id = :pid AND (:loc = 0 OR sm.location_id = :loc)";
         if ($fromDt) $where .= " AND sm.created_at >= :from_dt";
         if ($toDt) $where .= " AND sm.created_at <= :to_dt";
+
+        $this->db->query("SELECT COUNT(*) as total FROM stock_movements sm " . $where);
+        $this->db->bind(':pid', $pid);
+        $this->db->bind(':loc', $locId);
+        if ($fromDt) $this->db->bind(':from_dt', $fromDt);
+        if ($toDt) $this->db->bind(':to_dt', $toDt);
+        $totalRow = $this->db->single();
+        $totalCount = $totalRow ? (int)$totalRow->total : 0;
 
         $this->db->query("
             SELECT sm.*,
@@ -722,13 +732,14 @@ class Part extends Model {
             LEFT JOIN invoices inv ON sm.ref_table = 'invoices' AND inv.id = sm.ref_id
             {$where}
             ORDER BY sm.id DESC
-            LIMIT {$lim}
+            LIMIT {$lim} OFFSET {$off}
         ");
         $this->db->bind(':pid', $pid);
         $this->db->bind(':loc', $locId);
         if ($fromDt) $this->db->bind(':from_dt', $fromDt);
         if ($toDt) $this->db->bind(':to_dt', $toDt);
-        return $this->db->resultSet();
+        $rows = $this->db->resultSet();
+        return ['data' => $rows, 'total' => $totalCount];
     }
 
     public function bulkUpdateDiscount($ids, $type, $value) {

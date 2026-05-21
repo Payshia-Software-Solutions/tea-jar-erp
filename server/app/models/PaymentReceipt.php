@@ -127,31 +127,14 @@ class PaymentReceipt {
     }
 
     // ── Receipt Number Generation ────────────────────────────────────────────
-    private function generateReceiptNo() {
-        $this->db->query("SELECT next_number, prefix, padding FROM document_sequences WHERE doc_type = 'RCP' FOR UPDATE");
-        $row = $this->db->single();
-        if (!$row) {
-            $this->db->query("INSERT IGNORE INTO document_sequences (doc_type, prefix, next_number, padding) VALUES ('RCP', 'RCP-', 1, 5)");
-            $this->db->execute();
-            $next = 1;
-            $prefix = 'RCP-';
-            $padding = 5;
-        } else {
-            $next    = intval($row->next_number);
-            $prefix  = $row->prefix;
-            $padding = intval($row->padding);
-        }
-
-        $this->db->query("UPDATE document_sequences SET next_number = :next, updated_at = NOW() WHERE doc_type = 'RCP'");
-        $this->db->bind(':next', $next + 1);
-        $this->db->execute();
-
-        return $prefix . str_pad($next, $padding, '0', STR_PAD_LEFT);
+    private function generateReceiptNo($locationId = 1) {
+        require_once __DIR__ . '/../helpers/DocumentSequenceHelper.php';
+        return DocumentSequenceHelper::getStandardDocNo('RCP', $locationId);
     }
 
     // ── Create Receipt (+ optional Cheque) ──────────────────────────────────
     public function create($data) {
-        $receiptNo = $this->generateReceiptNo();
+        $receiptNo = $this->generateReceiptNo($data['location_id'] ?? 1);
 
         // Auto-fetch customer name if missing
         $customerName = $data['customer_name'] ?? '';

@@ -239,8 +239,7 @@ export default function OrderQueuePage() {
   };
 
   const handleOpenComplete = (order: RepairOrder) => {
-    setSelectedOrder(order);
-    setIsCompleteDialogOpen(true);
+    router.push(`/orders/${order.id}`);
   };
 
   const handleCompleteSubmit = async () => {
@@ -354,7 +353,10 @@ export default function OrderQueuePage() {
                   </TableCell>
                   <TableCell>
                     <div className="flex flex-col">
-                      <span className="font-bold">{order.vehicleId}</span>
+                      <span className="font-bold">{order.vehicleNumber || order.vehicleId}</span>
+                      {order.vehicleNumber && order.vehicleId !== order.vehicleNumber && (
+                        <span className="text-xs text-muted-foreground font-medium">{order.vehicleId}</span>
+                      )}
                       <span className="text-xs text-muted-foreground">{Number(order.mileage ?? 0).toLocaleString()} km</span>
                     </div>
                   </TableCell>
@@ -463,7 +465,10 @@ export default function OrderQueuePage() {
                     <Car className="w-5 h-5 text-primary" />
                   </div>
                   <div>
-                    <h3 className="font-bold text-lg">{order.vehicleId}</h3>
+                    <h3 className="font-bold text-lg">{order.vehicleNumber || order.vehicleId}</h3>
+                    {order.vehicleNumber && order.vehicleId !== order.vehicleNumber && (
+                      <p className="text-xs text-muted-foreground font-medium">{order.vehicleId}</p>
+                    )}
                     <p className="text-xs text-muted-foreground">{Number(order.mileage ?? 0).toLocaleString()} km</p>
                   </div>
                 </div>
@@ -540,8 +545,8 @@ export default function OrderQueuePage() {
 
       {/* Assignment Dialog */}
       <Dialog open={isAssignDialogOpen} onOpenChange={setIsAssignDialogOpen}>
-        <DialogContent className="sm:max-w-[720px] w-[96vw] max-h-[85vh] rounded-xl overflow-hidden">
-          <DialogHeader>
+        <DialogContent className="w-screen h-[100dvh] max-w-none rounded-none sm:max-w-[720px] sm:w-[96vw] sm:h-auto sm:max-h-[85vh] sm:rounded-xl overflow-hidden flex flex-col">
+          <DialogHeader className="shrink-0">
             <DialogTitle className="flex items-center gap-2">
               <UserPlus className="w-5 h-5 text-primary" />
               Assign Repair
@@ -550,8 +555,8 @@ export default function OrderQueuePage() {
               Assign {selectedOrder?.vehicleId} to a workshop bay.
             </DialogDescription>
           </DialogHeader>
-          <div className="grid gap-4 py-4">
-            <div className="flex items-center justify-between rounded-lg border bg-muted/40 px-3 py-2 text-sm">
+          <div className="grid gap-4 py-4 flex-1 overflow-y-auto">
+            <div className="flex items-center justify-between rounded-lg border bg-muted/40 px-3 py-2 text-sm shrink-0">
               <div className="flex items-center gap-2 text-muted-foreground">
                 <MapPin className="h-4 w-4" />
                 <span>Location</span>
@@ -562,7 +567,7 @@ export default function OrderQueuePage() {
             {assignStep === 'bay' ? (
               <div className="space-y-2">
                 <Label>Choose Bay</Label>
-                <ScrollArea className="max-h-[50vh] pr-2">
+                <ScrollArea className="h-[calc(100dvh-200px)] sm:h-auto sm:max-h-[50vh] pr-4">
                   <div className="grid gap-2">
                     {baysList.length === 0 ? (
                       <div className="rounded-lg border border-dashed p-3 text-sm text-muted-foreground">
@@ -598,7 +603,16 @@ export default function OrderQueuePage() {
                 </ScrollArea>
               </div>
             ) : (
-              <div className="space-y-2">
+              <div className="space-y-4">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between text-sm gap-2 rounded-lg border bg-muted/40 px-3 py-2">
+                  <div className="flex items-center gap-2 text-muted-foreground">
+                    <Clock className="h-4 w-4" />
+                    <span>Expected Date/Time</span>
+                  </div>
+                  <div className="font-semibold text-primary">
+                    {selectedOrder?.expectedTime ? format(new Date(selectedOrder.expectedTime), 'MMM d, h:mm a') : 'Not set'}
+                  </div>
+                </div>
                 <div className="flex items-center justify-between text-sm">
                   <div className="text-muted-foreground">Selected Bay</div>
                   <div className="font-semibold">{assignment.bay || 'Unassigned'}</div>
@@ -636,7 +650,7 @@ export default function OrderQueuePage() {
                 </div>
                 <Label>Choose Technician</Label>
                 {techOptions.length > 0 ? (
-                  <ScrollArea className="max-h-[50vh] pr-2">
+                  <ScrollArea className="h-[calc(100dvh-200px)] sm:h-auto sm:max-h-[50vh] pr-4">
                     <div className="grid gap-2">
                       {techOptions.map((t) => {
                         const active = assignment.technician === t.value;
@@ -669,7 +683,7 @@ export default function OrderQueuePage() {
               </div>
             )}
           </div>
-          <DialogFooter className="flex-row gap-2">
+          <DialogFooter className="flex-row gap-2 shrink-0 pt-2 pb-2 sm:pb-0 border-t sm:border-t-0 mt-auto sm:mt-0">
             <Button variant="outline" className="flex-1" onClick={() => setIsAssignDialogOpen(false)}>Cancel</Button>
             {assignStep === 'bay' ? (
               <Button

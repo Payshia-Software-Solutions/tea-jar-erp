@@ -15,7 +15,7 @@ class Refund extends Model {
             }
         }
 
-        $refundData = $this->generateRefundNo();
+        $refundData = $this->generateRefundNo($data['location_id'] ?? 1);
         $refundNo = $refundData['refund_no'];
 
         $this->db->query("
@@ -42,16 +42,9 @@ class Refund extends Model {
         return false;
     }
 
-    public function generateRefundNo() {
-        $this->db->query("SELECT prefix, next_number, padding FROM document_sequences WHERE doc_type = 'REF' FOR UPDATE");
-        $seq = $this->db->single();
-        if (!$seq) return ['refund_no' => 'REF-' . time()];
-
-        $refundNo = $seq->prefix . str_pad($seq->next_number, $seq->padding, '0', STR_PAD_LEFT);
-
-        $this->db->query("UPDATE document_sequences SET next_number = next_number + 1 WHERE doc_type = 'REF'");
-        $this->db->execute();
-
+    public function generateRefundNo($locationId = 1) {
+        require_once __DIR__ . '/../helpers/DocumentSequenceHelper.php';
+        $refundNo = DocumentSequenceHelper::getStandardDocNo('REF', $locationId);
         return ['refund_no' => $refundNo];
     }
 

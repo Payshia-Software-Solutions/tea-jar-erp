@@ -13,6 +13,7 @@ export interface CategoryCompletion {
 export interface RepairOrder {
   id: string;
   vehicleId: string;
+  vehicleNumber?: string;
   mileage: number;
   priority: Priority;
   expectedTime: string;

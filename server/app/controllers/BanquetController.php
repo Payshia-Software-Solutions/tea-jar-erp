@@ -228,16 +228,9 @@ class BanquetController extends Controller {
         $db->beginTransaction();
         try {
             // Standard invoice logic
-            $db->query("SELECT prefix, next_number, padding FROM document_sequences WHERE doc_type = 'INV' FOR UPDATE");
-            $seq = $db->single();
-            $invoiceNo = $seq 
-                ? ($seq->prefix . str_pad($seq->next_number, $seq->padding, '0', STR_PAD_LEFT))
-                : ('INV-BNQ-' . date('Ymd') . '-' . strtoupper(substr(uniqid(), -4)));
-            
-            if ($seq) {
-                $db->query("UPDATE document_sequences SET next_number = next_number + 1 WHERE doc_type = 'INV'");
-                $db->execute();
-            }
+            require_once '../app/helpers/DocumentSequenceHelper.php';
+            $locId = $data['location_id'] ?? $booking->location_id ?? 1;
+            $invoiceNo = DocumentSequenceHelper::getStandardDocNo('INV', $locId);
 
             $invoiceData = [
                 'invoice_no' => $invoiceNo,

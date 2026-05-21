@@ -47,17 +47,38 @@ export default function MobileDockSettingsPage() {
 
     void (async () => {
       try {
-        const [permRes, saasRes] = await Promise.all([
-          api("/api/auth/permissions"),
-          fetch(`${process.env.NEXT_PUBLIC_API_URL || ""}/api/saas/config`).then((r) => r.json()),
-        ]);
+        const CACHE_KEY = 'saas_config_cache';
+        const CACHE_TIME_KEY = 'saas_config_cache_time';
+        const ONE_DAY = 24 * 60 * 60 * 1000;
+        let saasData = null;
+
+        const cachedStr = window.localStorage.getItem(CACHE_KEY);
+        const cachedTime = window.localStorage.getItem(CACHE_TIME_KEY);
+        if (cachedStr && cachedTime && Date.now() - parseInt(cachedTime, 10) <= ONE_DAY) {
+          try {
+            saasData = JSON.parse(cachedStr);
+          } catch (e) {}
+        }
+
+        const promises: Promise<any>[] = [api("/api/auth/permissions")];
+        if (!saasData) promises.push(fetch(`${process.env.NEXT_PUBLIC_API_URL || ""}/api/saas/config`).then((r) => r.json()));
+
+        const results = await Promise.all(promises);
+        const permRes = results[0];
+        const saasRes = !saasData ? results[1] : null;
+
+        if (saasRes && saasRes.status === "success" && saasRes.data) {
+           saasData = saasRes.data;
+           window.localStorage.setItem(CACHE_KEY, JSON.stringify(saasData));
+           window.localStorage.setItem(CACHE_TIME_KEY, Date.now().toString());
+        }
 
         const permData = await permRes.json();
         if (permData.status === "success" && Array.isArray(permData.data)) setPermissionKeys(permData.data);
         else setPermissionKeys([]);
 
-        if (saasRes.status === "success" && saasRes.data) {
-          setSaasModules(saasRes.data.modules || []);
+        if (saasData) {
+          setSaasModules(saasData.modules || []);
         } else {
           setSaasModules([]);
         }

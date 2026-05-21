@@ -3280,6 +3280,24 @@ class SchemaDefinition {
         'Default' => NULL,
         'Extra' => '',
       ),
+      'standard_mileage' => 
+      array (
+        'Field' => 'standard_mileage',
+        'Type' => 'int(11)',
+        'Null' => 'YES',
+        'Key' => '',
+        'Default' => NULL,
+        'Extra' => '',
+      ),
+      'extended_description' => 
+      array (
+        'Field' => 'extended_description',
+        'Type' => 'text',
+        'Null' => 'YES',
+        'Key' => '',
+        'Default' => NULL,
+        'Extra' => '',
+      ),
       'created_by' => 
       array (
         'Field' => 'created_by',
@@ -11571,6 +11589,98 @@ class SchemaDefinition {
       ),
     ),
   ),
+  'printer_settings' => 
+  array (
+    'name' => 'printer_settings',
+    'columns' => 
+    array (
+      'id' => 
+      array (
+        'Field' => 'id',
+        'Type' => 'int(11)',
+        'Null' => 'NO',
+        'Key' => 'PRI',
+        'Default' => NULL,
+        'Extra' => 'auto_increment',
+      ),
+      'location_id' => 
+      array (
+        'Field' => 'location_id',
+        'Type' => 'int(11)',
+        'Null' => 'YES',
+        'Key' => 'MUL',
+        'Default' => NULL,
+        'Extra' => '',
+      ),
+      'printer_type' => 
+      array (
+        'Field' => 'printer_type',
+        'Type' => 'varchar(50)',
+        'Null' => 'YES',
+        'Key' => '',
+        'Default' => NULL,
+        'Extra' => '',
+      ),
+      'printer_name' => 
+      array (
+        'Field' => 'printer_name',
+        'Type' => 'varchar(255)',
+        'Null' => 'YES',
+        'Key' => '',
+        'Default' => NULL,
+        'Extra' => '',
+      ),
+      'paper_width' => 
+      array (
+        'Field' => 'paper_width',
+        'Type' => 'varchar(20)',
+        'Null' => 'YES',
+        'Key' => '',
+        'Default' => '80mm',
+        'Extra' => '',
+      ),
+      'created_at' => 
+      array (
+        'Field' => 'created_at',
+        'Type' => 'timestamp',
+        'Null' => 'NO',
+        'Key' => '',
+        'Default' => 'current_timestamp()',
+        'Extra' => '',
+      ),
+      'updated_at' => 
+      array (
+        'Field' => 'updated_at',
+        'Type' => 'timestamp',
+        'Null' => 'NO',
+        'Key' => '',
+        'Default' => 'current_timestamp()',
+        'Extra' => 'on update current_timestamp()',
+      ),
+    ),
+    'indexes' => 
+    array (
+      'PRIMARY' => 
+      array (
+        'Key_name' => 'PRIMARY',
+        'Non_unique' => 0,
+        'Columns' => 
+        array (
+          0 => 'id',
+        ),
+      ),
+      'uq_location_printer_type' => 
+      array (
+        'Key_name' => 'uq_location_printer_type',
+        'Non_unique' => 0,
+        'Columns' => 
+        array (
+          0 => 'location_id',
+          1 => 'printer_type',
+        ),
+      ),
+    ),
+  ),
   'product_review_images' => 
   array (
     'name' => 'product_review_images',
@@ -14362,6 +14472,15 @@ class SchemaDefinition {
       'customer_id' => 
       array (
         'Field' => 'customer_id',
+        'Type' => 'int(11)',
+        'Null' => 'YES',
+        'Key' => '',
+        'Default' => NULL,
+        'Extra' => '',
+      ),
+      'from_location_id' => 
+      array (
+        'Field' => 'from_location_id',
         'Type' => 'int(11)',
         'Null' => 'YES',
         'Key' => '',

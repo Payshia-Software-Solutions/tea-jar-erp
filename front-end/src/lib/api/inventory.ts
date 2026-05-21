@@ -296,17 +296,19 @@ export const fetchPartMovements = async (
   limit: number = 200,
   locationId?: number | string,
   fromDate?: string,
-  toDate?: string
+  toDate?: string,
+  offset: number = 0
 ) => {
   const qs = new URLSearchParams();
   qs.set('limit', String(limit));
+  qs.set('offset', String(offset));
   if (locationId) qs.set('location_id', String(locationId));
   if (fromDate) qs.set('from', fromDate);
   if (toDate) qs.set('to', toDate);
   const res = await api(`/api/part/movements/${id}?${qs.toString()}`);
   if (!res.ok) throw new Error('Failed to load stock movements');
   const data = await res.json();
-  return data.status === 'success' ? data.data : data;
+  return data.status === 'success' ? data.data : { data: [], total: 0 };
 };
 
 export type LocationStock = {

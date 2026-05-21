@@ -43,6 +43,7 @@ export const fetchOrders = async () => {
         ...r,
         id: String(r.id),
         vehicleId: r.vehicle_model ?? '',
+        vehicleNumber: r.vehicle_identifier || r.vehicle_vin || '',
         mileage: typeof r.mileage === 'number' ? r.mileage : (r.mileage ? Number(r.mileage) : 0),
         priority: r.priority || r.priority_level || 'Low',
         expectedTime,

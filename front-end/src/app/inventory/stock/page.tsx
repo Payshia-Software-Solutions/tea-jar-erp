@@ -329,10 +329,25 @@ export default function StockPage() {
                                     </TableRow>
                                   </TableHeader>
                                   <TableBody>
-                                    {p.batches.map((b: any, bidx: number) => {
-                                      const isUnclassified = b.is_unclassified === true || b.batch_number === 'UNCLASSIFIED';
-                                      return (
-                                        <TableRow key={b.id || bidx} className={`hover:bg-muted/10 border-border/50 ${isUnclassified ? 'bg-orange-50/20 dark:bg-orange-950/20' : ''}`}>
+                                    {(() => {
+                                      const unclassifiedBatches = p.batches.filter((b: any) => b.is_unclassified === true || b.batch_number === 'UNCLASSIFIED');
+                                      const normalBatches = p.batches.filter((b: any) => !(b.is_unclassified === true || b.batch_number === 'UNCLASSIFIED'));
+                                      
+                                      const displayBatches = [...normalBatches];
+                                      if (unclassifiedBatches.length > 0) {
+                                        const totalUnclassifiedQty = unclassifiedBatches.reduce((sum: number, b: any) => sum + Number(b.quantity_on_hand), 0);
+                                        displayBatches.unshift({
+                                          id: null,
+                                          batch_number: 'UNCLASSIFIED',
+                                          is_unclassified: true,
+                                          quantity_on_hand: totalUnclassifiedQty
+                                        });
+                                      }
+                                      
+                                      return displayBatches.map((b: any, bidx: number) => {
+                                        const isUnclassified = b.is_unclassified === true || b.batch_number === 'UNCLASSIFIED';
+                                        return (
+                                          <TableRow key={b.id || bidx} className={`hover:bg-muted/10 border-border/50 ${isUnclassified ? 'bg-orange-50/20 dark:bg-orange-950/20' : ''}`}>
                                           <TableCell className="py-2">
                                             <div className="flex items-center gap-2">
                                               {isUnclassified ? (
@@ -392,7 +407,8 @@ export default function StockPage() {
                                           </TableCell>
                                         </TableRow>
                                       );
-                                    })}
+                                      });
+                                    })()}
                                   </TableBody>
                                 </Table>
                               </div>

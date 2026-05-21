@@ -265,6 +265,7 @@ class PartController extends Controller {
         // Validate unclassified quantity using the same logic as UI
         $inventoryBatchModel = $this->model('InventoryBatch');
         $batches = $inventoryBatchModel->getAvailableBatches($partId, $locId);
+        $unclassifiedBatches = [];
         $unclassified = 0;
         foreach ($batches as $b) {
             $match = false;
@@ -275,8 +276,9 @@ class PartController extends Controller {
             }
             
             if ($match) {
-                $unclassified = (float)$b->quantity_on_hand;
-                break;
+                $unclassifiedBatches[] = $b;
+                $unclassified += (float)$b->quantity_on_hand;
+                if ($sourceBatchId !== null) break;
             }
         }
         
@@ -293,7 +295,7 @@ class PartController extends Controller {
         $expDate = !empty($data['expiry_date']) ? trim($data['expiry_date']) : null;
 
         try {
-            $db = $this->partModel->db;
+            $db = new Database();
             $db->exec("START TRANSACTION");
 
             // Create batch
@@ -313,25 +315,29 @@ class PartController extends Controller {
             $notes = 'Classified to ' . $batchNumber;
             
             // Deduct unclassified stock
-            if ($sourceBatchId !== null) {
-                $db->query("
-                    INSERT INTO stock_movements (location_id, part_id, batch_id, qty_change, movement_type, ref_table, ref_id, notes, created_by)
-                    VALUES (:loc, :part_id, :sbid, :qty, 'ADJUSTMENT', 'inventory_batches', :ref_id, :notes, :created_by)
-                ");
-                $db->bind(':sbid', $sourceBatchId);
-            } else {
-                $db->query("
-                    INSERT INTO stock_movements (location_id, part_id, batch_id, qty_change, movement_type, ref_table, ref_id, notes, created_by)
-                    VALUES (:loc, :part_id, NULL, :qty, 'ADJUSTMENT', 'inventory_batches', :ref_id, :notes, :created_by)
-                ");
+            $remainingToDeduct = $qty;
+            foreach ($unclassifiedBatches as $ub) {
+                if ($remainingToDeduct <= 0.0001) break;
+                
+                $take = min($remainingToDeduct, (float)$ub->quantity_on_hand);
+                if ($take > 0.0001) {
+                    $sbid = $ub->id > 0 ? $ub->id : null;
+                    $db->query("
+                        INSERT INTO stock_movements (location_id, part_id, batch_id, qty_change, movement_type, ref_table, ref_id, notes, created_by)
+                        VALUES (:loc, :part_id, :sbid, :qty, 'ADJUSTMENT', 'inventory_batches', :ref_id, :notes, :created_by)
+                    ");
+                    $db->bind(':loc', $locId);
+                    $db->bind(':part_id', $partId);
+                    $db->bind(':sbid', $sbid);
+                    $db->bind(':qty', -$take);
+                    $db->bind(':ref_id', $newBatchId);
+                    $db->bind(':notes', $notes);
+                    $db->bind(':created_by', (int)$u['sub']);
+                    $db->execute();
+                    
+                    $remainingToDeduct -= $take;
+                }
             }
-            $db->bind(':loc', $locId);
-            $db->bind(':part_id', $partId);
-            $db->bind(':qty', -$qty);
-            $db->bind(':ref_id', $newBatchId);
-            $db->bind(':notes', $notes);
-            $db->bind(':created_by', (int)$u['sub']);
-            $db->execute();
 
             // Add to new batch
             $db->query("

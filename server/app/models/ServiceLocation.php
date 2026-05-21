@@ -14,6 +14,7 @@ class ServiceLocation extends Model {
             }
 
             $cols = [
+                'branch_code' => "VARCHAR(10) NULL DEFAULT 'BR01'",
                 'allow_service_charge' => "TINYINT NOT NULL DEFAULT 0",
                 'service_charge_rate' => "DECIMAL(5,2) NOT NULL DEFAULT 0.00",
                 'allow_dine_in' => "TINYINT NOT NULL DEFAULT 1",

@@ -1,0 +1,1 @@
+<?php require 'server/app/core/Database.php'; $db = new Database(); $db->query('SELECT batch_id, SUM(qty_change) as qty FROM stock_movements GROUP BY batch_id HAVING qty > 0'); print_r($db->resultSet());

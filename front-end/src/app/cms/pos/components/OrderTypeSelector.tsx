@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { Utensils, ShoppingBag, Store, ArrowRight, ChevronLeft, User, LayoutGrid, Clock, FilePlus, History, FileText, Undo2, Banknote, MoreHorizontal, LayoutDashboard, Home } from "lucide-react";
+import { Utensils, ShoppingBag, Store, ArrowRight, ChevronLeft, User, LayoutGrid, Clock, FilePlus, History, FileText, Undo2, Banknote, MoreHorizontal, LayoutDashboard, Home, Printer } from "lucide-react";
 import { usePOS } from "../context/POSContext";
 import {
     Dialog,
@@ -30,7 +30,9 @@ export const OrderTypeSelector: React.FC = () => {
         setReturnDialogOpen,
         setRefundDialogOpen,
         setPendingInvoicesDialogOpen,
-        setReservationDialogOpen
+        setReservationDialogOpen,
+        setGuestPrintSelectionOpen,
+        setGuestPrintOrderId
     } = usePOS();
 
     const [step, setStep] = useState<'choice' | 'mode' | 'table' | 'steward' | 'held'>('choice');
@@ -269,9 +271,24 @@ export const OrderTypeSelector: React.FC = () => {
                                                 </p>
                                             </div>
                                         </div>
-                                        <div className="text-right">
-                                            <div className="text-sm font-bold text-slate-900 dark:text-white tabular-nums">LKR {Number(order.grand_total).toLocaleString()}</div>
-                                            <ArrowRight className="w-4 h-4 ml-auto mt-1 text-slate-300 group-hover:text-orange-500 group-hover:translate-x-1 transition-all" />
+                                        <div className="flex items-center gap-4 text-right">
+                                            <div className="flex flex-col items-end">
+                                                <div className="text-sm font-bold text-slate-900 dark:text-white tabular-nums">LKR {Number(order.grand_total).toLocaleString()}</div>
+                                                <div className="flex items-center gap-2 mt-1">
+                                                    <button 
+                                                        onClick={(e) => { 
+                                                            e.stopPropagation(); 
+                                                            setGuestPrintOrderId(order.id);
+                                                            setGuestPrintSelectionOpen(true);
+                                                        }}
+                                                        className="p-1 rounded hover:bg-orange-100 dark:hover:bg-orange-500/20 text-orange-500 transition-colors opacity-0 group-hover:opacity-100 z-10"
+                                                        title="Print Guest Bill"
+                                                    >
+                                                        <Printer className="w-4 h-4" />
+                                                    </button>
+                                                    <ArrowRight className="w-4 h-4 text-slate-300 group-hover:text-orange-500 group-hover:translate-x-1 transition-all" />
+                                                </div>
+                                            </div>
                                         </div>
                                     </button>
                                 ))

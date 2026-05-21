@@ -97,42 +97,83 @@ export function DashboardLayout({ children, fullWidth = true, title }: { childre
   const pathname = usePathname();
   const router = useRouter();
   const [userRole, setUserRole] = useState<string>('');
-  const [permissionKeys, setPermissionKeys] = useState<string[] | null>(null);
-  const [isCoreFeaturesOpen, setIsCoreFeaturesOpen] = useState(true);
-  const [isServiceCenterOpen, setIsServiceCenterOpen] = useState(false);
-  const [isVendorsOpen, setIsVendorsOpen] = useState(false);
-  const [isMasterDataOpen, setIsMasterDataOpen] = useState(false);
-  const [isInventoryOpen, setIsInventoryOpen] = useState(false);
-  const [isCrmOpen, setIsCrmOpen] = useState(false);
-  const [isSalesOpen, setIsSalesOpen] = useState(false);
-  const [isAccountingOpen, setIsAccountingOpen] = useState(false);
-  const [isProductionOpen, setIsProductionOpen] = useState(false);
-  const [isMarketingOpen, setIsMarketingOpen] = useState(false);
-  const [isHrmOpen, setIsHrmOpen] = useState(false);
-  const [isFrontOfficeOpen, setIsFrontOfficeOpen] = useState(false);
-  const [isBanquetOpen, setIsBanquetOpen] = useState(false);
-  const [isEcommerceOpen, setIsEcommerceOpen] = useState(false);
-  const [isAdminOpen, setIsAdminOpen] = useState(false);
-	  const [theme, setTheme] = useState<'light' | 'dark'>('light');
-	  const [availableLocations, setAvailableLocations] = useState<Array<{ id: number; name: string }>>([]);
-	  const [currentLocationId, setCurrentLocationId] = useState<number | null>(null);
-	  const [currentLocationName, setCurrentLocationName] = useState<string>('');
-	  const [docTitle, setDocTitle] = useState<string>('');
-	  const [isPromotionsOpen, setIsPromotionsOpen] = useState(false);
-	  const [saasModules, setSaasModules] = useState<string[] | null>(null);
-	  const [saasPackageName, setSaasPackageName] = useState<string>('');
-	  const [saasLicenseKey, setSaasLicenseKey] = useState<string>('');
-	  const [saasTenantName, setSaasTenantName] = useState<string>('');
-	  const [saasRenewalDate, setSaasRenewalDate] = useState<string>('');
-	  const [saasInvoices, setSaasInvoices] = useState<any[]>([]);
-	  const [isSaasDialogOpen, setIsSaasDialogOpen] = useState(false);
-	  // Location switching uses the /select-location page (card UI) for a consistent UX.
+  const [permissionKeys, setPermissionKeys] = useState<string[] | null>(() => {
+    if (typeof window !== 'undefined') {
+      const p = window.localStorage.getItem('perms_cache');
+      if (p) { try { return JSON.parse(p); } catch {} }
+    }
+    return null;
+  });
+  
+  const useSidebarState = (key: string, defaultVal: boolean) => {
+    const [state, setState] = useState(() => {
+      if (typeof window !== 'undefined') {
+        const v = window.sessionStorage.getItem(`sb_${key}`);
+        if (v !== null) return v === 'true';
+      }
+      return defaultVal;
+    });
+    const setSidebarState = (val: boolean | ((v: boolean) => boolean)) => {
+      setState((prev: boolean) => {
+        const next = typeof val === 'function' ? val(prev) : val;
+        if (typeof window !== 'undefined') window.sessionStorage.setItem(`sb_${key}`, String(next));
+        return next;
+      });
+    };
+    return [state, setSidebarState] as const;
+  };
 
-	  const loadPerms = async () => {
+  const [isCoreFeaturesOpen, setIsCoreFeaturesOpen] = useSidebarState('Core', true);
+  const [isServiceCenterOpen, setIsServiceCenterOpen] = useSidebarState('Service', false);
+  const [isVendorsOpen, setIsVendorsOpen] = useSidebarState('Vendors', false);
+  const [isMasterDataOpen, setIsMasterDataOpen] = useSidebarState('Master', false);
+  const [isInventoryOpen, setIsInventoryOpen] = useSidebarState('Inventory', false);
+  const [isCrmOpen, setIsCrmOpen] = useSidebarState('CRM', false);
+  const [isSalesOpen, setIsSalesOpen] = useSidebarState('Sales', false);
+  const [isAccountingOpen, setIsAccountingOpen] = useSidebarState('Accounting', false);
+  const [isProductionOpen, setIsProductionOpen] = useSidebarState('Production', false);
+  const [isMarketingOpen, setIsMarketingOpen] = useSidebarState('Marketing', false);
+  const [isHrmOpen, setIsHrmOpen] = useSidebarState('HRM', false);
+  const [isFrontOfficeOpen, setIsFrontOfficeOpen] = useSidebarState('FrontOffice', false);
+  const [isBanquetOpen, setIsBanquetOpen] = useSidebarState('Banquet', false);
+  const [isEcommerceOpen, setIsEcommerceOpen] = useSidebarState('Ecommerce', false);
+  const [isAdminOpen, setIsAdminOpen] = useSidebarState('Admin', false);
+  
+  const [theme, setTheme] = useState<'light' | 'dark'>('light');
+  const [availableLocations, setAvailableLocations] = useState<Array<{ id: number; name: string }>>([]);
+  const [currentLocationId, setCurrentLocationId] = useState<number | null>(null);
+  const [currentLocationName, setCurrentLocationName] = useState<string>('');
+  const [docTitle, setDocTitle] = useState<string>('');
+  const [isPromotionsOpen, setIsPromotionsOpen] = useState(false);
+  
+  const [saasModules, setSaasModules] = useState<string[] | null>(() => {
+    if (typeof window !== 'undefined') {
+      const s = window.localStorage.getItem('saas_config_cache');
+      if (s) { try { return JSON.parse(s).modules; } catch {} }
+    }
+    return null;
+  });
+  const [saasPackageName, setSaasPackageName] = useState<string>('');
+  const [saasLicenseKey, setSaasLicenseKey] = useState<string>('');
+  const [saasTenantName, setSaasTenantName] = useState<string>('');
+  const [saasRenewalDate, setSaasRenewalDate] = useState<string>('');
+  const [saasInvoices, setSaasInvoices] = useState<any[]>([]);
+  const [isSaasDialogOpen, setIsSaasDialogOpen] = useState(false);
+  // Location switching uses the /select-location page (card UI) for a consistent UX.
+
+  const loadPerms = async () => {
     try {
+      const cached = window.localStorage.getItem('perms_cache');
+      const time = window.localStorage.getItem('perms_cache_time');
+      if (cached && time && Date.now() - parseInt(time) < 86400000) {
+        setPermissionKeys(JSON.parse(cached));
+        return;
+      }
       const res = await api('/api/auth/permissions');
       const data = await res.json();
       if (data.status === 'success' && Array.isArray(data.data)) {
+        window.localStorage.setItem('perms_cache', JSON.stringify(data.data));
+        window.localStorage.setItem('perms_cache_time', Date.now().toString());
         setPermissionKeys(data.data);
       } else {
         setPermissionKeys([]);
@@ -181,11 +222,40 @@ export function DashboardLayout({ children, fullWidth = true, title }: { childre
     void loadSaas();
 	  }, []);
 
-  const loadSaas = async () => {
+  const loadSaas = async (force: boolean = false) => {
     try {
+      const CACHE_KEY = 'saas_config_cache';
+      const CACHE_TIME_KEY = 'saas_config_cache_time';
+      const ONE_DAY = 24 * 60 * 60 * 1000;
+
+      if (!force) {
+        const cachedStr = window.localStorage.getItem(CACHE_KEY);
+        const cachedTime = window.localStorage.getItem(CACHE_TIME_KEY);
+        
+        if (cachedStr && cachedTime) {
+          const isExpired = Date.now() - parseInt(cachedTime, 10) > ONE_DAY;
+          if (!isExpired) {
+            try {
+              const data = JSON.parse(cachedStr);
+              setSaasModules(data.modules);
+              setSaasPackageName(data.name || data.package_name);
+              setSaasLicenseKey(data.license_key || '');
+              setSaasTenantName(data.tenant_name || '');
+              setSaasRenewalDate(data.renewal_date || '');
+              setSaasInvoices(data.invoices || []);
+              return;
+            } catch (e) {
+              // ignore parse errors and fetch fresh
+            }
+          }
+        }
+      }
+
       const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || ''}/api/saas/config`);
       const data = await res.json();
       if (data.status === 'success' && data.data) {
+        window.localStorage.setItem(CACHE_KEY, JSON.stringify(data.data));
+        window.localStorage.setItem(CACHE_TIME_KEY, Date.now().toString());
         setSaasModules(data.data.modules);
         setSaasPackageName(data.data.name || data.data.package_name);
         setSaasLicenseKey(data.data.license_key || '');
@@ -203,7 +273,7 @@ export function DashboardLayout({ children, fullWidth = true, title }: { childre
       const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || ''}/api/saas/sync`);
       const data = await res.json();
       if (data.status === 'success') {
-        await loadSaas();
+        await loadSaas(true);
       }
     } catch (err) {
       console.error("SaaS Sync Failed", err);
