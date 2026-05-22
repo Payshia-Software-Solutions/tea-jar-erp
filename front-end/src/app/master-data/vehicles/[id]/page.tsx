@@ -9,6 +9,8 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { api } from "@/lib/api";
 import { Vehicle } from "@/lib/types";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ServiceHistoryTable } from "@/components/master-data/ServiceHistoryTable";
 
 export default function EditVehiclePage() {
   const params = useParams();
@@ -70,7 +72,18 @@ export default function EditVehiclePage() {
           </Link>
         </div>
       ) : vehicle ? (
-        <VehicleForm initialData={vehicle} isEditing={true} />
+        <Tabs defaultValue="details" className="w-full">
+          <TabsList className="mb-4">
+            <TabsTrigger value="details">Vehicle Details</TabsTrigger>
+            <TabsTrigger value="history">Service History</TabsTrigger>
+          </TabsList>
+          <TabsContent value="details" className="mt-0">
+            <VehicleForm initialData={vehicle} isEditing={true} />
+          </TabsContent>
+          <TabsContent value="history" className="mt-0">
+            <ServiceHistoryTable vehicleId={vehicle.id} />
+          </TabsContent>
+        </Tabs>
       ) : null}
     </DashboardLayout>
   );

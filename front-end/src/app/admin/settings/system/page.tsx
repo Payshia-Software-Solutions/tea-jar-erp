@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
-import { fetchSystemSettings, updateSystemSettings, testSms, fetchApiClients, createApiClient, deleteApiClient, regenerateApiClientKey, toggleApiClientStatus, ApiClientRow, fetchLocations, ServiceLocation } from "@/lib/api";
+import { fetchSystemSettings, updateSystemSettings, testSms, fetchApiClients, createApiClient, deleteApiClient, regenerateApiClientKey, toggleApiClientStatus, ApiClientRow, fetchLocations, ServiceLocation, syncMorningMileage } from "@/lib/api";
 import { Settings, Mail, MessageSquare, Save, Loader2, Link2, ShieldCheck, UserCheck, Smartphone, Globe, Copy, RotateCw, CheckCircle2, AlertCircle, Plus, Trash2, ExternalLink, Eye, EyeOff, CreditCard, Factory, Building2, Banknote, ShoppingCart, Code2, Terminal, Truck, MapPin } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -185,6 +185,19 @@ export default function SystemSettingsPage() {
   const copyToClipboard = (key: string) => {
     navigator.clipboard.writeText(key);
     toast({ title: "Copied!", description: "API Key copied to clipboard." });
+  };
+
+  const [syncingMileage, setSyncingMileage] = useState(false);
+  const handleSyncMorningMileage = async () => {
+    try {
+      setSyncingMileage(true);
+      const res = await syncMorningMileage();
+      toast({ title: "Sync Complete", description: `Morning mileage synced successfully. Updated: ${res.data?.updated || 0} vehicles.` });
+    } catch (err) {
+      toast({ title: "Sync Failed", description: (err as Error).message, variant: "destructive" });
+    } finally {
+      setSyncingMileage(false);
+    }
   };
 
   if (loading) {
@@ -1008,6 +1021,13 @@ export default function SystemSettingsPage() {
                       />
                       <p className="text-[10px] text-muted-foreground">Authorization token for the mileage service.</p>
                     </div>
+                  </div>
+                  
+                  <div className="flex justify-end pt-2">
+                    <Button onClick={handleSyncMorningMileage} disabled={syncingMileage} variant="secondary" className="gap-2">
+                      {syncingMileage ? <Loader2 className="w-4 h-4 animate-spin" /> : <RotateCw className="w-4 h-4" />}
+                      Sync Morning Mileage Now
+                    </Button>
                   </div>
                 </div>
 

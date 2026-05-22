@@ -14487,6 +14487,24 @@ class SchemaDefinition {
         'Default' => NULL,
         'Extra' => '',
       ),
+      'job_type' => 
+      array (
+        'Field' => 'job_type',
+        'Type' => 'enum(\'Repair\',\'Service Booking\')',
+        'Null' => 'NO',
+        'Key' => '',
+        'Default' => 'Repair',
+        'Extra' => '',
+      ),
+      'booking_date' => 
+      array (
+        'Field' => 'booking_date',
+        'Type' => 'datetime',
+        'Null' => 'YES',
+        'Key' => '',
+        'Default' => NULL,
+        'Extra' => '',
+      ),
     ),
     'indexes' => 
     array (
@@ -15413,6 +15431,15 @@ class SchemaDefinition {
         'Null' => 'YES',
         'Key' => '',
         'Default' => NULL,
+        'Extra' => '',
+      ),
+      'branch_code' => 
+      array (
+        'Field' => 'branch_code',
+        'Type' => 'varchar(10)',
+        'Null' => 'YES',
+        'Key' => '',
+        'Default' => 'BR01',
         'Extra' => '',
       ),
     ),
@@ -19069,6 +19096,15 @@ class SchemaDefinition {
         'Default' => '0',
         'Extra' => '',
       ),
+      'morning_mileage' => 
+      array (
+        'Field' => 'morning_mileage',
+        'Type' => 'int(11)',
+        'Null' => 'YES',
+        'Key' => '',
+        'Default' => '0',
+        'Extra' => '',
+      ),
       'mileage_last_synced_at' => 
       array (
         'Field' => 'mileage_last_synced_at',
@@ -19076,6 +19112,42 @@ class SchemaDefinition {
         'Null' => 'YES',
         'Key' => '',
         'Default' => NULL,
+        'Extra' => '',
+      ),
+      'service_interval_mileage' => 
+      array (
+        'Field' => 'service_interval_mileage',
+        'Type' => 'int(11)',
+        'Null' => 'YES',
+        'Key' => '',
+        'Default' => NULL,
+        'Extra' => '',
+      ),
+      'next_service_mileage' => 
+      array (
+        'Field' => 'next_service_mileage',
+        'Type' => 'int(11)',
+        'Null' => 'YES',
+        'Key' => '',
+        'Default' => NULL,
+        'Extra' => '',
+      ),
+      'next_service_date' => 
+      array (
+        'Field' => 'next_service_date',
+        'Type' => 'date',
+        'Null' => 'YES',
+        'Key' => '',
+        'Default' => NULL,
+        'Extra' => '',
+      ),
+      'mileage_sync_status' => 
+      array (
+        'Field' => 'mileage_sync_status',
+        'Type' => 'varchar(20)',
+        'Null' => 'YES',
+        'Key' => '',
+        'Default' => 'pending',
         'Extra' => '',
       ),
     ),

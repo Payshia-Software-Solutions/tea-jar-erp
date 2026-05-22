@@ -68,6 +68,8 @@ class OrderController extends Controller {
                 'location' => $data['location'] ?? null,
                 'technician' => $data['technician'] ?? null,
                 'from_location_id' => $data['from_location_id'] ?? null,
+                'job_type' => $data['job_type'] ?? $data['jobType'] ?? 'Repair',
+                'booking_date' => $data['booking_date'] ?? $data['bookingDate'] ?? null,
             ];
 
             // Store checklist/categories as JSON strings (TEXT columns).
@@ -93,6 +95,13 @@ class OrderController extends Controller {
             }
             $newId = $this->orderModel->addOrder($payload, (int)$u['sub'], $locId);
             if ($newId) {
+                if (!empty($payload['vehicle_id']) && !empty($payload['mileage'])) {
+                    $db = new Database();
+                    $db->query("UPDATE vehicles SET current_mileage = GREATEST(COALESCE(current_mileage, 0), :m) WHERE id = :vid");
+                    $db->bind(':m', (int)$payload['mileage']);
+                    $db->bind(':vid', (int)$payload['vehicle_id']);
+                    $db->execute();
+                }
                 $payload['id'] = (int)$newId;
                 $this->auditModel->write([
                     'user_id' => (int)$u['sub'],
@@ -218,6 +227,36 @@ class OrderController extends Controller {
         }
     }
 
+    // POST /api/order/reschedule/1
+    public function reschedule($id = null) {
+        $u = $this->requirePermission('orders.write');
+        if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') {
+            $this->error('Method Not Allowed', 405);
+        }
+        if (!$id) $this->error('Order ID required', 400);
+
+        $data = json_decode(file_get_contents('php://input'), true) ?: [];
+        $bookingDate = $data['booking_date'] ?? null;
+        if (!$bookingDate) $this->error('Booking date required', 400);
+
+        $locId = $this->currentLocationId($u);
+        $order = $this->orderModel->getOrderByIdInLocation((int)$id, $locId);
+        if (!$order) $this->error('Order not found', 404);
+
+        $db = new Database();
+        $db->query("UPDATE repair_orders SET booking_date = :bd, updated_by = :u WHERE id = :id AND (location_id = :loc OR from_location_id = :loc)");
+        $db->bind(':bd', $bookingDate);
+        $db->bind(':u', (int)$u['sub']);
+        $db->bind(':id', (int)$id);
+        $db->bind(':loc', $locId);
+        
+        if ($db->execute()) {
+            $this->success(['id' => (int)$id, 'booking_date' => $bookingDate], 'Booking rescheduled');
+        } else {
+            $this->error('Reschedule failed');
+        }
+    }
+
     // POST /api/order/update_details/1
     // Body: { categories?: Array, checklist?: Array }
     public function update_details($id = null) {
@@ -236,6 +275,9 @@ class OrderController extends Controller {
         }
         if (isset($data['checklist']) && is_array($data['checklist'])) {
             $payload['checklist_json'] = json_encode(array_values($data['checklist']));
+        }
+        if (isset($data['attachments']) && is_array($data['attachments'])) {
+            $payload['attachments_json'] = json_encode(array_values($data['attachments']));
         }
 
         if (empty($payload)) {
@@ -285,6 +327,8 @@ class OrderController extends Controller {
         }
 
         $completionComments = isset($data['completion_comments']) ? trim((string)$data['completion_comments']) : null;
+        $nextServiceMileage = $data['next_service_mileage'] ?? null;
+        $nextServiceDate = $data['next_service_date'] ?? null;
 
         $locId = $this->currentLocationId($u);
         $order = $this->orderModel->getOrderByIdInLocation((int)$id, $locId);
@@ -312,6 +356,36 @@ class OrderController extends Controller {
             if (!$ok) {
                 $db->exec("ROLLBACK");
                 $this->error('Update failed', 400);
+            }
+
+            // Update vehicle if Service Booking
+            if ($status === 'Completed' && isset($order->job_type) && $order->job_type === 'Service Booking' && !empty($order->vehicle_id)) {
+                $db->query("SELECT service_interval_mileage FROM vehicles WHERE id = :vid");
+                $db->bind(':vid', $order->vehicle_id);
+                $veh = $db->single();
+                
+                $currentMileage = (int)($order->mileage ?? 0);
+                
+                $calcNextMileage = $veh && $veh->service_interval_mileage > 0 ? $currentMileage + (int)$veh->service_interval_mileage : null;
+                $nm = $nextServiceMileage !== null && $nextServiceMileage !== '' ? (int)$nextServiceMileage : $calcNextMileage;
+                
+                $nd = $nextServiceDate !== null && $nextServiceDate !== '' ? $nextServiceDate : null;
+                
+                if ($nm !== null || $nd !== null) {
+                    if ($nm !== null && $nd !== null) {
+                        $db->query("UPDATE vehicles SET next_service_mileage = :nm, next_service_date = :nd WHERE id = :vid");
+                        $db->bind(':nm', $nm);
+                        $db->bind(':nd', $nd);
+                    } elseif ($nm !== null) {
+                        $db->query("UPDATE vehicles SET next_service_mileage = :nm, next_service_date = DATE_ADD(NOW(), INTERVAL 6 MONTH) WHERE id = :vid");
+                        $db->bind(':nm', $nm);
+                    } elseif ($nd !== null) {
+                        $db->query("UPDATE vehicles SET next_service_date = :nd WHERE id = :vid");
+                        $db->bind(':nd', $nd);
+                    }
+                    $db->bind(':vid', $order->vehicle_id);
+                    $db->execute();
+                }
             }
 
             // Release bay if no other active orders remain in that bay.

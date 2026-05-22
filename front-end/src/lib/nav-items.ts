@@ -9,6 +9,7 @@ import {
   CheckCircle2,
   Grid,
   Car,
+  Search,
   Tag,
   Layers,
   Users,
@@ -44,7 +45,8 @@ import {
   Calculator,
   FolderTree,
   Ticket,
-  Printer
+  Printer,
+  AlertCircle
 } from "lucide-react";
 
 export type NavItem = {
@@ -67,10 +69,13 @@ export const mainNavItems: NavItem[] = [
 export const serviceCenterItems: NavItem[] = [
   { icon: PlusCircle, label: "Create Order", href: "/orders/new", perm: "orders.write" },
   { icon: ClipboardList, label: "Order Queue", href: "/orders", perm: "orders.read" },
+  { icon: CalendarIcon, label: "Service Calendar", href: "/orders/calendar", perm: "orders.read" },
+  { icon: AlertCircle, label: "Upcoming Services", href: "/reports/vehicles/upcoming", perm: "vehicles.read" },
   { icon: PlayCircle, label: "Active Jobs", href: "/orders/active", perm: "orders.read" },
   { icon: CheckCircle2, label: "Completed Orders", href: "/orders/completed", perm: "orders.read" },
   { icon: Grid, label: "Bays Board", href: "/dashboard/bays", perm: "bays.read" },
   { icon: Car, label: "Vehicles List", href: "/master-data/vehicles", perm: "vehicles.read" },
+  { icon: Search, label: "Vehicle Lookup", href: "/vehicles/lookup", perm: "vehicles.read" },
   { icon: Users, label: "Technicians", href: "/master-data/technicians", perm: "technicians.read" },
   { icon: Grid, label: "Service Bays", href: "/master-data/bays", perm: "bays.read" },
   { icon: Tags, label: "Repair Categories", href: "/master-data/categories", perm: "categories.read" },

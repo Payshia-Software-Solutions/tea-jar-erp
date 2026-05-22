@@ -29,6 +29,8 @@ class Order extends Model {
             'technician' => "VARCHAR(255) NULL",
             'created_by' => "INT NULL",
             'updated_by' => "INT NULL",
+            'job_type' => "ENUM('Repair', 'Service Booking') NOT NULL DEFAULT 'Repair'",
+            'booking_date' => "DATETIME NULL",
         ];
 
         foreach ($cols as $col => $def) {
@@ -89,7 +91,7 @@ class Order extends Model {
     public function getOrderById($id) {
         $this->db->query("
             SELECT ro.*, 
-                   v.vin as vehicle_vin, v.make as vehicle_make, v.model as vehicle_model_v, v.year as vehicle_year,
+                   v.vin as vehicle_vin, v.make as vehicle_make, v.model as vehicle_model_v, v.year as vehicle_year, v.service_interval_mileage as vehicle_service_interval,
                    c.name as customer_real_name, c.phone as customer_real_phone,
                    d.name as department_name,
                    l.name as location_name, l.address as location_address, l.phone as location_phone, l.tax_no as location_tax_no,
@@ -110,7 +112,7 @@ class Order extends Model {
         $this->ensureRepairOrderColumns();
         $this->db->query("
             SELECT ro.*, 
-                   v.vin as vehicle_vin, v.make as vehicle_make, v.model as vehicle_model_v, v.year as vehicle_year,
+                   v.vin as vehicle_vin, v.make as vehicle_make, v.model as vehicle_model_v, v.year as vehicle_year, v.service_interval_mileage as vehicle_service_interval,
                    c.name as customer_real_name, c.phone as customer_real_phone,
                    d.name as department_name,
                    l.name as location_name, l.address as location_address, l.phone as location_phone, l.tax_no as location_tax_no,
@@ -134,9 +136,9 @@ class Order extends Model {
         $this->ensureRepairOrderColumns();
         $this->db->query("
             INSERT INTO {$this->table}
-            (location_id, from_location_id, customer_name, vehicle_model, problem_description, status, vehicle_id, vehicle_identifier, mileage, priority, expected_time, release_time, comments, categories_json, checklist_json, attachments_json, location, technician, created_by, updated_by)
+            (location_id, from_location_id, customer_name, vehicle_model, problem_description, status, vehicle_id, vehicle_identifier, mileage, priority, expected_time, release_time, comments, categories_json, checklist_json, attachments_json, location, technician, created_by, updated_by, job_type, booking_date)
             VALUES
-            (:location_id, :from_location_id, :customer_name, :vehicle_model, :problem_description, :status, :vehicle_id, :vehicle_identifier, :mileage, :priority, :expected_time, :release_time, :comments, :categories_json, :checklist_json, :attachments_json, :location, :technician, :created_by, :updated_by)
+            (:location_id, :from_location_id, :customer_name, :vehicle_model, :problem_description, :status, :vehicle_id, :vehicle_identifier, :mileage, :priority, :expected_time, :release_time, :comments, :categories_json, :checklist_json, :attachments_json, :location, :technician, :created_by, :updated_by, :job_type, :booking_date)
         ");
         
         // Bind values
@@ -158,6 +160,8 @@ class Order extends Model {
         $this->db->bind(':attachments_json', $data['attachments_json'] ?? null);
         $this->db->bind(':location', $data['location'] ?? null);
         $this->db->bind(':technician', $data['technician'] ?? null);
+        $this->db->bind(':job_type', $data['job_type'] ?? 'Repair');
+        $this->db->bind(':booking_date', $data['booking_date'] ?? null);
         $this->db->bind(':created_by', $userId);
         $this->db->bind(':updated_by', $userId);
 

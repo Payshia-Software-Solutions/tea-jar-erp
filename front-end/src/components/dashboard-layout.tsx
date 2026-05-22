@@ -1369,14 +1369,14 @@ export function DashboardLayout({ children, fullWidth = true, title }: { childre
               </div>
 
               <div className="pt-6 border-t text-[11px] text-muted-foreground flex flex-row flex-wrap items-center justify-between gap-2">
-                <span>Powered by Nebulink</span>
+                <span>Powered by Nebulync</span>
                 <a
                   className="text-foreground/80 hover:text-foreground underline underline-offset-2"
-                  href="https://www.nebulink.com"
+                  href="https://www.nebulync.com"
                   target="_blank"
                   rel="noreferrer"
                 >
-                  www.nebulink.com
+                  www.nebulync.com
                 </a>
               </div>
             </div>

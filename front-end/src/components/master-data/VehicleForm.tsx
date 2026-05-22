@@ -47,7 +47,9 @@ export function VehicleForm({ initialData, isEditing = false }: VehicleFormProps
     external_make: initialData?.external_make ?? "",
     external_model: initialData?.external_model ?? "",
     // Live Mileage (Not persisted in this form usually, but for display)
-    current_mileage: initialData?.current_mileage ?? 0
+    current_mileage: initialData?.current_mileage ?? 0,
+    // Maintenance
+    service_interval_mileage: initialData?.service_interval_mileage ?? null
   });
 
   const [imageFile, setImageFile] = useState<File | null>(null);
@@ -403,6 +405,40 @@ export function VehicleForm({ initialData, isEditing = false }: VehicleFormProps
                 </div>
               </div>
             </CardContent>
+          </Card>
+
+          <Card className="shadow-md border-none">
+            <CardHeader className="bg-primary/[0.03] border-b">
+              <CardTitle className="text-lg">Scheduled Maintenance</CardTitle>
+              <CardDescription>Track service intervals and next service due</CardDescription>
+            </CardHeader>
+            <CardContent className="p-6">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+                <div className="space-y-2">
+                  <Label htmlFor="service_interval">Service Interval (Mileage)</Label>
+                  <Input 
+                    id="service_interval" 
+                    type="number" 
+                    placeholder="e.g. 5000" 
+                    value={formData.service_interval_mileage || ''} 
+                    onChange={(e) => setFormData(p => ({ ...p, service_interval_mileage: e.target.value ? Number(e.target.value) : null }))} 
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Next Service Mileage</Label>
+                  <div className="p-2 border rounded-md bg-muted/20 font-bold text-lg">
+                    {initialData?.next_service_mileage ? initialData.next_service_mileage.toLocaleString() : "Not Set"}
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label>Next Service Date</Label>
+                  <div className="p-2 border rounded-md bg-muted/20 font-bold text-lg">
+                    {initialData?.next_service_date ? new Date(initialData.next_service_date).toLocaleDateString() : "Not Set"}
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+            
             <CardFooter className="bg-muted/30 border-t p-6 flex justify-between gap-4">
               <Button variant="outline" type="button" onClick={() => router.back()} className="gap-2">
                 <X className="w-4 h-4" /> Cancel

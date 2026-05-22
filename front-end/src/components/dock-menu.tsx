@@ -20,6 +20,7 @@ import {
 } from "@/components/ui/tooltip";
 import { getSavedDockItems } from '@/lib/dock-utils';
 import * as NavItems from '@/lib/nav-items';
+import { fetchOrders } from '@/lib/api';
 
 const DEFAULT_ITEMS = [
   { icon: LayoutDashboard, label: 'Home', href: '/dashboard' },
@@ -69,10 +70,30 @@ export function DockMenu() {
     setItems(mapped);
   };
 
+  const [queueCount, setQueueCount] = useState(0);
+  const [activeCount, setActiveCount] = useState(0);
+
   useEffect(() => {
     loadItems();
     window.addEventListener("dock_config_updated", loadItems);
-    return () => window.removeEventListener("dock_config_updated", loadItems);
+
+    const fetchCounts = async () => {
+      try {
+        const orders = await fetchOrders();
+        setQueueCount(orders.filter((o: any) => o.status === 'Pending').length);
+        setActiveCount(orders.filter((o: any) => o.status === 'In Progress').length);
+      } catch (e) {
+        // ignore
+      }
+    };
+    
+    fetchCounts();
+    const interval = setInterval(fetchCounts, 60000); // Poll every minute
+
+    return () => {
+      window.removeEventListener("dock_config_updated", loadItems);
+      clearInterval(interval);
+    };
   }, []);
 
   if (items.length === 0) return null;
@@ -111,11 +132,21 @@ export function DockMenu() {
                   <Link
                     href={item.href}
                     className={cn(
-                      "flex flex-col items-center justify-center w-10 h-10 rounded-lg transition-all hover:bg-muted active:scale-95",
+                      "relative flex flex-col items-center justify-center w-10 h-10 rounded-lg transition-all hover:bg-muted active:scale-95",
                       isActive ? "text-primary bg-primary/10" : "text-muted-foreground"
                     )}
                   >
                     <item.icon className={cn("w-5 h-5", isActive && "stroke-[2.5px]")} />
+                    {item.href === '/orders' && queueCount > 0 && (
+                      <span className="absolute -top-1 -right-1 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold text-white shadow ring-2 ring-white dark:ring-slate-950">
+                        {queueCount > 99 ? '99+' : queueCount}
+                      </span>
+                    )}
+                    {item.href === '/orders/active' && activeCount > 0 && (
+                      <span className="absolute -top-1 -right-1 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold text-white shadow ring-2 ring-white dark:ring-slate-950">
+                        {activeCount > 99 ? '99+' : activeCount}
+                      </span>
+                    )}
                   </Link>
                 </TooltipTrigger>
                 <TooltipContent side="top">

@@ -34,6 +34,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   Filter, 
   MoreHorizontal, 
@@ -48,7 +49,8 @@ import {
   Car,
 
   Trash2,
-  Loader2
+  Loader2,
+  Calendar as CalendarIcon
 } from 'lucide-react';
 
 import {
@@ -94,6 +96,7 @@ export default function OrderQueuePage() {
   const [userRole, setUserRole] = useState<UserRole>('Admin');
   const [currentLocationName, setCurrentLocationName] = useState<string>('');
   const [assignStep, setAssignStep] = useState<'bay' | 'tech'>('bay');
+  const [jobTypeFilter, setJobTypeFilter] = useState<string>('Repair');
 
   useEffect(() => {
     const loadData = async () => {
@@ -290,9 +293,13 @@ export default function OrderQueuePage() {
     }
   };
 
-  const pendingOrders = orders.filter((o) => o.status === "Pending");
+  const filteredOrders = orders.filter((o) => {
+    if (o.status !== "Pending") return false;
+    if (jobTypeFilter !== 'All' && (o.job_type || 'Repair') !== jobTypeFilter) return false;
+    return true;
+  });
 
-  const sortedOrders = [...pendingOrders].sort((a, b) => {
+  const sortedOrders = [...filteredOrders].sort((a, b) => {
     const priorityWeight = { 'Emergency': 4, 'High': 3, 'Medium': 2, 'Low': 1 };
     if (priorityWeight[b.priority] !== priorityWeight[a.priority]) {
       return priorityWeight[b.priority] - priorityWeight[a.priority];
@@ -304,6 +311,9 @@ export default function OrderQueuePage() {
   const canAssign = userRole === 'Admin' || userRole === 'Workshop Officer';
   const canComplete = userRole === 'Admin' || userRole === 'Workshop Officer';
   const canDelete = userRole === 'Admin';
+
+  const repairCount = orders.filter(o => o.status === "Pending" && (o.job_type || 'Repair') === 'Repair').length;
+  const bookingCount = orders.filter(o => o.status === "Pending" && o.job_type === 'Service Booking').length;
 
   if (loading) {
     return (
@@ -324,14 +334,32 @@ export default function OrderQueuePage() {
           <p className="text-muted-foreground mt-1 text-sm sm:text-base">Manage vehicle intake and shop flow</p>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" className="gap-2 flex-1 sm:flex-initial">
-            <Filter className="w-4 h-4" />
-            Filter
-          </Button>
-          <Button variant="outline" size="sm" className="gap-2 flex-1 sm:flex-initial">
-            <ArrowUpDown className="w-4 h-4" />
-            Sort
-          </Button>
+          <Link href="/orders/calendar">
+            <Button variant="outline" size="sm" className="gap-2 flex-1 sm:flex-initial">
+              <CalendarIcon className="w-4 h-4" />
+              Calendar
+            </Button>
+          </Link>
+          <Tabs value={jobTypeFilter} onValueChange={setJobTypeFilter} className="w-full sm:w-auto">
+            <TabsList className="grid w-full grid-cols-2 h-9 p-1">
+              <TabsTrigger value="Repair" className="text-xs sm:text-sm flex items-center gap-1.5">
+                Running Repairs
+                {repairCount > 0 && (
+                  <span className="bg-primary/20 text-primary px-1.5 py-0.5 rounded-full text-[10px] leading-none">
+                    {repairCount}
+                  </span>
+                )}
+              </TabsTrigger>
+              <TabsTrigger value="Service Booking" className="text-xs sm:text-sm flex items-center gap-1.5">
+                Service Bookings
+                {bookingCount > 0 && (
+                  <span className="bg-primary/20 text-primary px-1.5 py-0.5 rounded-full text-[10px] leading-none">
+                    {bookingCount}
+                  </span>
+                )}
+              </TabsTrigger>
+            </TabsList>
+          </Tabs>
         </div>
       </div>
 
@@ -365,7 +393,8 @@ export default function OrderQueuePage() {
                       {order.vehicleNumber && order.vehicleId !== order.vehicleNumber && (
                         <span className="text-xs text-muted-foreground font-medium">{order.vehicleId}</span>
                       )}
-                      <span className="text-xs text-muted-foreground">{Number(order.mileage ?? 0).toLocaleString()} km</span>
+                      <span className="text-xs text-muted-foreground mb-1">{Number(order.mileage ?? 0).toLocaleString()} km</span>
+                      <Badge variant="outline" className="w-fit text-[10px] py-0 bg-white/50">{order.job_type === 'Service Booking' ? 'Service Booking' : 'Running Repair'}</Badge>
                     </div>
                   </TableCell>
                   <TableCell className="max-w-[200px] truncate" title={order.problemDescription}>
@@ -477,7 +506,8 @@ export default function OrderQueuePage() {
                     {order.vehicleNumber && order.vehicleId !== order.vehicleNumber && (
                       <p className="text-xs text-muted-foreground font-medium">{order.vehicleId}</p>
                     )}
-                    <p className="text-xs text-muted-foreground">{Number(order.mileage ?? 0).toLocaleString()} km</p>
+                    <p className="text-xs text-muted-foreground mb-1">{Number(order.mileage ?? 0).toLocaleString()} km</p>
+                    <Badge variant="outline" className="w-fit text-[10px] py-0 bg-white/50">{order.job_type === 'Service Booking' ? 'Service Booking' : 'Running Repair'}</Badge>
                   </div>
                 </div>
                 <Badge className={`${priorityColors[order.priority]} border-none text-white text-[10px]`}>

@@ -111,6 +111,7 @@ export default function OrderCompletionPrintPage() {
       completionComments: String(o.completion_comments || ""),
       departmentName: String(o.department_name || ""),
       checklistDone: safeChecklistDone(o.checklist_done_json),
+      jobType: String(o.job_type || "Running Repair"),
     };
   }, [order, id]);
 
@@ -187,8 +188,13 @@ export default function OrderCompletionPrintPage() {
               <div>
                 <h1 className="text-2xl font-black tracking-tighter text-slate-900 uppercase leading-none">Service Completion</h1>
                 <p className="text-slate-900 font-black font-mono text-[10px] tracking-widest leading-none mt-2">ORDER ID: {data.id}</p>
-                <div className={`text-[8px] font-black uppercase tracking-widest px-2 py-1 rounded-sm inline-block border leading-none bg-slate-900 text-white border-slate-900 mt-2`}>
-                  {data.status}
+                <div className="flex gap-2 mt-2">
+                  <div className={`text-[8px] font-black uppercase tracking-widest px-2 py-1 rounded-sm inline-block border leading-none bg-slate-900 text-white border-slate-900`}>
+                    {data.status}
+                  </div>
+                  <div className={`text-[8px] font-black uppercase tracking-widest px-2 py-1 rounded-sm inline-block border leading-none bg-white text-slate-900 border-slate-300`}>
+                    {data.jobType}
+                  </div>
                 </div>
               </div>
             </div>

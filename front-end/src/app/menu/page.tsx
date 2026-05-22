@@ -7,7 +7,9 @@ import { DashboardLayout } from "@/components/dashboard-layout";
 import { Card, CardContent } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { ChevronRight, LogOut, MapPin, User } from "lucide-react";
+import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from "@/components/ui/accordion";
+import { Skeleton } from "@/components/ui/skeleton";
+import { ChevronRight, LogOut, MapPin, User, Settings, LayoutDashboard, Wrench, Truck, Boxes, Users, TrendingUp, Gift, Landmark, Factory, Building2, LayoutGrid, Grid, Shield } from "lucide-react";
 import { api } from "@/lib/api";
 import { 
   adminNavItems, 
@@ -24,7 +26,6 @@ import {
   frontOfficeItems,
   type NavItem 
 } from "@/lib/nav-items";
-import { Settings } from "lucide-react";
 
 function decodeJwtPayload(token: string): any | null {
   try {
@@ -137,21 +138,23 @@ export default function MenuPage() {
     const admin = userRole.toLowerCase() === "admin" ? adminNavItems : [];
 
     return [
-      { title: "Core Features", tone: "bg-blue-600", items: core },
-      { title: "Fleet Management", tone: "bg-orange-600", items: service },
-      { title: "Vendors", tone: "bg-slate-600", items: vendors },
-      { title: "Inventory", tone: "bg-emerald-600", items: inv },
-      { title: "CRM", tone: "bg-pink-600", items: crm },
-      { title: "Sales", tone: "bg-cyan-600", items: sales },
-      { title: "Marketing", tone: "bg-purple-600", items: marketing },
-      { title: "Accounting", tone: "bg-amber-600", items: acc },
-      { title: "Production", tone: "bg-indigo-600", items: prod },
-      { title: "HRM", tone: "bg-rose-600", items: hrm },
-      { title: "Front Office", tone: "bg-violet-600", items: front },
-      { title: "Master Data", tone: "bg-zinc-600", items: master },
-      { title: "Administration", tone: "bg-slate-700", items: admin },
+      { title: "Core Features", tone: "bg-blue-600", items: core, icon: LayoutDashboard },
+      { title: "Fleet Management", tone: "bg-orange-600", items: service, icon: Wrench },
+      { title: "Vendors", tone: "bg-slate-600", items: vendors, icon: Truck },
+      { title: "Inventory", tone: "bg-emerald-600", items: inv, icon: Boxes },
+      { title: "CRM", tone: "bg-pink-600", items: crm, icon: Users },
+      { title: "Sales", tone: "bg-cyan-600", items: sales, icon: TrendingUp },
+      { title: "Marketing", tone: "bg-purple-600", items: marketing, icon: Gift },
+      { title: "Accounting", tone: "bg-amber-600", items: acc, icon: Landmark },
+      { title: "Production", tone: "bg-indigo-600", items: prod, icon: Factory },
+      { title: "HRM", tone: "bg-rose-600", items: hrm, icon: Users },
+      { title: "Front Office", tone: "bg-violet-600", items: front, icon: Building2 },
+      { title: "Master Data", tone: "bg-zinc-600", items: master, icon: Grid },
+      { title: "Administration", tone: "bg-slate-700", items: admin, icon: Shield },
     ].filter((s) => s.items.length > 0);
   }, [permissionKeys, userRole, saasModules]);
+
+  const isLoading = permissionKeys === null || saasModules === null;
 
   const handleLogout = () => {
     window.localStorage.removeItem("auth_token");
@@ -209,25 +212,48 @@ export default function MenuPage() {
         </div>
 
         <div className="space-y-6">
-          {sections.map((section) => (
-            <div key={section.title} className="space-y-3">
-              <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground ml-1">{section.title}</h3>
-              <div className="grid grid-cols-2 gap-3">
-                {section.items.map((item: NavItem) => (
-                  <Link key={item.href} href={item.href}>
-                    <Card className="border-none shadow-sm hover:bg-muted/50 transition-colors h-full">
-                      <CardContent className="p-4 flex flex-col items-start gap-3">
-                        <div className={`p-2 rounded-lg text-white ${section.tone}`}>
-                          <item.icon className="w-5 h-5" />
-                        </div>
-                        <span className="font-semibold text-sm">{item.label}</span>
-                      </CardContent>
-                    </Card>
-                  </Link>
-                ))}
-              </div>
+          {isLoading ? (
+            <div className="space-y-4">
+              {[1, 2, 3, 4, 5, 6].map((i) => (
+                <div key={i} className="bg-muted/10 rounded-xl px-4 py-4 flex items-center gap-3 animate-pulse border border-muted/20">
+                  <Skeleton className="w-7 h-7 rounded-md" />
+                  <Skeleton className="h-4 w-32 rounded-full" />
+                  <Skeleton className="w-4 h-4 ml-auto rounded-full" />
+                </div>
+              ))}
             </div>
-          ))}
+          ) : (
+            <Accordion type="multiple" className="w-full space-y-4">
+              {sections.map((section) => (
+                <AccordionItem key={section.title} value={section.title} className="border-none bg-muted/20 rounded-xl px-4">
+                  <AccordionTrigger className="hover:no-underline py-4">
+                    <div className="flex items-center gap-2">
+                      <div className={`flex items-center justify-center p-1.5 rounded-md ${section.tone} text-white`}>
+                        <section.icon className="w-4 h-4" />
+                      </div>
+                      <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">{section.title}</h3>
+                    </div>
+                  </AccordionTrigger>
+                  <AccordionContent>
+                    <div className="grid grid-cols-2 gap-3 pb-2">
+                      {section.items.map((item: NavItem) => (
+                        <Link key={item.href} href={item.href}>
+                          <Card className="border-none shadow-sm hover:bg-muted/80 transition-colors h-full bg-background">
+                            <CardContent className="p-4 flex flex-col items-start gap-3">
+                              <div className={`p-2 rounded-lg text-white ${section.tone}`}>
+                                <item.icon className="w-5 h-5" />
+                              </div>
+                              <span className="font-semibold text-sm">{item.label}</span>
+                            </CardContent>
+                          </Card>
+                        </Link>
+                      ))}
+                    </div>
+                  </AccordionContent>
+                </AccordionItem>
+              ))}
+            </Accordion>
+          )}
         </div>
 
         <div className="space-y-3 pt-2">

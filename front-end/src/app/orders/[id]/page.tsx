@@ -56,6 +56,12 @@ import {
   MessageSquare,
   FileText,
   Settings2,
+  Search,
+  ShoppingBag,
+  Minus,
+  Wrench,
+  ImageIcon,
+  X,
 } from "lucide-react";
 import { format } from "date-fns";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -170,9 +176,13 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
   const [addOpen, setAddOpen] = useState(false);
   const [addPartId, setAddPartId] = useState<string>("");
   const [addQty, setAddQty] = useState<string>("1");
+  const [partSearchQuery, setPartSearchQuery] = useState("");
+  const [partCategoryFilter, setPartCategoryFilter] = useState<string>("all");
   const [savingPart, setSavingPart] = useState(false);
   const [checklistState, setChecklistState] = useState<ChecklistDoneItem[]>([]);
   const [completionNotes, setCompletionNotes] = useState("");
+  const [nextServiceMileage, setNextServiceMileage] = useState<string>("");
+  const [nextServiceDate, setNextServiceDate] = useState<string>("");
   const [completeOpen, setCompleteOpen] = useState(false);
   const [completing, setCompleting] = useState(false);
   const [reopening, setReopening] = useState(false);
@@ -228,6 +238,7 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
 
     return {
       id: o.id ?? id,
+      jobType: String(o.job_type || "Running Repair"),
       status: String(o.status || "Pending"),
       priority: String(o.priority || "Medium"),
       vehicleModel: String(o.vehicle_model || "Repair Order"),
@@ -237,6 +248,7 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
       comments: String(o.comments || ""),
       bay: String(o.location || ""),
       technician: String(o.technician || ""),
+      vehicleServiceInterval: o.vehicle_service_interval ? Number(o.vehicle_service_interval) : 0,
       createdAt,
       expectedAt,
       releaseAt: parseMysqlDatetime(o.release_time),
@@ -388,6 +400,10 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
         status: "Completed",
         checklist_done: checklistState,
         completion_comments: completionNotes,
+        ...(data.jobType === "Service Booking" ? {
+          next_service_mileage: nextServiceMileage || undefined,
+          next_service_date: nextServiceDate || undefined,
+        } : {})
       });
       setOrder((prev: any) => ({
         ...(prev || {}),
@@ -451,6 +467,45 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
 
   const checklistChecked = useMemo(() => checklistState.filter((c) => c.checked).length, [checklistState]);
 
+  const categoriesList = useMemo(() => {
+    const cats = new Set<string>();
+    partsMaster.forEach((p) => {
+      if (p.category_name) {
+        cats.add(p.category_name);
+      }
+    });
+    return Array.from(cats);
+  }, [partsMaster]);
+
+  const filteredParts = useMemo(() => {
+    return partsMaster.filter((p) => {
+      const query = partSearchQuery.toLowerCase().trim();
+      const matchesSearch =
+        p.part_name.toLowerCase().includes(query) ||
+        (p.sku && p.sku.toLowerCase().includes(query)) ||
+        (p.barcode_number && p.barcode_number.toLowerCase().includes(query));
+
+      if (!matchesSearch) return false;
+
+      if (partCategoryFilter === "all") return true;
+      if (partCategoryFilter === "parts") return p.item_type === "Part";
+      if (partCategoryFilter === "services") return p.item_type === "Service";
+      return p.category_name === partCategoryFilter;
+    });
+  }, [partsMaster, partSearchQuery, partCategoryFilter]);
+
+  const incrementQty = () => {
+    const val = parseInt(addQty) || 0;
+    setAddQty(String(val + 1));
+  };
+
+  const decrementQty = () => {
+    const val = parseInt(addQty) || 0;
+    if (val > 1) {
+      setAddQty(String(val - 1));
+    }
+  };
+
   const openAddPart = () => {
     if (isLocked) {
       toast({ title: "Locked", description: "Completed jobs cannot be edited." });
@@ -458,6 +513,8 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
     }
     setAddPartId("");
     setAddQty("1");
+    setPartSearchQuery("");
+    setPartCategoryFilter("all");
     setAddOpen(true);
   };
 
@@ -535,10 +592,10 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
         }
       }
       if (attachmentFilenames.length > 0) {
-        const existing = Array.isArray(order.attachments) ? order.attachments : [];
+        const existing = safeJsonArray(order.attachments_json);
         const newAttachments = [...existing, ...attachmentFilenames];
-        await updateOrder(id, { attachments: newAttachments });
-        setOrder({ ...order, attachments: newAttachments });
+        await updateOrderDetails(id, { attachments: newAttachments });
+        setOrder({ ...order, attachments_json: JSON.stringify(newAttachments) });
         setAttachmentFiles([]);
         toast({ title: "Success", description: "Attachments uploaded." });
       }
@@ -592,7 +649,19 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
           </Button>
           <div className="flex items-center gap-2">
             {!isLocked ? (
-              <Button variant="outline" size="sm" className="gap-2" onClick={() => setCompleteOpen(true)}>
+              <Button variant="outline" size="sm" className="gap-2" onClick={() => {
+                if (data.jobType === "Service Booking" && data.vehicleServiceInterval > 0) {
+                   const nextMileage = Number(data.mileage || 0) + data.vehicleServiceInterval;
+                   setNextServiceMileage(String(nextMileage));
+                   const nextDate = new Date();
+                   nextDate.setMonth(nextDate.getMonth() + 6);
+                   setNextServiceDate(nextDate.toISOString().split("T")[0]);
+                } else {
+                   setNextServiceMileage("");
+                   setNextServiceDate("");
+                }
+                setCompleteOpen(true);
+              }}>
                 <CheckCircle2 className="w-4 h-4" />
                 Complete Job
               </Button>
@@ -629,6 +698,9 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
                               className={cn(priorityStyles[data.priority] || "bg-slate-100 text-slate-700", "border-none")}
                             >
                               {data.priority}
+                            </Badge>
+                            <Badge variant="outline" className="border-slate-200 bg-white/50 shadow-sm text-xs font-bold uppercase tracking-wider">
+                              {data.jobType === "Service Booking" ? "Service Booking" : "Running Repair"}
                             </Badge>
                           </div>
                           <div className="mt-1 flex items-center gap-2 text-xs text-muted-foreground font-mono uppercase tracking-widest">
@@ -1069,7 +1141,19 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
               </CardHeader>
               <CardContent className="space-y-3">
                 {!isLocked && (
-                  <Button className="w-full gap-2 bg-green-600 hover:bg-green-700 text-white" onClick={() => setCompleteOpen(true)}>
+                  <Button className="w-full gap-2 bg-green-600 hover:bg-green-700 text-white" onClick={() => {
+                    if (data.jobType === "Service Booking" && data.vehicleServiceInterval > 0) {
+                       const nextMileage = Number(data.mileage || 0) + data.vehicleServiceInterval;
+                       setNextServiceMileage(String(nextMileage));
+                       const nextDate = new Date();
+                       nextDate.setMonth(nextDate.getMonth() + 6);
+                       setNextServiceDate(nextDate.toISOString().split("T")[0]);
+                    } else {
+                       setNextServiceMileage("");
+                       setNextServiceDate("");
+                    }
+                    setCompleteOpen(true);
+                  }}>
                     <CheckCircle2 className="w-4 h-4" />
                     Complete Job
                   </Button>
@@ -1106,108 +1190,377 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
       </div>
 
       <Dialog open={addOpen} onOpenChange={setAddOpen}>
-        <DialogContent className="sm:max-w-[560px]">
-          <form onSubmit={submitAddPart}>
-            <DialogHeader>
-              <DialogTitle>Add Part</DialogTitle>
-              <DialogDescription>Select an item and quantity to issue to this order.</DialogDescription>
-            </DialogHeader>
-            <div className="grid gap-4 py-4">
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label className="text-right">Item</Label>
-                <div className="col-span-3 space-y-2">
-                  <Select value={addPartId} onValueChange={setAddPartId}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select item..." />
-                    </SelectTrigger>
-                    <SelectContent className="max-h-[280px]">
-                      {partsMaster.map((p) => {
-                         const stock = (p as any).location_stock_quantity ?? 0;
-                         return (
-                          <SelectItem key={p.id} value={String(p.id)}>
-                            <div className="flex flex-col">
-                              <span>{p.sku ? `${p.part_name} (${p.sku})` : p.part_name}</span>
-                              {p.item_type !== 'Service' && (
-                                <span className={cn("text-[10px] uppercase font-bold tracking-tighter", stock > 0 ? "text-green-600" : "text-red-500")}>
-                                  Available: {Number(stock).toLocaleString()} {p.unit}
+        <DialogContent className="w-full max-w-none md:max-w-5xl h-full md:h-[80vh] left-0 top-0 translate-x-0 translate-y-0 md:left-[50%] md:top-[50%] md:translate-x-[-50%] md:translate-y-[-50%] flex flex-col p-0 overflow-hidden bg-background border-0 md:border shadow-2xl rounded-none md:rounded-2xl">
+          <div className="flex items-center justify-between px-6 py-4 border-b">
+            <div>
+              <DialogTitle className="text-xl font-bold flex items-center gap-2">
+                <ShoppingBag className="w-5 h-5 text-primary" />
+                Add Item to Order
+              </DialogTitle>
+              <DialogDescription>
+                Search and select parts or services to issue to this repair order.
+              </DialogDescription>
+            </div>
+          </div>
+
+          <div className="flex-1 min-h-0 flex flex-col md:flex-row">
+            {/* Left side: Item Catalog Grid */}
+            <div className={cn(
+              "flex-1 flex flex-col min-h-0 p-4 md:p-6 bg-slate-50/50 dark:bg-slate-900/5",
+              addPartId && "hidden md:flex"
+            )}>
+              {/* Category selector */}
+              <div className="flex gap-2 overflow-x-auto pb-3 scrollbar-none shrink-0">
+                <Button
+                  type="button"
+                  variant={partCategoryFilter === "all" ? "default" : "outline"}
+                  size="sm"
+                  className="rounded-full px-4"
+                  onClick={() => setPartCategoryFilter("all")}
+                >
+                  All
+                </Button>
+                <Button
+                  type="button"
+                  variant={partCategoryFilter === "parts" ? "default" : "outline"}
+                  size="sm"
+                  className="rounded-full px-4"
+                  onClick={() => setPartCategoryFilter("parts")}
+                >
+                  Parts
+                </Button>
+                <Button
+                  type="button"
+                  variant={partCategoryFilter === "services" ? "default" : "outline"}
+                  size="sm"
+                  className="rounded-full px-4"
+                  onClick={() => setPartCategoryFilter("services")}
+                >
+                  Services
+                </Button>
+                {categoriesList.map((cat) => (
+                  <Button
+                    key={cat}
+                    type="button"
+                    variant={partCategoryFilter === cat ? "default" : "outline"}
+                    size="sm"
+                    className="rounded-full px-4 whitespace-nowrap"
+                    onClick={() => setPartCategoryFilter(cat)}
+                  >
+                    {cat}
+                  </Button>
+                ))}
+              </div>
+
+              {/* Search Bar */}
+              <div className="relative mt-2 shrink-0">
+                <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Search item by name, SKU or barcode..."
+                  className="pl-9 pr-8"
+                  value={partSearchQuery}
+                  onChange={(e) => setPartSearchQuery(e.target.value)}
+                />
+                {partSearchQuery && (
+                  <button
+                    type="button"
+                    onClick={() => setPartSearchQuery("")}
+                    className="absolute right-3 top-2.5 text-muted-foreground hover:text-foreground"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                )}
+              </div>
+
+              {/* Scrollable grid area */}
+              <ScrollArea className="flex-1 mt-4">
+                {filteredParts.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center py-12 text-center text-muted-foreground">
+                    <Boxes className="w-12 h-12 mb-3 opacity-20" />
+                    <p className="text-sm font-medium">No items found</p>
+                    <p className="text-xs opacity-75">Try checking your search query or selected category</p>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 pb-4">
+                    {filteredParts.map((p) => {
+                      const isSelected = String(p.id) === addPartId;
+                      const stock = (p as any).location_stock_quantity ?? p.stock_quantity ?? 0;
+                      const imageUrl = p.image_filename ? contentUrl("items", p.image_filename) : null;
+                      
+                      return (
+                        <div
+                          key={p.id}
+                          className={cn(
+                            "flex flex-col border rounded-xl overflow-hidden cursor-pointer transition-all duration-200 select-none bg-card hover:shadow-md",
+                            isSelected 
+                              ? "border-primary ring-2 ring-primary/20 bg-primary/5" 
+                              : "border-border hover:border-slate-300 dark:hover:border-slate-700"
+                          )}
+                          onClick={() => setAddPartId(String(p.id))}
+                        >
+                          {/* Image Thumbnail */}
+                          <div className="h-28 bg-slate-100 dark:bg-slate-800 relative flex items-center justify-center text-slate-400">
+                            {imageUrl ? (
+                              <img
+                                src={imageUrl}
+                                alt={p.part_name}
+                                className="w-full h-full object-cover"
+                                onError={(e) => {
+                                  (e.target as HTMLElement).style.display = 'none';
+                                }}
+                              />
+                            ) : p.item_type === "Service" ? (
+                              <Wrench className="w-8 h-8 opacity-40 text-purple-500" />
+                            ) : (
+                              <Boxes className="w-8 h-8 opacity-40 text-blue-500" />
+                            )}
+                            
+                            {/* Type badge */}
+                            <Badge 
+                              variant="secondary" 
+                              className={cn(
+                                "absolute top-2 right-2 text-[9px] uppercase tracking-wider font-bold py-0.5 px-1.5",
+                                p.item_type === "Service" 
+                                  ? "bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300"
+                                  : "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300"
+                              )}
+                            >
+                              {p.item_type}
+                            </Badge>
+                          </div>
+
+                          {/* Info */}
+                          <div className="p-3 flex-1 flex flex-col justify-between">
+                            <div>
+                              <h4 className="font-semibold text-xs text-foreground line-clamp-2 min-h-[32px] leading-tight">
+                                {p.part_name}
+                              </h4>
+                              {p.sku && (
+                                <p className="text-[10px] text-muted-foreground font-mono mt-1">
+                                  {p.sku}
+                                </p>
+                              )}
+                            </div>
+                            
+                            <div className="mt-3 flex items-center justify-between border-t pt-2 border-slate-100 dark:border-slate-800">
+                              <span className="font-bold text-xs text-foreground">
+                                {Number(p.price).toFixed(2)}
+                              </span>
+                              
+                              {p.item_type !== "Service" ? (
+                                <span className={cn(
+                                  "text-[10px] font-bold uppercase",
+                                  stock > 0 ? "text-green-600" : "text-red-500"
+                                )}>
+                                  {stock > 0 ? `${stock} available` : "Out of stock"}
+                                </span>
+                              ) : (
+                                <span className="text-[10px] text-purple-600 font-bold uppercase">
+                                  Service
                                 </span>
                               )}
                             </div>
-                          </SelectItem>
-                         );
-                      })}
-                    </SelectContent>
-                  </Select>
-                  
-                  {selectedPart && (
-                    <div className="text-xs text-muted-foreground flex items-center justify-between px-1">
-                      <span>Price: {Number(selectedPart.price).toFixed(2)}</span>
-                      {selectedPart.unit && <span>Unit: {selectedPart.unit}</span>}
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {batches.length > 0 && (
-                <div className="grid grid-cols-4 items-start gap-4">
-                  <Label className="text-right pt-2">Batches</Label>
-                  <div className="col-span-3 border rounded-lg overflow-hidden bg-muted/5">
-                    <Table>
-                      <TableHeader className="bg-muted/30">
-                        <TableRow className="hover:bg-transparent h-8">
-                          <TableHead className="text-[10px] h-8">Lot #</TableHead>
-                          <TableHead className="text-[10px] h-8">Expiry</TableHead>
-                          <TableHead className="text-[10px] h-8 text-right">Qty</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {batches.map((b, idx) => (
-                          <TableRow key={b.id || idx} className="h-8">
-                            <TableCell className="text-[10px] py-1">{b.batch_number || "N/A"}</TableCell>
-                            <TableCell className="text-[10px] py-1">{b.expiry_date || "N/A"}</TableCell>
-                            <TableCell className="text-[10px] py-1 text-right font-bold">
-                              {Number(b.quantity_on_hand).toLocaleString()}
-                            </TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
-                </div>
-              )}
-
-              {batchesLoading && (
-                <div className="grid grid-cols-4 items-center gap-4">
-                  <div />
-                  <div className="col-span-3 flex items-center gap-2 text-xs text-muted-foreground">
-                    <Loader2 className="w-3 h-3 animate-spin" />
-                    Checking batch availability...
-                  </div>
-                </div>
-              )}
-
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="qty" className="text-right">Qty</Label>
-                <Input
-                  id="qty"
-                  className="col-span-3"
-                  value={addQty}
-                  onChange={(e) => setAddQty(e.target.value)}
-                  inputMode="numeric"
-                  required
-                />
-              </div>
+                )}
+              </ScrollArea>
             </div>
-            <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => setAddOpen(false)}>
-                Cancel
-              </Button>
-              <Button type="submit" disabled={savingPart}>
-                {savingPart && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                Add
-              </Button>
-            </DialogFooter>
-          </form>
+
+            {/* Right side: Configuration & Summary */}
+            <div className={cn(
+              "w-full md:w-[380px] flex flex-col min-h-0 bg-background border-t md:border-t-0 md:border-l",
+              !addPartId && "hidden md:flex"
+            )}>
+              {selectedPart ? (
+                <form onSubmit={submitAddPart} className="flex flex-col h-full min-h-0">
+                  {/* Mobile Back button */}
+                  <div className="p-4 border-b md:hidden flex items-center gap-2 shrink-0">
+                    <Button 
+                      type="button" 
+                      variant="ghost" 
+                      size="sm" 
+                      className="gap-1 text-xs" 
+                      onClick={() => setAddPartId("")}
+                    >
+                      <ChevronLeft className="w-4 h-4" />
+                      Back to Catalog
+                    </Button>
+                  </div>
+
+                  <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-6">
+                    {/* Item info overview */}
+                    <div className="space-y-2">
+                      <div className="flex items-start justify-between gap-4">
+                        <div>
+                          <Badge className="mb-1 text-[9px] uppercase tracking-widest font-bold">
+                            {selectedPart.item_type}
+                          </Badge>
+                          <h3 className="font-bold text-base text-foreground leading-tight">
+                            {selectedPart.part_name}
+                          </h3>
+                          {selectedPart.sku && (
+                            <p className="text-xs text-muted-foreground font-mono mt-0.5">
+                              SKU: {selectedPart.sku}
+                            </p>
+                          )}
+                        </div>
+                        <div className="text-right">
+                          <span className="text-lg font-extrabold text-foreground block">
+                            {Number(selectedPart.price).toFixed(2)}
+                          </span>
+                          <span className="text-[10px] text-muted-foreground uppercase">
+                            per {selectedPart.unit || "unit"}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <Separator />
+
+                    {/* Stock status indicator */}
+                    {selectedPart.item_type !== "Service" && (
+                      <div className="bg-slate-50 dark:bg-slate-900/20 p-3 rounded-lg border border-border/60">
+                        <div className="flex justify-between items-center text-xs">
+                          <span className="text-muted-foreground">Available Stock</span>
+                          <span className={cn(
+                            "font-bold uppercase",
+                            ((selectedPart as any).location_stock_quantity ?? selectedPart.stock_quantity ?? 0) > 0 
+                              ? "text-green-600" 
+                              : "text-red-500"
+                          )}>
+                            {((selectedPart as any).location_stock_quantity ?? selectedPart.stock_quantity ?? 0).toLocaleString()} {selectedPart.unit || "pcs"}
+                          </span>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Batches section if FIFO/expiry */}
+                    {(selectedPart.is_fifo || selectedPart.is_expiry) && (
+                      <div className="space-y-2">
+                        <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
+                          Batch Inventory
+                        </Label>
+                        
+                        {batchesLoading ? (
+                          <div className="flex items-center gap-2 text-xs text-muted-foreground py-3">
+                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                            Checking batch availability...
+                          </div>
+                        ) : batches.length > 0 ? (
+                          <div className="border rounded-lg overflow-hidden bg-slate-50/50 dark:bg-slate-900/10">
+                            <Table>
+                              <TableHeader className="bg-muted/40">
+                                <TableRow className="hover:bg-transparent h-8">
+                                  <TableHead className="text-[10px] h-8 font-bold">Lot #</TableHead>
+                                  <TableHead className="text-[10px] h-8 font-bold">Expiry</TableHead>
+                                  <TableHead className="text-[10px] h-8 text-right font-bold">Qty</TableHead>
+                                </TableRow>
+                              </TableHeader>
+                              <TableBody>
+                                {batches.map((b, idx) => (
+                                  <TableRow key={b.id || idx} className="h-8 hover:bg-muted/10">
+                                    <TableCell className="text-[10px] py-1 font-medium">{b.batch_number || "N/A"}</TableCell>
+                                    <TableCell className="text-[10px] py-1">{b.expiry_date || "N/A"}</TableCell>
+                                    <TableCell className="text-[10px] py-1 text-right font-bold text-foreground">
+                                      {Number(b.quantity_on_hand).toLocaleString()}
+                                    </TableCell>
+                                  </TableRow>
+                                ))}
+                              </TableBody>
+                            </Table>
+                          </div>
+                        ) : (
+                          <p className="text-xs text-red-500 py-1 font-medium">
+                            No active batches found for this location.
+                          </p>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Quantity control */}
+                    <div className="space-y-3">
+                      <Label htmlFor="checkout-qty" className="text-xs font-bold text-muted-foreground uppercase tracking-wider block">
+                        Set Quantity
+                      </Label>
+                      <div className="flex items-center gap-3">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="icon"
+                          className="h-10 w-10 shrink-0 rounded-lg hover:bg-slate-100"
+                          onClick={decrementQty}
+                          disabled={parseInt(addQty) <= 1}
+                        >
+                          <Minus className="w-4 h-4" />
+                        </Button>
+                        <Input
+                          id="checkout-qty"
+                          className="text-center font-bold text-base h-10 rounded-lg focus-visible:ring-1"
+                          value={addQty}
+                          onChange={(e) => setAddQty(e.target.value)}
+                          inputMode="numeric"
+                          required
+                        />
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="icon"
+                          className="h-10 w-10 shrink-0 rounded-lg hover:bg-slate-100"
+                          onClick={incrementQty}
+                        >
+                          <Plus className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Subtotal & Footer Actions */}
+                  <div className="p-4 md:p-6 border-t bg-slate-50/50 dark:bg-slate-900/10 space-y-4 shrink-0">
+                    <div className="flex justify-between items-center">
+                      <span className="text-xs text-muted-foreground font-semibold">Total Price</span>
+                      <span className="text-xl font-black text-foreground">
+                        {Number(Number(selectedPart.price) * (parseInt(addQty) || 0)).toFixed(2)}
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => setAddOpen(false)}
+                        className="rounded-lg h-10 text-xs font-semibold"
+                      >
+                        Cancel
+                      </Button>
+                      <Button
+                        type="submit"
+                        disabled={savingPart || (selectedPart.item_type !== "Service" && ((selectedPart as any).location_stock_quantity ?? selectedPart.stock_quantity ?? 0) <= 0)}
+                        className="rounded-lg h-10 text-xs font-semibold bg-primary hover:bg-primary/95 text-primary-foreground gap-1.5 shadow-sm"
+                      >
+                        {savingPart ? (
+                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        ) : (
+                          <ShoppingBag className="w-3.5 h-3.5" />
+                        )}
+                        Add to Order
+                      </Button>
+                    </div>
+                  </div>
+                </form>
+              ) : (
+                <div className="flex-1 flex flex-col items-center justify-center p-8 text-center text-muted-foreground">
+                  <ShoppingBag className="w-12 h-12 mb-3 opacity-20" />
+                  <h4 className="text-sm font-semibold">No Item Selected</h4>
+                  <p className="text-xs opacity-75 mt-1">
+                    Select a part or service from the catalog to configure and add it to your order.
+                  </p>
+                </div>
+              )}
+            </div>
+          </div>
         </DialogContent>
       </Dialog>
 
@@ -1281,6 +1634,29 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
                 rows={4}
               />
             </div>
+            {data.jobType === "Service Booking" && data.vehicleServiceInterval > 0 && (
+              <div className="grid grid-cols-2 gap-4 border-t pt-4 mt-4">
+                <div className="space-y-2">
+                  <Label className="text-sm font-bold text-slate-700 dark:text-slate-300">Next Service Mileage (km)</Label>
+                  <Input 
+                    type="number" 
+                    value={nextServiceMileage}
+                    onChange={(e) => setNextServiceMileage(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-sm font-bold text-slate-700 dark:text-slate-300">Next Service Date</Label>
+                  <Input 
+                    type="date" 
+                    value={nextServiceDate}
+                    onChange={(e) => setNextServiceDate(e.target.value)}
+                  />
+                </div>
+                <p className="col-span-2 text-xs text-muted-foreground">
+                  These values were pre-calculated based on this vehicle's service interval ({data.vehicleServiceInterval.toLocaleString()} km / 6 Months). Edit them if necessary.
+                </p>
+              </div>
+            )}
           </div>
           <DialogFooter className="flex-row gap-2">
             <Button variant="outline" className="flex-1" onClick={() => setCompleteOpen(false)}>Cancel</Button>

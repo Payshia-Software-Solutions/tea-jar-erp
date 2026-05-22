@@ -1,7 +1,7 @@
 "use client"
 
 import React, { useEffect, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { DashboardLayout } from "@/components/dashboard-layout";
 import {
   Card,
@@ -18,6 +18,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
@@ -50,6 +51,10 @@ import {
   Pencil,
   Search,
   X,
+  MapPin,
+  FileText,
+  Paperclip,
+  ClipboardList,
 } from "lucide-react";
 
 const PRIORITIES = [
@@ -72,6 +77,7 @@ function normalizeMysqlDatetime(value: string) {
 
 export default function NewOrderPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { toast } = useToast();
 
   const [loading, setLoading] = useState(true);
@@ -83,15 +89,17 @@ export default function NewOrderPage() {
   const [locations, setLocations] = useState<ServiceLocation[]>([]);
 
   const [formData, setFormData] = useState({
-    vehicleId: "",
+    vehicleId: searchParams.get("vehicle_id") || "",
     fromLocationId: "",
     toLocationId: "",
-    mileage: "",
+    mileage: searchParams.get("mileage") || "",
     priority: "Medium",
     expectedDate: "",
     expectedClock: "",
     problemDescription: "",
     comments: "",
+    jobType: searchParams.get("job_type") || "Repair",
+    bookingDate: "",
   });
 
   const [vehiclePickerOpen, setVehiclePickerOpen] = useState(false);
@@ -102,12 +110,17 @@ export default function NewOrderPage() {
 
   const [newChecklistItem, setNewChecklistItem] = useState("");
   const [addingChecklist, setAddingChecklist] = useState(false);
+  const [checklistSearch, setChecklistSearch] = useState("");
+  const [isChecklistDialogOpen, setIsChecklistDialogOpen] = useState(false);
 
   const [newCategoryName, setNewCategoryName] = useState("");
   const [addingCategory, setAddingCategory] = useState(false);
+  const [categorySearch, setCategorySearch] = useState("");
+  const [isCategoryDialogOpen, setIsCategoryDialogOpen] = useState(false);
 
   const [attachmentFiles, setAttachmentFiles] = useState<File[]>([]);
   const [attachmentUploading, setAttachmentUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState({ current: 0, total: 0 });
 
   const selectedVehicle = useMemo(() => {
     return vehicles.find((v: any) => String(v.id) === String(formData.vehicleId));
@@ -148,6 +161,18 @@ export default function NewOrderPage() {
       return hay.includes(q);
     });
   }, [vehicles, vehicleSearch]);
+
+  const filteredChecklistTemplates = useMemo(() => {
+    if (!checklistSearch) return checklistTemplates;
+    const lower = checklistSearch.toLowerCase();
+    return checklistTemplates.filter((t: any) => t.description.toLowerCase().includes(lower));
+  }, [checklistTemplates, checklistSearch]);
+
+  const filteredCategories = useMemo(() => {
+    if (!categorySearch) return availableCategories;
+    const lower = categorySearch.toLowerCase();
+    return availableCategories.filter((c: any) => c.name.toLowerCase().includes(lower));
+  }, [availableCategories, categorySearch]);
 
   const setExpectedQuick = (daysFromToday: number, clock: string) => {
     const d = new Date();
@@ -368,8 +393,10 @@ export default function NewOrderPage() {
     try {
       setAttachmentUploading(true);
       const attachmentFilenames: string[] = [];
-      for (const f of attachmentFiles) {
-        const up = await uploadOrderAttachment(f);
+      setUploadProgress({ current: 0, total: attachmentFiles.length });
+      for (let i = 0; i < attachmentFiles.length; i++) {
+        setUploadProgress({ current: i + 1, total: attachmentFiles.length });
+        const up = await uploadOrderAttachment(attachmentFiles[i]);
         if (up?.status === "success" && up.data?.filename) {
           attachmentFilenames.push(up.data.filename);
         }
@@ -391,6 +418,8 @@ export default function NewOrderPage() {
         attachments: attachmentFilenames,
         from_location_id: formData.fromLocationId ? Number(formData.fromLocationId) : null,
         to_location_id: formData.toLocationId ? Number(formData.toLocationId) : null,
+        jobType: formData.jobType,
+        bookingDate: formData.bookingDate ? formData.bookingDate + " 00:00:00" : null,
       });
 
       const createdId = (res && res.status === "success" && res.data && (res.data.id ?? res.data.order_id))
@@ -453,22 +482,31 @@ export default function NewOrderPage() {
         </div>
       ) : (
         <form onSubmit={handleSubmit} className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          <div className="lg:col-span-2 space-y-8">
-            <Card className="shadow-md border-none">
-              <CardHeader>
-                <CardTitle>Vehicle</CardTitle>
-                <CardDescription>Select a vehicle and enter the job details</CardDescription>
+          <div className="lg:col-span-2 space-y-6">
+            {/* CARD 1: VEHICLE & ROUTING */}
+            <Card className="shadow-md border border-muted/40">
+              <CardHeader className="pb-4">
+                <div className="flex items-center gap-2">
+                  <div className="p-2 rounded-lg bg-primary/10 text-primary">
+                    <Car className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <CardTitle className="text-xl">Vehicle & Routing</CardTitle>
+                    <CardDescription>Select vehicle, routing path, and current mileage</CardDescription>
+                  </div>
+                </div>
               </CardHeader>
-              <CardContent className="space-y-8">
-                <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-                  <div className="lg:col-span-7 space-y-3">
+              <CardContent className="space-y-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {/* Column 1: Vehicle selection */}
+                  <div className="space-y-3">
                     <div className="flex items-end justify-between gap-4">
                       <div>
-                        <Label>Vehicle</Label>
-                        <div className="text-xs text-muted-foreground mt-1">Search by make/model/year/VIN</div>
+                        <Label className="text-sm font-semibold">Vehicle Selection</Label>
+                        <div className="text-xs text-muted-foreground mt-0.5">Search by make/model/year/VIN</div>
                       </div>
                       {selectedVehicle ? (
-                        <Badge variant="secondary" className="text-[11px]">
+                        <Badge variant="secondary" className="text-[11px] font-mono">
                           ID: {(selectedVehicle as any).id}
                         </Badge>
                       ) : null}
@@ -479,20 +517,20 @@ export default function NewOrderPage() {
                         <Button
                           type="button"
                           variant="outline"
-                          className="w-full h-12 justify-between px-4 rounded-xl"
+                          className="w-full h-12 justify-between px-4 rounded-xl border-muted-foreground/20 hover:border-primary/50 transition-all hover:bg-muted/10"
                         >
                           <span className="inline-flex items-center gap-2 min-w-0">
                             <span className="p-1.5 rounded-md bg-muted">
                               <Car className="w-4 h-4 text-muted-foreground" />
                             </span>
-                            <span className={cn("truncate", !vehicleLabel && "text-muted-foreground")}>
-                              {vehicleLabel || "Search and select a vehicle"}
+                            <span className={cn("truncate font-medium", !vehicleLabel && "text-muted-foreground")}>
+                              {vehicleLabel || "Search and select a vehicle..."}
                             </span>
                           </span>
                           <ChevronsUpDown className="w-4 h-4 opacity-70" />
                         </Button>
                       </PopoverTrigger>
-                      <PopoverContent align="start" className="w-[460px] p-3">
+                      <PopoverContent align="start" className="w-[460px] p-3 shadow-xl border border-muted/40 rounded-xl">
                         <div className="flex items-center gap-2 pb-3">
                           <div className="relative flex-1">
                             <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
@@ -500,14 +538,14 @@ export default function NewOrderPage() {
                               value={vehicleSearch}
                               onChange={(e) => setVehicleSearch(e.target.value)}
                               placeholder="Search by make, model, year, VIN, or ID..."
-                              className="pl-8 h-10"
+                              className="pl-8 h-10 rounded-lg"
                             />
                           </div>
                           <Button
                             type="button"
                             variant="ghost"
                             onClick={() => setVehicleSearch("")}
-                            className="h-10"
+                            className="h-10 px-3 hover:bg-muted/80 rounded-lg"
                           >
                             Clear
                           </Button>
@@ -521,10 +559,6 @@ export default function NewOrderPage() {
                               </div>
                             ) : (
                               filteredVehicles.map((vv: any) => {
-                                const vin = vv.vin ? `VIN: ${vv.vin}` : "";
-                                const year = vv.year ? String(vv.year) : "";
-                                const label = `${vv.make ?? ""} ${vv.model ?? ""}`.trim();
-                                const sub = [year, vin].filter(Boolean).join("  ");
                                 const selected = String(vv.id) === String(formData.vehicleId);
                                 return (
                                   <button
@@ -578,16 +612,16 @@ export default function NewOrderPage() {
                     </Popover>
 
                     {selectedVehicle ? (
-                      <div className="rounded-xl border bg-muted/20 p-4">
+                      <div className="rounded-xl border border-primary/20 bg-primary/5 p-4 shadow-sm transition-all duration-300">
                         <div className="flex items-start gap-3">
-                          <div className="p-2 rounded-lg bg-primary/10">
-                            <Car className="w-5 h-5 text-primary" />
+                          <div className="p-2 rounded-lg bg-primary/10 text-primary">
+                            <Car className="w-5 h-5" />
                           </div>
                           <div className="min-w-0 flex-1">
                             <div className="flex items-center justify-between gap-2">
-                              <div className="font-bold truncate">{vehicleLabel}</div>
+                              <div className="font-bold text-foreground text-sm truncate">{vehicleLabel}</div>
                               {selectedVehicle && (
-                                <Badge variant="secondary" className="text-[10px] py-0 h-4 px-1.5 whitespace-nowrap">
+                                <Badge variant="secondary" className="text-[10px] py-0 h-4 px-1.5 whitespace-nowrap bg-primary/10 text-primary hover:bg-primary/25 border-none">
                                   {ownerLabel}
                                 </Badge>
                               )}
@@ -599,46 +633,55 @@ export default function NewOrderPage() {
                         </div>
                       </div>
                     ) : (
-                      <div className="rounded-xl border border-dashed bg-muted/10 p-4 text-sm text-muted-foreground">
+                      <div className="rounded-xl border border-dashed border-muted-foreground/35 bg-muted/10 p-4 text-sm text-muted-foreground flex items-center justify-center min-h-[90px]">
                         Select a vehicle to continue.
                       </div>
                     )}
                   </div>
 
-                  <div className="lg:col-span-5 space-y-4">
-                    <div className="space-y-2">
-                      <Label>From Location</Label>
-                      <Select value={formData.fromLocationId} onValueChange={(val) => setFormData(p => ({ ...p, fromLocationId: val }))}>
-                        <SelectTrigger className="w-full">
-                          <SelectValue placeholder="Where is the vehicle coming from?" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {locations.map((loc) => (
-                            <SelectItem key={loc.id} value={String(loc.id)}>
-                              {loc.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="space-y-2">
-                      <Label>To Service Center Location</Label>
-                      <Select value={formData.toLocationId} onValueChange={(val) => setFormData(p => ({ ...p, toLocationId: val }))}>
-                        <SelectTrigger className="w-full">
-                          <SelectValue placeholder="Which service center will process this?" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {locations.filter(l => l.location_type === 'service').map((loc) => (
-                            <SelectItem key={loc.id} value={String(loc.id)}>
-                              {loc.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                  {/* Column 2: Route & Mileage */}
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div className="space-y-1.5">
+                        <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1">
+                          <MapPin className="w-3.5 h-3.5 text-muted-foreground" />
+                          From Location
+                        </Label>
+                        <Select value={formData.fromLocationId} onValueChange={(val) => setFormData(p => ({ ...p, fromLocationId: val }))}>
+                          <SelectTrigger className="w-full rounded-xl h-11 border-muted-foreground/20">
+                            <SelectValue placeholder="Select Origin" />
+                          </SelectTrigger>
+                          <SelectContent className="rounded-xl">
+                            {locations.map((loc) => (
+                              <SelectItem key={loc.id} value={String(loc.id)}>
+                                {loc.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1">
+                          <MapPin className="w-3.5 h-3.5 text-muted-foreground" />
+                          To Service Center
+                        </Label>
+                        <Select value={formData.toLocationId} onValueChange={(val) => setFormData(p => ({ ...p, toLocationId: val }))}>
+                          <SelectTrigger className="w-full rounded-xl h-11 border-muted-foreground/20">
+                            <SelectValue placeholder="Select Destination" />
+                          </SelectTrigger>
+                          <SelectContent className="rounded-xl">
+                            {locations.filter(l => l.location_type === 'service').map((loc) => (
+                              <SelectItem key={loc.id} value={String(loc.id)}>
+                                {loc.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
                     </div>
 
-                    <div className="space-y-2">
-                      <Label htmlFor="mileage">Mileage</Label>
+                    <div className="space-y-1.5">
+                      <Label htmlFor="mileage" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Mileage (Odometer Reading)</Label>
                       <div className="relative">
                         <Gauge className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                         <Input
@@ -649,7 +692,7 @@ export default function NewOrderPage() {
                           value={formData.mileage}
                           onChange={(e) => setFormData({ ...formData, mileage: e.target.value })}
                           className={cn(
-                            "pl-9 pr-12 h-12 rounded-xl",
+                            "pl-9 pr-12 h-11 rounded-xl border-muted-foreground/20",
                             isMileageAutoFetched && "bg-slate-50 border-slate-200 text-slate-500 cursor-not-allowed font-bold"
                           )}
                         />
@@ -659,7 +702,7 @@ export default function NewOrderPage() {
                               type="button" 
                               variant="ghost" 
                               size="icon" 
-                              className="h-6 w-6 text-slate-400 hover:text-primary"
+                              className="h-6 w-6 text-slate-400 hover:text-primary rounded-md"
                               onClick={() => setIsMileageAutoFetched(false)}
                               title="Edit manually"
                             >
@@ -674,12 +717,76 @@ export default function NewOrderPage() {
                         </div>
                       </div>
                     </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
 
-                    <div className="rounded-xl border bg-muted/10 p-4 space-y-3">
+            {/* CARD 2: SERVICE SCHEDULING & PRIORITY */}
+            <Card className="shadow-md border border-muted/40">
+              <CardHeader className="pb-4">
+                <div className="flex items-center gap-2">
+                  <div className="p-2 rounded-lg bg-primary/10 text-primary">
+                    <CalendarIcon className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <CardTitle className="text-xl">Service Schedule & Priority</CardTitle>
+                    <CardDescription>Select order type, completion timeline, and priority level</CardDescription>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {/* Column 1: Timeline & Type */}
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div className="space-y-1.5">
+                        <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Job Type</Label>
+                        <Select value={formData.jobType} onValueChange={(val) => setFormData(p => ({ ...p, jobType: val }))}>
+                          <SelectTrigger className="w-full rounded-xl h-11 border-muted-foreground/20">
+                            <SelectValue placeholder="Select job type" />
+                          </SelectTrigger>
+                          <SelectContent className="rounded-xl">
+                            <SelectItem value="Repair">Running Repair</SelectItem>
+                            <SelectItem value="Service Booking">Service Booking</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      {formData.jobType === 'Service Booking' ? (
+                        <div className="space-y-1.5">
+                          <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Booking Date</Label>
+                          <div className="relative">
+                            <CalendarDays className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                            <Input
+                              type="date"
+                              value={formData.bookingDate}
+                              onChange={(e) => setFormData({ ...formData, bookingDate: e.target.value })}
+                              className="pl-9 h-11 rounded-xl border-muted-foreground/20"
+                            />
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="space-y-1.5 opacity-50 select-none">
+                          <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Booking Date</Label>
+                          <div className="relative">
+                            <CalendarDays className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                            <Input
+                              type="date"
+                              disabled
+                              placeholder="Only for Service Booking"
+                              className="pl-9 h-11 rounded-xl border-muted-foreground/20 bg-muted/20 cursor-not-allowed"
+                            />
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="rounded-xl border border-muted/40 bg-muted/5 p-4 space-y-3">
                       <div className="flex items-center justify-between gap-3">
-                        <div className="font-semibold">Expected Completion</div>
+                        <span className="text-sm font-bold text-foreground">Expected Completion</span>
                         {expectedDisplay ? (
-                          <Badge variant="secondary" className="text-[11px]">
+                          <Badge variant="secondary" className="text-[11px] bg-primary/10 text-primary border-none">
                             {expectedDisplay}
                           </Badge>
                         ) : null}
@@ -687,38 +794,38 @@ export default function NewOrderPage() {
 
                       <div className="grid grid-cols-2 gap-3">
                         <div className="space-y-1">
-                          <div className="text-[11px] text-muted-foreground">Date</div>
+                          <Label className="text-[10px] uppercase font-bold text-muted-foreground">Date</Label>
                           <div className="relative">
                             <CalendarDays className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                             <Input
                               type="date"
                               value={formData.expectedDate}
                               onChange={(e) => setFormData({ ...formData, expectedDate: e.target.value })}
-                              className="pl-9 h-11 rounded-xl"
+                              className="pl-9 h-10 rounded-xl border-muted-foreground/20 text-xs"
                             />
                           </div>
                         </div>
                         <div className="space-y-1">
-                          <div className="text-[11px] text-muted-foreground">Time</div>
+                          <Label className="text-[10px] uppercase font-bold text-muted-foreground">Time</Label>
                           <div className="relative">
                             <Clock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                             <Input
                               type="time"
                               value={formData.expectedClock}
                               onChange={(e) => setFormData({ ...formData, expectedClock: e.target.value })}
-                              className="pl-9 h-11 rounded-xl"
+                              className="pl-9 h-10 rounded-xl border-muted-foreground/20 text-xs"
                             />
                           </div>
                         </div>
                       </div>
 
-                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-1">
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5 pt-1">
                         <Button
                           type="button"
                           variant="secondary"
                           size="sm"
                           onClick={() => setExpectedQuick(0, "09:00")}
-                          className="rounded-lg w-full min-w-0 truncate px-2 text-xs"
+                          className="rounded-lg w-full min-w-0 truncate px-1 text-[11px] h-8 bg-muted hover:bg-muted/80 text-foreground"
                           title="Today 9:00"
                         >
                           Today 9:00
@@ -728,7 +835,7 @@ export default function NewOrderPage() {
                           variant="secondary"
                           size="sm"
                           onClick={() => setExpectedQuick(0, "17:00")}
-                          className="rounded-lg w-full min-w-0 truncate px-2 text-xs"
+                          className="rounded-lg w-full min-w-0 truncate px-1 text-[11px] h-8 bg-muted hover:bg-muted/80 text-foreground"
                           title="Today 17:00"
                         >
                           Today 17:00
@@ -738,7 +845,7 @@ export default function NewOrderPage() {
                           variant="secondary"
                           size="sm"
                           onClick={() => setExpectedQuick(1, "09:00")}
-                          className="rounded-lg w-full min-w-0 truncate px-2 text-xs"
+                          className="rounded-lg w-full min-w-0 truncate px-1 text-[11px] h-8 bg-muted hover:bg-muted/80 text-foreground"
                           title="Tomorrow 9:00"
                         >
                           Tomorrow 9:00
@@ -748,7 +855,7 @@ export default function NewOrderPage() {
                           variant="secondary"
                           size="sm"
                           onClick={() => setExpectedQuick(1, "17:00")}
-                          className="rounded-lg w-full min-w-0 truncate px-2 text-xs"
+                          className="rounded-lg w-full min-w-0 truncate px-1 text-[11px] h-8 bg-muted hover:bg-muted/80 text-foreground"
                           title="Tomorrow 17:00"
                         >
                           Tomorrow 17:00
@@ -756,227 +863,368 @@ export default function NewOrderPage() {
                       </div>
                     </div>
                   </div>
-                </div>
 
-                <div className="space-y-2">
-                  <Label>Priority</Label>
-                  <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
-                    {PRIORITIES.map((p) => (
-                      <button
-                        key={p.key}
-                        type="button"
-                        onClick={() => setFormData({ ...formData, priority: p.key })}
-                        className={cn(
-                          "text-left rounded-xl border p-4 transition-all hover:shadow-sm",
-                          p.tone,
-                          formData.priority === p.key
-                            ? "border-primary ring-2 ring-primary/20"
-                            : "border-border"
-                        )}
-                      >
-                        <div className="flex items-center justify-between gap-2">
-                          <div className="font-bold">{p.key}</div>
-                          {formData.priority === p.key ? (
-                            <CheckCircle2 className="w-4 h-4 text-primary" />
-                          ) : (
-                            <span className="w-4 h-4" />
-                          )}
-                        </div>
-                        <div className="text-xs text-muted-foreground mt-1">{p.hint}</div>
-                      </button>
-                    ))}
+                  {/* Column 2: Priority Grid */}
+                  <div className="space-y-2">
+                    <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Select Priority</Label>
+                    <div className="grid grid-cols-2 gap-3 h-[calc(100%-24px)] min-h-[170px]">
+                      {PRIORITIES.map((p) => {
+                        const isSelected = formData.priority === p.key;
+                        return (
+                          <button
+                            key={p.key}
+                            type="button"
+                            onClick={() => setFormData({ ...formData, priority: p.key })}
+                            className={cn(
+                              "text-left rounded-xl border p-3.5 transition-all flex flex-col justify-between hover:shadow-sm",
+                              p.tone,
+                              isSelected
+                                ? "border-primary ring-2 ring-primary/20 bg-primary/[0.03]"
+                                : "border-muted-foreground/15 bg-transparent"
+                            )}
+                          >
+                            <div className="flex items-center justify-between w-full">
+                              <span className="font-bold text-sm tracking-tight text-foreground">{p.key}</span>
+                              {isSelected ? (
+                                <CheckCircle2 className="w-4 h-4 text-primary" />
+                              ) : (
+                                <span className="w-4 h-4 rounded-full border border-muted-foreground/30" />
+                              )}
+                            </div>
+                            <div className="text-[11px] text-muted-foreground font-medium mt-2">{p.hint}</div>
+                          </button>
+                        );
+                      })}
+                    </div>
                   </div>
                 </div>
+              </CardContent>
+            </Card>
 
+            {/* CARD 3: DIAGNOSTICS & DETAILS */}
+            <Card className="shadow-md border border-muted/40">
+              <CardHeader className="pb-4">
+                <div className="flex items-center gap-2">
+                  <div className="p-2 rounded-lg bg-primary/10 text-primary">
+                    <FileText className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <CardTitle className="text-xl">Diagnostics & Details</CardTitle>
+                    <CardDescription>Enter problem description, additional notes, and attach files</CardDescription>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-5">
                 <div className="space-y-2">
-                  <Label htmlFor="problemDescription">Problem Description</Label>
+                  <Label htmlFor="problemDescription" className="text-sm font-semibold flex items-center gap-1.5">
+                    Problem Description <span className="text-red-500">*</span>
+                  </Label>
                   <Textarea
                     id="problemDescription"
-                    placeholder="Describe the reported issue..."
+                    placeholder="Describe the reported issue in detail..."
                     required
                     value={formData.problemDescription}
                     onChange={(e) => setFormData({ ...formData, problemDescription: e.target.value })}
-                    className="min-h-[120px]"
+                    className="min-h-[100px] rounded-xl border-muted-foreground/20 focus-visible:ring-primary"
                   />
                 </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="comments">Comments (Optional)</Label>
-                  <Textarea
-                    id="comments"
-                    placeholder="Any additional notes..."
-                    value={formData.comments}
-                    onChange={(e) => setFormData({ ...formData, comments: e.target.value })}
-                    className="min-h-[90px]"
-                  />
-                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                  <div className="space-y-2">
+                    <Label htmlFor="comments" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Comments (Optional)</Label>
+                    <Textarea
+                      id="comments"
+                      placeholder="Any additional notes or instructions for the technician..."
+                      value={formData.comments}
+                      onChange={(e) => setFormData({ ...formData, comments: e.target.value })}
+                      className="min-h-[90px] rounded-xl border-muted-foreground/20 focus-visible:ring-primary"
+                    />
+                  </div>
 
-                <div className="space-y-2">
-                  <Label>Attachments (Optional)</Label>
-                  <Input
-                    type="file"
-                    multiple
-                    onChange={(e) => {
-                      const files = Array.from(e.target.files ?? []);
-                      setAttachmentFiles(files);
-                    }}
-                  />
-                  {attachmentFiles.length > 0 ? (
-                    <div className="text-xs text-muted-foreground">
-                      {attachmentFiles.length} file(s) selected {attachmentUploading ? "(uploading...)" : ""}
+                  <div className="space-y-2">
+                    <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1">
+                      <Paperclip className="w-3.5 h-3.5" />
+                      Attachments (Optional)
+                    </Label>
+                    <div className="border border-dashed border-muted-foreground/25 hover:border-primary/50 transition-all rounded-xl p-4 flex flex-col items-center justify-center min-h-[90px] bg-muted/5 relative cursor-pointer group">
+                      <Input
+                        type="file"
+                        multiple
+                        onChange={(e) => {
+                          const files = Array.from(e.target.files ?? []);
+                          const validFiles = files.filter(f => {
+                            if (f.size > 100 * 1024 * 1024) {
+                              toast({ title: "File too large", description: `${f.name} exceeds 100MB limit.`, variant: "destructive" });
+                              return false;
+                            }
+                            return true;
+                          });
+                          setAttachmentFiles(prev => [...prev, ...validFiles]);
+                          e.target.value = '';
+                        }}
+                        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                      />
+                      <div className="flex flex-col items-center justify-center text-center pointer-events-none space-y-1">
+                        <Paperclip className="w-6 h-6 text-muted-foreground group-hover:text-primary transition-colors" />
+                        <span className="text-xs font-medium text-foreground group-hover:text-primary transition-colors">
+                          Click to select attachments
+                        </span>
+                        <span className="text-[10px] text-muted-foreground">Photos, PDFs, docs up to 100MB</span>
+                      </div>
                     </div>
-                  ) : (
-                    <div className="text-xs text-muted-foreground">Photos, PDFs, etc. Will be uploaded to FTP.</div>
-                  )}
+                    {attachmentFiles.length > 0 ? (
+                      <div className="flex flex-col gap-2 mt-2">
+                        <div className="flex items-center gap-2 text-xs text-primary font-bold">
+                          <CheckCircle2 className="w-3.5 h-3.5" />
+                          <span>
+                            {attachmentFiles.length} file(s) selected {attachmentUploading ? `(uploading ${uploadProgress.current}/${uploadProgress.total}...)` : ""}
+                          </span>
+                        </div>
+                        <div className="flex flex-wrap gap-2">
+                          {attachmentFiles.map((file, idx) => (
+                            <Badge key={idx} variant="secondary" className="gap-1 bg-muted/50 border border-muted-foreground/20 px-2 py-1 flex items-center">
+                              <span className="truncate max-w-[150px]" title={file.name}>{file.name}</span>
+                              <button
+                                type="button"
+                                onClick={() => setAttachmentFiles(prev => prev.filter((_, i) => i !== idx))}
+                                className="ml-1 hover:text-destructive text-muted-foreground flex-shrink-0"
+                              >
+                                <X className="w-3 h-3" />
+                              </button>
+                            </Badge>
+                          ))}
+                        </div>
+                      </div>
+                    ) : null}
+                  </div>
                 </div>
               </CardContent>
             </Card>
 
-            <Card className="shadow-md border-none">
-              <CardHeader>
-                <CardTitle>Repair Checklist</CardTitle>
-                <CardDescription>
-                  Use checklist items. If an item is not available, add it here.
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-5">
-                <div className="flex items-center gap-2">
-                  <Input
-                    placeholder="Add new checklist item..."
-                    value={newChecklistItem}
-                    onChange={(e) => setNewChecklistItem(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") {
-                        e.preventDefault();
-                        void handleAddChecklistItem();
-                      }
-                    }}
-                  />
-                  <Button type="button" onClick={() => void handleAddChecklistItem()} disabled={addingChecklist}>
-                    {addingChecklist ? (
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                    ) : (
-                      <Plus className="w-4 h-4" />
-                    )}
-                    <span className="ml-2">Add</span>
-                  </Button>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  {checklistTemplates.length === 0 ? (
-                    <p className="text-sm text-muted-foreground italic col-span-2 text-center py-6 bg-muted/20 rounded-lg">
-                      No checklist items found. Add your first checklist item above.
-                    </p>
-                  ) : (
-                    checklistTemplates.map((t) => (
-                      <label
-                        key={t.id}
-                        className={cn(
-                          "flex items-start gap-3 rounded-lg border p-3 cursor-pointer transition-colors",
-                          selectedChecklist.includes(t.description)
-                            ? "bg-primary/5 border-primary/40"
-                            : "hover:bg-muted/30"
-                        )}
-                      >
-                        <Checkbox
-                          checked={selectedChecklist.includes(t.description)}
-                          onCheckedChange={() => toggleChecklist(t.description)}
-                        />
-                        <div className="flex-1">
-                          <div className="text-sm font-medium leading-tight">{t.description}</div>
-                          <div className="text-[10px] text-muted-foreground uppercase tracking-widest font-bold mt-1">
-                            Checklist Item
-                          </div>
-                        </div>
-                      </label>
-                    ))
-                  )}
-                </div>
-
-                {selectedChecklist.length > 0 ? (
-                  <div className="pt-2">
-                    <div className="text-xs text-muted-foreground mb-2">Selected items</div>
-                    <div className="flex flex-wrap gap-1.5">
-                      {selectedChecklist.map((item) => (
-                        <Badge key={item} variant="secondary" className="gap-1">
-                          {item}
-                          <button
-                            type="button"
-                            className="ml-1 text-muted-foreground hover:text-destructive"
-                            onClick={() => toggleChecklist(item)}
-                          >
-                            <X className="w-3 h-3" />
-                          </button>
-                        </Badge>
-                      ))}
+            {/* SIDE-BY-SIDE CHECKLIST & CATEGORIES */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Card 4: Checklist */}
+              <Card className="shadow-md border border-muted/40">
+                <CardHeader className="pb-4">
+                  <div className="flex items-center gap-2">
+                    <div className="p-2 rounded-lg bg-primary/10 text-primary">
+                      <ClipboardList className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <CardTitle className="text-xl">Repair Checklist</CardTitle>
+                      <CardDescription>Select checklist items or add custom tasks</CardDescription>
                     </div>
                   </div>
-                ) : null}
-              </CardContent>
-            </Card>
-
-            <Card className="shadow-md border-none">
-              <CardHeader>
-                <CardTitle>Repair Categories</CardTitle>
-                <CardDescription>
-                  Select categories. If needed, create a new category here.
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-5">
-                <div className="flex items-center gap-2">
-                  <Input
-                    placeholder="Add new category..."
-                    value={newCategoryName}
-                    onChange={(e) => setNewCategoryName(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") {
-                        e.preventDefault();
-                        void handleAddCategory();
-                      }
-                    }}
-                  />
-                  <Button type="button" onClick={() => void handleAddCategory()} disabled={addingCategory}>
-                    {addingCategory ? (
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                    ) : (
-                      <Plus className="w-4 h-4" />
-                    )}
-                    <span className="ml-2">Add</span>
-                  </Button>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  {availableCategories.length === 0 ? (
-                    <p className="text-sm text-muted-foreground italic col-span-2 text-center py-6 bg-muted/20 rounded-lg">
-                      No categories found. Add one above.
-                    </p>
-                  ) : (
-                    availableCategories.map((c) => (
-                      <label
-                        key={c.id}
-                        className={cn(
-                          "flex items-start gap-3 rounded-lg border p-3 cursor-pointer transition-colors",
-                          selectedCategories.includes(c.name)
-                            ? "bg-primary/5 border-primary/40"
-                            : "hover:bg-muted/30"
-                        )}
-                      >
-                        <Checkbox
-                          checked={selectedCategories.includes(c.name)}
-                          onCheckedChange={() => toggleCategory(c.name)}
-                        />
-                        <div className="flex-1">
-                          <div className="text-sm font-medium leading-tight">{c.name}</div>
-                          <div className="text-[10px] text-muted-foreground uppercase tracking-widest font-bold mt-1">
-                            Category
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="flex items-center gap-2">
+                    <div className="relative flex-1">
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                      <Input
+                        placeholder="Search checklist items..."
+                        value={checklistSearch}
+                        onChange={(e) => setChecklistSearch(e.target.value)}
+                        className="rounded-xl h-10 pl-9 border-muted-foreground/20"
+                      />
+                    </div>
+                    <Dialog open={isChecklistDialogOpen} onOpenChange={setIsChecklistDialogOpen}>
+                      <DialogTrigger asChild>
+                        <Button 
+                          type="button" 
+                          className="rounded-xl h-10 px-4"
+                        >
+                          <Plus className="w-4 h-4" />
+                          <span className="ml-2 hidden sm:inline">New</span>
+                        </Button>
+                      </DialogTrigger>
+                      <DialogContent>
+                        <DialogHeader>
+                          <DialogTitle>Add Checklist Item</DialogTitle>
+                          <DialogDescription>Create a new item for the repair checklist.</DialogDescription>
+                        </DialogHeader>
+                        <div className="space-y-4 py-4">
+                          <div className="space-y-2">
+                            <Label>Item Description</Label>
+                            <Input
+                              placeholder="e.g. Brake fluid level"
+                              value={newChecklistItem}
+                              onChange={(e) => setNewChecklistItem(e.target.value)}
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter") {
+                                  e.preventDefault();
+                                  void handleAddChecklistItem().then(() => setIsChecklistDialogOpen(false));
+                                }
+                              }}
+                            />
                           </div>
+                          <Button 
+                            type="button" 
+                            onClick={() => void handleAddChecklistItem().then(() => setIsChecklistDialogOpen(false))} 
+                            disabled={addingChecklist || !newChecklistItem.trim()}
+                            className="w-full"
+                          >
+                            {addingChecklist && <Loader2 className="w-4 h-4 animate-spin mr-2" />}
+                            Add Item
+                          </Button>
                         </div>
-                      </label>
-                    ))
-                  )}
-                </div>
-              </CardContent>
-            </Card>
+                      </DialogContent>
+                    </Dialog>
+                  </div>
+
+                  <ScrollArea className="h-[220px] pr-2 border rounded-xl p-2 bg-muted/5">
+                    <div className="space-y-2">
+                      {filteredChecklistTemplates.length === 0 ? (
+                        <p className="text-sm text-muted-foreground italic text-center py-10">
+                          No checklist items found.
+                        </p>
+                      ) : (
+                        filteredChecklistTemplates.map((t) => (
+                          <label
+                            key={t.id}
+                            className={cn(
+                              "flex items-start gap-3 rounded-lg border p-2.5 cursor-pointer transition-colors",
+                              selectedChecklist.includes(t.description)
+                                ? "bg-primary/5 border-primary/40"
+                                : "hover:bg-muted/30 border-transparent bg-transparent"
+                            )}
+                          >
+                            <Checkbox
+                              checked={selectedChecklist.includes(t.description)}
+                              onCheckedChange={() => toggleChecklist(t.description)}
+                              className="mt-0.5"
+                            />
+                            <div className="flex-1 min-w-0">
+                              <div className="text-xs font-semibold leading-tight text-foreground truncate">{t.description}</div>
+                            </div>
+                          </label>
+                        ))
+                      )}
+                    </div>
+                  </ScrollArea>
+
+                  {selectedChecklist.length > 0 ? (
+                    <div className="pt-1">
+                      <div className="text-[10px] uppercase font-bold text-muted-foreground mb-1.5">Selected Items</div>
+                      <div className="flex flex-wrap gap-1">
+                        {selectedChecklist.map((item) => (
+                          <Badge key={item} variant="secondary" className="gap-1 text-[10px] bg-primary/10 text-primary border-none rounded-md px-2 py-0.5">
+                            {item}
+                            <button
+                              type="button"
+                              className="ml-1 text-muted-foreground hover:text-destructive transition-colors"
+                              onClick={() => toggleChecklist(item)}
+                            >
+                              <X className="w-2.5 h-2.5" />
+                            </button>
+                          </Badge>
+                        ))}
+                      </div>
+                    </div>
+                  ) : null}
+                </CardContent>
+              </Card>
+
+              {/* Card 5: Categories */}
+              <Card className="shadow-md border border-muted/40">
+                <CardHeader className="pb-4">
+                  <div className="flex items-center gap-2">
+                    <div className="p-2 rounded-lg bg-primary/10 text-primary">
+                      <Plus className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <CardTitle className="text-xl">Repair Categories</CardTitle>
+                      <CardDescription>Associate job categories or define a new one</CardDescription>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="flex items-center gap-2">
+                    <div className="relative flex-1">
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                      <Input
+                        placeholder="Search categories..."
+                        value={categorySearch}
+                        onChange={(e) => setCategorySearch(e.target.value)}
+                        className="rounded-xl h-10 pl-9 border-muted-foreground/20"
+                      />
+                    </div>
+                    <Dialog open={isCategoryDialogOpen} onOpenChange={setIsCategoryDialogOpen}>
+                      <DialogTrigger asChild>
+                        <Button 
+                          type="button" 
+                          className="rounded-xl h-10 px-4"
+                        >
+                          <Plus className="w-4 h-4" />
+                          <span className="ml-2 hidden sm:inline">New</span>
+                        </Button>
+                      </DialogTrigger>
+                      <DialogContent>
+                        <DialogHeader>
+                          <DialogTitle>Add Repair Category</DialogTitle>
+                          <DialogDescription>Create a new category for repairs.</DialogDescription>
+                        </DialogHeader>
+                        <div className="space-y-4 py-4">
+                          <div className="space-y-2">
+                            <Label>Category Name</Label>
+                            <Input
+                              placeholder="e.g. Engine Repair"
+                              value={newCategoryName}
+                              onChange={(e) => setNewCategoryName(e.target.value)}
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter") {
+                                  e.preventDefault();
+                                  void handleAddCategory().then(() => setIsCategoryDialogOpen(false));
+                                }
+                              }}
+                            />
+                          </div>
+                          <Button 
+                            type="button" 
+                            onClick={() => void handleAddCategory().then(() => setIsCategoryDialogOpen(false))} 
+                            disabled={addingCategory || !newCategoryName.trim()}
+                            className="w-full"
+                          >
+                            {addingCategory && <Loader2 className="w-4 h-4 animate-spin mr-2" />}
+                            Add Category
+                          </Button>
+                        </div>
+                      </DialogContent>
+                    </Dialog>
+                  </div>
+
+                  <ScrollArea className="h-[220px] pr-2 border rounded-xl p-2 bg-muted/5">
+                    <div className="space-y-2">
+                      {filteredCategories.length === 0 ? (
+                        <p className="text-sm text-muted-foreground italic text-center py-10">
+                          No categories found.
+                        </p>
+                      ) : (
+                        filteredCategories.map((c) => (
+                          <label
+                            key={c.id}
+                            className={cn(
+                              "flex items-start gap-3 rounded-lg border p-2.5 cursor-pointer transition-colors",
+                              selectedCategories.includes(c.name)
+                                ? "bg-primary/5 border-primary/40"
+                                : "hover:bg-muted/30 border-transparent bg-transparent"
+                            )}
+                          >
+                            <Checkbox
+                              checked={selectedCategories.includes(c.name)}
+                              onCheckedChange={() => toggleCategory(c.name)}
+                              className="mt-0.5"
+                            />
+                            <div className="flex-1 min-w-0">
+                              <div className="text-xs font-semibold leading-tight text-foreground truncate">{c.name}</div>
+                            </div>
+                          </label>
+                        ))
+                      )}
+                    </div>
+                  </ScrollArea>
+                </CardContent>
+              </Card>
+            </div>
           </div>
 
           <div className="space-y-6">

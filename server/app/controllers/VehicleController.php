@@ -28,6 +28,15 @@ class VehicleController extends Controller {
         $this->success($result);
     }
 
+    public function all() {
+        $this->requirePermission('vehicles.read');
+        if ($_SERVER['REQUEST_METHOD'] !== 'GET') {
+            $this->error('Method Not Allowed', 405);
+            return;
+        }
+        $this->success($this->vehicleModel->getAll());
+    }
+
     // POST /api/vehicle/create
     public function create() {
         $u = $this->requirePermission('vehicles.write');
@@ -156,5 +165,68 @@ class VehicleController extends Controller {
         }
         $vehicles = $this->vehicleModel->getByCustomer($customerId);
         $this->success($vehicles);
+    }
+
+    // GET /api/vehicle/history/{id}
+    public function history($id = null) {
+        $this->requirePermission('vehicles.read');
+        if ($_SERVER['REQUEST_METHOD'] !== 'GET') {
+            $this->error('Method Not Allowed', 405);
+            return;
+        }
+        if (!$id) {
+            $this->error('Vehicle ID required', 400);
+            return;
+        }
+        $history = $this->vehicleModel->getServiceHistory($id);
+        $this->success($history);
+    }
+
+    // GET /api/vehicle/upcomingServices
+    public function upcomingServices() {
+        $this->requirePermission('vehicles.read');
+        if ($_SERVER['REQUEST_METHOD'] !== 'GET') {
+            $this->error('Method Not Allowed', 405);
+            return;
+        }
+        $vehicles = $this->vehicleModel->getUpcomingServices();
+        $this->success($vehicles);
+    }
+
+    // POST /api/vehicle/updateSchedule/{id}
+    public function updateSchedule($id = null) {
+        $this->requirePermission('vehicles.write');
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            $this->error('Method Not Allowed', 405);
+            return;
+        }
+        if (!$id) {
+            $this->error('Vehicle ID required', 400);
+            return;
+        }
+        $raw = file_get_contents('php://input');
+        $data = json_decode($raw, true);
+        
+        $mileage = isset($data['next_service_mileage']) && $data['next_service_mileage'] !== '' ? (int)$data['next_service_mileage'] : null;
+        $date = isset($data['next_service_date']) && $data['next_service_date'] !== '' ? $data['next_service_date'] : null;
+
+        $db = new Database();
+        
+        $dateQuery = $date ? "next_service_date = :date" : "next_service_date = NULL";
+        $mileageQuery = $mileage ? "next_service_mileage = :mileage" : "next_service_mileage = NULL";
+
+        try {
+            $sql = "UPDATE vehicles SET $mileageQuery, $dateQuery WHERE id = :id";
+            $db->query($sql);
+            $db->bind(':id', $id);
+            if ($mileage) $db->bind(':mileage', $mileage);
+            if ($date) $db->bind(':date', $date);
+            
+            $db->execute();
+            
+            $this->success(['id' => $id, 'next_service_mileage' => $mileage, 'next_service_date' => $date], 'Schedule updated');
+        } catch (Exception $e) {
+            $this->error('Failed to update schedule: ' . $e->getMessage());
+        }
     }
 }

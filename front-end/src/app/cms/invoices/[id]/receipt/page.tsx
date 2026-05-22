@@ -315,7 +315,7 @@ function ReceiptBody({ invoice, company, balance, fmt, taxInclusive }: any) {
       <div className="center tag" style={{ marginTop: '8px' }}>
         <div>Thank you for your purchase!</div>
         <div style={{ marginTop: '4px', fontSize: '10px', fontWeight: 'bold' }}>BizFlow ERP System</div>
-        <div style={{ marginTop: '2px', fontSize: '8px', opacity: 0.8 }}>Developed by Nebulink.com</div>
+        <div style={{ marginTop: '2px', fontSize: '8px', opacity: 0.8 }}>Developed by Nebulync.com</div>
         <div style={{ marginTop: '10px', fontSize: '9px', letterSpacing: '1px' }}>* * * * * * * * * *</div>
       </div>
     </>

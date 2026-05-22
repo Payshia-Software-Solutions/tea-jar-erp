@@ -232,7 +232,7 @@ export default function VehiclesPage() {
                     <TableRow className="hover:bg-transparent">
                       <TableHead className="py-5 font-bold text-slate-700 dark:text-slate-300">Vehicle Profile</TableHead>
                       <TableHead className="py-5 font-bold text-slate-700 dark:text-slate-300">Owner / Dept</TableHead>
-                      <TableHead className="py-5 font-bold text-slate-700 dark:text-slate-300">Specifications</TableHead>
+                      <TableHead className="py-5 font-bold text-slate-700 dark:text-slate-300">Specs & Service</TableHead>
                       <TableHead className="py-5 font-bold text-slate-700 dark:text-slate-300">Sync Status</TableHead>
                       <TableHead className="py-5 font-bold text-slate-700 dark:text-slate-300 text-right pr-6">Management</TableHead>
                     </TableRow>
@@ -292,7 +292,7 @@ export default function VehiclesPage() {
                           </div>
                         </TableCell>
                         <TableCell>
-                          <div className="space-y-1">
+                          <div className="space-y-1.5">
                             <div className="flex items-center gap-2 text-slate-600 dark:text-slate-400">
                               <Hash className="w-3.5 h-3.5" />
                               <span className="text-sm font-mono tracking-tighter">{vehicle.vin || "---"}</span>
@@ -301,6 +301,25 @@ export default function VehiclesPage() {
                               <Calendar className="w-3.5 h-3.5" />
                               <span className="text-xs">{vehicle.year || "N/A"}</span>
                             </div>
+                            {(() => {
+                              const nsDate = vehicle.next_service_date ? new Date(vehicle.next_service_date) : null;
+                              const isOverdue = 
+                                (nsDate && nsDate <= new Date()) || 
+                                (vehicle.next_service_mileage > 0 && vehicle.current_mileage >= vehicle.next_service_mileage);
+                              
+                              const isDueSoon = !isOverdue && (
+                                (nsDate && nsDate <= new Date(Date.now() + 14 * 24 * 60 * 60 * 1000)) ||
+                                (vehicle.next_service_mileage > 0 && vehicle.current_mileage >= vehicle.next_service_mileage - 500)
+                              );
+
+                              if (isOverdue) return (
+                                <Badge variant="destructive" className="mt-1 text-[10px] uppercase font-bold py-0.5 gap-1 shadow-sm"><AlertTriangle className="w-3 h-3" /> Service Overdue</Badge>
+                              );
+                              if (isDueSoon) return (
+                                <Badge variant="secondary" className="mt-1 text-[10px] uppercase font-bold py-0.5 bg-orange-100 text-orange-700 hover:bg-orange-200 border-orange-200 gap-1 shadow-sm"><AlertCircle className="w-3 h-3" /> Due Soon</Badge>
+                              );
+                              return null;
+                            })()}
                           </div>
                         </TableCell>
                         <TableCell>

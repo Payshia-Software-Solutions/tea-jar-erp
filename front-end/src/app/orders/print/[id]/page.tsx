@@ -65,6 +65,7 @@ export default function OrderPrintPage() {
       categories: safeJsonArray(o.categories_json),
       checklist: safeJsonArray(o.checklist_json),
       attachments: safeJsonArray(o.attachments_json),
+      jobType: String(o.job_type || "Running Repair"),
     };
   }, [order, id]);
 
@@ -186,6 +187,10 @@ export default function OrderPrintPage() {
                     <div className="text-muted-foreground text-[11px]">Mileage</div>
                     <div className="font-semibold">{data.mileage ? `${data.mileage} km` : "-"}</div>
                   </div>
+                  <div>
+                    <div className="text-muted-foreground text-[11px]">Type</div>
+                    <div className="font-semibold">{data.jobType}</div>
+                  </div>
                   <div className="text-right">
                     <div className="text-muted-foreground text-[11px]">Priority</div>
                     <div className="font-semibold">{data.priority || "-"}</div>
@@ -253,7 +258,7 @@ export default function OrderPrintPage() {
               <div className="my-3 border-t border-dashed" />
 
               <div className="text-center text-[11px] text-muted-foreground">
-                BizFlow ERP System | Developed by Nebulink.com
+                BizFlow ERP System | Developed by Nebulync.com
               </div>
             </div>
           )}

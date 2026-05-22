@@ -1,5 +1,11 @@
 import { api, ApiSuccess, SystemCheckResponse } from './client';
 
+export const updateVehicleSchedule = async (id: number | string, payload: { next_service_mileage?: string | number, next_service_date?: string }) => {
+  const res = await api(`/api/vehicle/updateSchedule/${id}`, { method: 'POST', body: JSON.stringify(payload) });
+  if (!res.ok) throw new Error('Failed to update vehicle schedule');
+  return res.json();
+};
+
 // Vehicles, Makes, Models
 export const fetchMakes = async () => {
   const res = await api('/api/make/list');
@@ -440,6 +446,16 @@ export const syncVehicles = async () => {
   const res = await api('/api/vehicle-sync/sync', { method: 'POST' });
   if (!res.ok) throw new Error('Sync failed');
   return res.json() as Promise<ApiSuccess<{ success: number; failed: number }>>;
+};
+
+export const syncMorningMileage = async (vehicleIds?: number[]) => {
+  const payload = vehicleIds && vehicleIds.length > 0 ? JSON.stringify({ vehicle_ids: vehicleIds }) : undefined;
+  const res = await api('/api/vehicle-sync/morning_fetch', { 
+    method: 'POST',
+    body: payload
+  });
+  if (!res.ok) throw new Error('Morning mileage sync failed');
+  return res.json() as Promise<ApiSuccess<{ updated: number }>>;
 };
 
 // --- Vehicle Documents ---

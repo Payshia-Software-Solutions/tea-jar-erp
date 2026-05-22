@@ -31,6 +31,8 @@ export interface RepairOrder {
   completedAt?: string;
   completionComments?: string;
   completedCategories?: CategoryCompletion[];
+  job_type?: 'Repair' | 'Service Booking';
+  booking_date?: string;
 }
 
 export interface Vehicle {
@@ -48,6 +50,9 @@ export interface Vehicle {
   last_sync_at?: string | null;
   current_mileage?: number;
   mileage_last_synced_at?: string | null;
+  service_interval_mileage?: number | null;
+  next_service_mileage?: number | null;
+  next_service_date?: string | null;
   created_at: string;
 }
 

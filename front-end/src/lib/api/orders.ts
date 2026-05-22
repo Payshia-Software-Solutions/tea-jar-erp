@@ -110,6 +110,18 @@ export const updateOrderRelease = async (id: string, releaseTime: string | null)
   return res.json();
 };
 
+export const rescheduleOrder = async (id: string | number, booking_date: string) => {
+  const res = await api(`/api/order/reschedule/${id}`, {
+    method: 'POST',
+    body: JSON.stringify({ booking_date }),
+  });
+  if (!res.ok) {
+    const j = await res.json().catch(() => null);
+    throw new Error(j?.message || 'Failed to reschedule order');
+  }
+  return res.json();
+};
+
 export const assignOrder = async (id: string, payload: { bay_name?: string; bay_id?: number; technician?: string; status?: string; release_time?: string | null }) => {
   const res = await api(`/api/order/assign/${encodeURIComponent(String(id))}`, { method: 'POST', body: JSON.stringify(payload) });
   if (!res.ok) {
@@ -119,7 +131,7 @@ export const assignOrder = async (id: string, payload: { bay_name?: string; bay_
   return res.json();
 };
 
-export const updateOrderDetails = async (id: string, payload: { categories?: string[]; checklist?: string[] }) => {
+export const updateOrderDetails = async (id: string, payload: { categories?: string[]; checklist?: string[]; attachments?: string[] }) => {
   const res = await api(`/api/order/update_details/${encodeURIComponent(String(id))}`, {
     method: 'POST',
     body: JSON.stringify(payload),

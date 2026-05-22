@@ -92,8 +92,13 @@ export default function ActiveJobsPage() {
           {active.map((o) => (
             <Card key={o.id} className="border-none shadow-md hover:shadow-lg transition-all overflow-hidden">
               <CardHeader className="bg-muted/30 border-b">
-                <CardTitle className="text-base font-bold">{o.vehicleId || `Order #${o.id}`}</CardTitle>
-                <CardDescription className="line-clamp-2">{o.problemDescription || "No description"}</CardDescription>
+                <div className="flex items-start justify-between gap-2">
+                  <CardTitle className="text-base font-bold">{o.vehicleId || `Order #${o.id}`}</CardTitle>
+                  {o.vehicleNumber && (
+                    <Badge variant="outline" className="shrink-0 bg-background">{o.vehicleNumber}</Badge>
+                  )}
+                </div>
+                <CardDescription className="line-clamp-2 mt-1">{o.problemDescription || "No description"}</CardDescription>
               </CardHeader>
               <CardContent className="p-4 space-y-3">
                 <div className="flex items-center justify-between">
