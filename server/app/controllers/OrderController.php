@@ -150,7 +150,7 @@ class OrderController extends Controller {
                 if (in_array($newStatus, ['Completed', 'Cancelled'], true)) {
                     try {
                         $db = new Database();
-                        $db->query("SELECT location FROM repair_orders WHERE id = :id AND location_id = :loc LIMIT 1");
+                        $db->query("SELECT location FROM repair_orders WHERE id = :id AND (location_id = :loc OR from_location_id = :loc) LIMIT 1");
                         $db->bind(':id', (int)$id);
                         $db->bind(':loc', $locId);
                         $row = $db->single();
@@ -206,7 +206,7 @@ class OrderController extends Controller {
         if (!$order) $this->error('Order not found', 404);
 
         $db = new Database();
-        $db->query("UPDATE repair_orders SET release_time = :release_time, updated_by = :u WHERE id = :id AND location_id = :loc");
+        $db->query("UPDATE repair_orders SET release_time = :release_time, updated_by = :u WHERE id = :id AND (location_id = :loc OR from_location_id = :loc)");
         $db->bind(':release_time', $release);
         $db->bind(':u', (int)$u['sub']);
         $db->bind(':id', (int)$id);
@@ -249,7 +249,7 @@ class OrderController extends Controller {
         $setStr = implode(', ', $setParts);
 
         $db = new Database();
-        $db->query("UPDATE repair_orders SET $setStr, updated_by = :u WHERE id = :id AND location_id = :loc");
+        $db->query("UPDATE repair_orders SET $setStr, updated_by = :u WHERE id = :id AND (location_id = :loc OR from_location_id = :loc)");
         foreach ($payload as $key => $val) {
             $db->bind(":$key", $val);
         }
@@ -300,7 +300,7 @@ class OrderController extends Controller {
                     completion_comments = :completion_comments,
                     completed_at = NOW(),
                     updated_by = :u
-                WHERE id = :id AND location_id = :loc
+                WHERE id = :id AND (location_id = :loc OR from_location_id = :loc)
             ");
             $db->bind(':status', $status);
             $db->bind(':checklist_done_json', $checklistDoneJson);
@@ -316,7 +316,7 @@ class OrderController extends Controller {
 
             // Release bay if no other active orders remain in that bay.
             if (in_array($status, ['Completed', 'Cancelled'], true)) {
-                $db->query("SELECT location FROM repair_orders WHERE id = :id AND location_id = :loc LIMIT 1");
+                $db->query("SELECT location FROM repair_orders WHERE id = :id AND (location_id = :loc OR from_location_id = :loc) LIMIT 1");
                 $db->bind(':id', (int)$id);
                 $db->bind(':loc', $locId);
                 $row = $db->single();
@@ -439,7 +439,7 @@ class OrderController extends Controller {
             $db->exec("START TRANSACTION");
 
             // Lock the order row and capture old bay name inside the transaction.
-            $db->query("SELECT location FROM repair_orders WHERE id = :id AND location_id = :loc FOR UPDATE");
+            $db->query("SELECT location FROM repair_orders WHERE id = :id AND (location_id = :loc OR from_location_id = :loc) FOR UPDATE");
             $db->bind(':id', (int)$id);
             $db->bind(':loc', $locId);
             $rowOrder = $db->single();
@@ -457,7 +457,7 @@ class OrderController extends Controller {
                     release_time = :release_time,
                     status = :status,
                     updated_by = :u
-                WHERE id = :id AND location_id = :loc
+                WHERE id = :id AND (location_id = :loc OR from_location_id = :loc)
             ");
             $db->bind(':bay', $bayName !== '' ? $bayName : null);
             $db->bind(':technician', $technician !== '' ? $technician : null);

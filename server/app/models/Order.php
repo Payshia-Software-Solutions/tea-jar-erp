@@ -78,7 +78,7 @@ class Order extends Model {
             LEFT JOIN vehicles v ON ro.vehicle_id = v.id
             LEFT JOIN customers c ON v.customer_id = c.id
             LEFT JOIN departments d ON v.department_id = d.id
-            WHERE ro.location_id = :location_id 
+            WHERE (ro.location_id = :location_id OR ro.from_location_id = :location_id)
             ORDER BY ro.created_at DESC
         ");
         $this->db->bind(':location_id', (int)$locationId);
@@ -117,7 +117,7 @@ class Order extends Model {
             LEFT JOIN customers c ON v.customer_id = c.id
             LEFT JOIN departments d ON v.department_id = d.id
             LEFT JOIN service_locations l ON ro.location_id = l.id
-            WHERE ro.id = :id AND ro.location_id = :location_id 
+            WHERE ro.id = :id AND (ro.location_id = :location_id OR ro.from_location_id = :location_id)
             LIMIT 1
         ");
         $this->db->bind(':id', (int)$id);
