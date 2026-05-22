@@ -634,4 +634,35 @@ class OrderController extends Controller {
         if ($ok) $this->success(null, 'Order part deleted');
         $this->error('Delete failed', 500);
     }
+
+    // DELETE /api/order/delete/1
+    public function delete($id = null) {
+        $u = $this->requirePermission('orders.write');
+        if ($_SERVER['REQUEST_METHOD'] !== 'DELETE') {
+            $this->error('Method Not Allowed', 405);
+        }
+        if (!$id) $this->error('Order ID required', 400);
+
+        $locId = $this->currentLocationId($u);
+        $order = $this->orderModel->getOrderByIdInLocation((int)$id, $locId);
+        if (!$order) $this->error('Order not found', 404);
+
+        $ok = $this->orderModel->deleteOrder((int)$id, $locId);
+        if ($ok) {
+            $this->auditModel->write([
+                'user_id' => (int)$u['sub'],
+                'location_id' => $locId,
+                'action' => 'delete',
+                'entity' => 'repair_order',
+                'entity_id' => (int)$id,
+                'method' => $_SERVER['REQUEST_METHOD'] ?? '',
+                'path' => $_SERVER['REQUEST_URI'] ?? '',
+                'ip' => $_SERVER['REMOTE_ADDR'] ?? '',
+                'user_agent' => $_SERVER['HTTP_USER_AGENT'] ?? '',
+                'details' => json_encode(['order_id' => (int)$id]),
+            ]);
+            $this->success(null, 'Order deleted');
+        }
+        $this->error('Delete failed', 500);
+    }
 }

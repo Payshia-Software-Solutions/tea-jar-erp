@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { DashboardLayout } from '@/components/dashboard-layout';
-import { assignOrder, fetchOrders, fetchBays, fetchTechnicians, updateOrder } from '@/lib/api';
+import { assignOrder, fetchOrders, fetchBays, fetchTechnicians, updateOrder, deleteOrder } from '@/lib/api';
 // import { INITIAL_REPAIR_ORDERS, BAYS, TECHNICIANS, MOCK_USER } from '@/lib/mock-data';
 
 import { RepairOrder, Priority, RepairStatus, BayLocation, UserRole } from '@/lib/types';
@@ -273,13 +273,21 @@ export default function OrderQueuePage() {
     }
   };
 
-  const handleDeleteOrder = (orderId: string) => {
-    setOrders(prev => prev.filter(o => o.id !== orderId));
-    toast({
-      title: "Order Deleted",
-      description: `Order ${orderId} has been removed from the system.`,
-      variant: "destructive"
-    });
+  const handleDeleteOrder = async (orderId: string) => {
+    try {
+      await deleteOrder(orderId);
+      setOrders(prev => prev.filter(o => o.id !== orderId));
+      toast({
+        title: "Order Deleted",
+        description: `Order ${orderId} has been removed from the system.`,
+      });
+    } catch (e: any) {
+      toast({
+        title: "Delete failed",
+        description: e.message || "Could not delete order.",
+        variant: "destructive"
+      });
+    }
   };
 
   const pendingOrders = orders.filter((o) => o.status === "Pending");

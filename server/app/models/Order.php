@@ -92,12 +92,14 @@ class Order extends Model {
                    v.vin as vehicle_vin, v.make as vehicle_make, v.model as vehicle_model_v, v.year as vehicle_year,
                    c.name as customer_real_name, c.phone as customer_real_phone,
                    d.name as department_name,
-                   l.name as location_name, l.address as location_address, l.phone as location_phone, l.tax_no as location_tax_no
+                   l.name as location_name, l.address as location_address, l.phone as location_phone, l.tax_no as location_tax_no,
+                   fl.name as from_location_name
             FROM " . $this->table . " ro
             LEFT JOIN vehicles v ON ro.vehicle_id = v.id
             LEFT JOIN customers c ON v.customer_id = c.id
             LEFT JOIN departments d ON v.department_id = d.id
             LEFT JOIN service_locations l ON ro.location_id = l.id
+            LEFT JOIN service_locations fl ON ro.from_location_id = fl.id
             WHERE ro.id = :id
         ");
         $this->db->bind(':id', $id);
@@ -111,12 +113,14 @@ class Order extends Model {
                    v.vin as vehicle_vin, v.make as vehicle_make, v.model as vehicle_model_v, v.year as vehicle_year,
                    c.name as customer_real_name, c.phone as customer_real_phone,
                    d.name as department_name,
-                   l.name as location_name, l.address as location_address, l.phone as location_phone, l.tax_no as location_tax_no
+                   l.name as location_name, l.address as location_address, l.phone as location_phone, l.tax_no as location_tax_no,
+                   fl.name as from_location_name
             FROM " . $this->table . " ro
             LEFT JOIN vehicles v ON ro.vehicle_id = v.id
             LEFT JOIN customers c ON v.customer_id = c.id
             LEFT JOIN departments d ON v.department_id = d.id
             LEFT JOIN service_locations l ON ro.location_id = l.id
+            LEFT JOIN service_locations fl ON ro.from_location_id = fl.id
             WHERE ro.id = :id AND (ro.location_id = :location_id OR ro.from_location_id = :location_id)
             LIMIT 1
         ");
@@ -204,6 +208,14 @@ class Order extends Model {
         $this->db->bind(':updated_by', $userId);
         $this->db->bind(':id', (int)$id);
         $this->db->bind(':location_id', (int)$locationId);
+        return $this->db->execute();
+    }
+
+    public function deleteOrder($id, $locationId) {
+        $this->ensureRepairOrderColumns();
+        $this->db->query("DELETE FROM {$this->table} WHERE id = :id AND (location_id = :loc OR from_location_id = :loc)");
+        $this->db->bind(':id', (int)$id);
+        $this->db->bind(':loc', (int)$locationId);
         return $this->db->execute();
     }
 }

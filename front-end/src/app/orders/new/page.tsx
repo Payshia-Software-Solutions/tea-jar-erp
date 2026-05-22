@@ -191,6 +191,7 @@ export default function NewOrderPage() {
           fromLocationId: prev.fromLocationId || defaultLocId,
         }));
       }
+    } catch (e: any) {
       toast({
         title: "Error",
         description: "Failed to load master data for order creation.",

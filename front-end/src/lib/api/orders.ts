@@ -77,6 +77,12 @@ export const createOrder = async (order: any) => {
   return res.json();
 };
 
+export const deleteOrder = async (id: string) => {
+  const res = await api(`/api/order/delete/${id}`, { method: 'DELETE' });
+  if (!res.ok) throw new Error('Failed to delete order');
+  return res.json();
+};
+
 export const updateOrder = async (id: string, data: any) => {
   const res = await api(`/api/order/update_status/${id}`, { method: 'POST', body: JSON.stringify(data) });
   if (!res.ok) throw new Error('Failed to update order');

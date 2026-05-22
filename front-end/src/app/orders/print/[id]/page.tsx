@@ -60,6 +60,8 @@ export default function OrderPrintPage() {
       expectedAt,
       problem: o.problem_description ?? "",
       comments: o.comments ?? "",
+      fromLocationName: o.from_location_name ?? "",
+      toLocationName: o.location_name ?? "",
       categories: safeJsonArray(o.categories_json),
       checklist: safeJsonArray(o.checklist_json),
       attachments: safeJsonArray(o.attachments_json),
@@ -152,6 +154,23 @@ export default function OrderPrintPage() {
               <div className="my-3 border-t border-dashed" />
 
               <div className="text-[12px] space-y-2">
+                {data.fromLocationName || data.toLocationName ? (
+                  <div className="flex justify-between gap-3 p-1.5 border border-dashed rounded bg-slate-50/50">
+                    {data.fromLocationName && (
+                      <div>
+                        <div className="text-muted-foreground text-[10px] uppercase font-bold tracking-wider">From</div>
+                        <div className="font-semibold leading-tight">{data.fromLocationName}</div>
+                      </div>
+                    )}
+                    {data.toLocationName && (
+                      <div className="text-right">
+                        <div className="text-muted-foreground text-[10px] uppercase font-bold tracking-wider">To</div>
+                        <div className="font-semibold leading-tight">{data.toLocationName}</div>
+                      </div>
+                    )}
+                  </div>
+                ) : null}
+
                 <div>
                   <div className="text-muted-foreground text-[11px]">Vehicle</div>
                   <div className="font-semibold leading-tight">{data.vehicleModel || "-"}</div>
