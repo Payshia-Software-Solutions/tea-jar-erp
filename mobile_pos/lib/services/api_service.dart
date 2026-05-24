@@ -5,6 +5,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../models/customer.dart';
 import '../models/item.dart';
+import '../models/city.dart';
+import '../models/route.dart';
 import '../models/service_location.dart';
 import '../models/table.dart';
 import '../models/steward.dart';
@@ -606,6 +608,50 @@ class ApiService {
       }
       return false;
     }
+  }
+
+  Future<List<DeliveryRoute>> fetchRoutes() async {
+    final token = await getToken();
+    try {
+      final response = await http.get(
+        Uri.parse('$baseUrl/route/list'),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Accept': 'application/json',
+        },
+      ).timeout(const Duration(seconds: 10));
+
+      if (response.statusCode == 200) {
+        final decoded = json.decode(response.body);
+        if (decoded['status'] == 'success') {
+          final List data = decoded['data'] ?? [];
+          return data.map((json) => DeliveryRoute.fromJson(json)).toList();
+        }
+      }
+    } catch (_) {}
+    return [];
+  }
+
+  Future<List<City>> fetchCities() async {
+    final token = await getToken();
+    try {
+      final response = await http.get(
+        Uri.parse('$baseUrl/city/index'),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Accept': 'application/json',
+        },
+      ).timeout(const Duration(seconds: 10));
+
+      if (response.statusCode == 200) {
+        final decoded = json.decode(response.body);
+        if (decoded['status'] == 'success') {
+          final List data = decoded['data'] ?? [];
+          return data.map((json) => City.fromJson(json)).toList();
+        }
+      }
+    } catch (_) {}
+    return [];
   }
 
   Future<Map<String, dynamic>> fetchDayEndSummary(String locationId, String date) async {

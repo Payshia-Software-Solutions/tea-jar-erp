@@ -2,7 +2,12 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:url_launcher/url_launcher.dart';
+import 'package:flutter_map/flutter_map.dart';
+import 'package:latlong2/latlong.dart';
 import '../services/api_service.dart';
+import '../models/route.dart';
+import '../models/city.dart';
 
 class CustomerRegistrationScreen extends StatefulWidget {
   const CustomerRegistrationScreen({Key? key}) : super(key: key);
@@ -34,10 +39,17 @@ class _CustomerRegistrationScreenState extends State<CustomerRegistrationScreen>
   double? _longitude;
   bool _isFetchingLocation = false;
 
+  int? _selectedRouteId;
+  List<DeliveryRoute> _routes = [];
+  String? _selectedCity;
+  List<City> _apiCities = [];
+  List<String> _cities = [];
+
   @override
   void initState() {
     super.initState();
     _getLocation();
+    _fetchRoutes();
   }
 
   @override
@@ -63,6 +75,18 @@ class _CustomerRegistrationScreenState extends State<CustomerRegistrationScreen>
       }
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed to take photo: $e')));
+    }
+  }
+
+  Future<void> _fetchRoutes() async {
+    final routes = await ApiService().fetchRoutes();
+    final cities = await ApiService().fetchCities();
+    if (mounted) {
+      setState(() {
+        _routes = routes;
+        _apiCities = cities;
+        _cities = cities.map((c) => c.name).toList();
+      });
     }
   }
 
@@ -117,7 +141,9 @@ class _CustomerRegistrationScreenState extends State<CustomerRegistrationScreen>
         'name': _nameController.text.trim(),
         'phone': _phoneController.text.trim(),
         'email': _emailController.text.trim(),
-        'address': _addressController.text.trim(),
+        'address': _selectedCity != null && _selectedCity!.isNotEmpty
+            ? '$_selectedCity, ${_addressController.text.trim()}'
+            : _addressController.text.trim(),
         'nic': _nicController.text.trim(),
         'tax_number': _taxNumberController.text.trim(),
         'order_type': _orderType,
@@ -125,6 +151,10 @@ class _CustomerRegistrationScreenState extends State<CustomerRegistrationScreen>
         'credit_days': int.tryParse(_creditDaysController.text) ?? 0,
         'is_active': _isActive,
       };
+
+      if (_selectedRouteId != null) {
+        payload['route_id'] = _selectedRouteId!;
+      }
       
       if (_latitude != null && _longitude != null) {
         payload['latitude'] = _latitude!;
@@ -154,6 +184,59 @@ class _CustomerRegistrationScreenState extends State<CustomerRegistrationScreen>
     } finally {
       if (mounted) setState(() => _isSubmitting = false);
     }
+  }
+  void _showCitySearchDialog() {
+    showDialog(
+      context: context,
+      builder: (context) {
+        String query = '';
+        return StatefulBuilder(
+          builder: (context, setStateDialog) {
+            final filtered = _cities.where((c) => c.toLowerCase().contains(query.toLowerCase())).toList();
+            return AlertDialog(
+              title: const Text('Search & Select City'),
+              content: SizedBox(
+                width: double.maxFinite,
+                height: 400,
+                child: Column(
+                  children: [
+                    TextField(
+                      decoration: const InputDecoration(
+                        labelText: 'Search City',
+                        prefixIcon: Icon(Icons.search),
+                        border: OutlineInputBorder(),
+                      ),
+                      onChanged: (val) => setStateDialog(() => query = val),
+                    ),
+                    const SizedBox(height: 10),
+                    Expanded(
+                      child: ListView.builder(
+                        itemCount: filtered.length,
+                        itemBuilder: (context, index) {
+                          return ListTile(
+                            title: Text(filtered[index]),
+                            onTap: () {
+                              setState(() => _selectedCity = filtered[index]);
+                              Navigator.pop(context);
+                            },
+                          );
+                        },
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('Cancel'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
   }
 
   @override
@@ -196,28 +279,64 @@ class _CustomerRegistrationScreenState extends State<CustomerRegistrationScreen>
               
               // Location Area
               Card(
-                child: Padding(
-                  padding: const EdgeInsets.all(12.0),
-                  child: Row(
-                    children: [
-                      const Icon(Icons.gps_fixed, color: Colors.blue),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
+                clipBehavior: Clip.antiAlias,
+                child: Column(
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.all(12.0),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.gps_fixed, color: Colors.blue),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text('Location Coordinates *', style: TextStyle(fontWeight: FontWeight.bold)),
+                                Text(
+                                  _latitude != null ? '${_latitude!.toStringAsFixed(6)}, ${_longitude!.toStringAsFixed(6)}' : 'Not captured',
+                                  style: TextStyle(color: _latitude != null ? Colors.green : Colors.grey),
+                                ),
+                              ],
+                            ),
+                          ),
+                          if (_isFetchingLocation) 
+                            const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2)),
+                        ],
+                      ),
+                    ),
+                    if (_latitude != null && !_isFetchingLocation)
+                      SizedBox(
+                        height: 200,
+                        width: double.infinity,
+                        child: FlutterMap(
+                          options: MapOptions(
+                            initialCenter: LatLng(_latitude!, _longitude!),
+                            initialZoom: 15.0,
+                          ),
                           children: [
-                            const Text('Location Coordinates *', style: TextStyle(fontWeight: FontWeight.bold)),
-                            Text(
-                              _latitude != null ? '${_latitude!.toStringAsFixed(6)}, ${_longitude!.toStringAsFixed(6)}' : 'Not captured',
-                              style: TextStyle(color: _latitude != null ? Colors.green : Colors.grey),
+                            TileLayer(
+                              urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                              userAgentPackageName: 'com.payshia.mobile_pos',
+                            ),
+                            MarkerLayer(
+                              markers: [
+                                Marker(
+                                  point: LatLng(_latitude!, _longitude!),
+                                  width: 40,
+                                  height: 40,
+                                  child: const Icon(
+                                    Icons.location_on,
+                                    color: Colors.red,
+                                    size: 40,
+                                  ),
+                                ),
+                              ],
                             ),
                           ],
                         ),
                       ),
-                      if (_isFetchingLocation) 
-                        const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2)),
-                    ],
-                  ),
+                  ],
                 ),
               ),
               const SizedBox(height: 24),
@@ -253,6 +372,28 @@ class _CustomerRegistrationScreenState extends State<CustomerRegistrationScreen>
                   border: OutlineInputBorder(),
                 ),
                 keyboardType: TextInputType.emailAddress,
+              ),
+              const SizedBox(height: 16),
+
+              InkWell(
+                onTap: _showCitySearchDialog,
+                child: InputDecorator(
+                  decoration: const InputDecoration(
+                    labelText: 'City',
+                    prefixIcon: Icon(Icons.location_city),
+                    border: OutlineInputBorder(),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        _selectedCity ?? 'Select City',
+                        style: TextStyle(color: _selectedCity == null ? Colors.grey[600] : Colors.black87),
+                      ),
+                      const Icon(Icons.arrow_drop_down, color: Colors.grey),
+                    ],
+                  ),
+                ),
               ),
               const SizedBox(height: 16),
 
@@ -307,6 +448,31 @@ class _CustomerRegistrationScreenState extends State<CustomerRegistrationScreen>
                 ],
                 onChanged: (val) {
                   if (val != null) setState(() => _orderType = val);
+                },
+              ),
+              const SizedBox(height: 16),
+
+              DropdownButtonFormField<int>(
+                value: _selectedRouteId,
+                decoration: const InputDecoration(
+                  labelText: 'Delivery Route',
+                  prefixIcon: Icon(Icons.map_outlined),
+                  border: OutlineInputBorder(),
+                ),
+                items: [
+                  const DropdownMenuItem<int>(
+                    value: null,
+                    child: Text('None'),
+                  ),
+                  ..._routes.map((route) {
+                    return DropdownMenuItem<int>(
+                      value: route.id,
+                      child: Text(route.name),
+                    );
+                  }).toList(),
+                ],
+                onChanged: (val) {
+                  setState(() => _selectedRouteId = val);
                 },
               ),
               const SizedBox(height: 16),

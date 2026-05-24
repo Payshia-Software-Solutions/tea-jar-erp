@@ -17,8 +17,10 @@ import {
   XCircle,
   Hash,
   Eye,
-  Loader2
+  Loader2,
+  QrCode
 } from "lucide-react";
+import { QRCodeSVG } from 'qrcode.react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -82,6 +84,7 @@ export default function CustomersPage() {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [isQrModalOpen, setIsQrModalOpen] = useState(false);
   const [currentCustomer, setCurrentCustomer] = useState<CustomerRow | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [routesList, setRoutesList] = useState<RouteModel[]>([]);
@@ -283,6 +286,18 @@ export default function CustomersPage() {
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-2 text-primary">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50"
+                          title="Print QR"
+                          onClick={() => {
+                            setCurrentCustomer(customer);
+                            setIsQrModalOpen(true);
+                          }}
+                        >
+                          <QrCode className="w-4 h-4" />
+                        </Button>
                         <Link href={`/cms/customers/${customer.id}/profile`}>
                           <Button
                             variant="ghost"
@@ -337,6 +352,73 @@ export default function CustomersPage() {
             </Button>
             <Button variant="destructive" onClick={handleDelete} disabled={isSubmitting}>
               {isSubmitting ? "Deleting..." : "Delete Permanently"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* QR Code Modal */}
+      <Dialog open={isQrModalOpen} onOpenChange={setIsQrModalOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-center">Customer QR Code</DialogTitle>
+            <DialogDescription className="text-center">
+              Scan this code to load {currentCustomer?.name}'s profile instantly.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex flex-col items-center justify-center p-6 bg-white rounded-lg border border-dashed border-gray-300 print:border-none print:shadow-none" id="qr-print-area">
+            {currentCustomer?.qr_code_hash ? (
+              <div className="flex flex-col items-center gap-4 text-black">
+                <QRCodeSVG 
+                  value={currentCustomer.qr_code_hash} 
+                  size={200} 
+                  level="H" 
+                  includeMargin={true}
+                />
+                <h3 className="text-xl font-bold tracking-tight">{currentCustomer.name}</h3>
+                {currentCustomer.phone && <p className="text-sm text-gray-500">{currentCustomer.phone}</p>}
+                <p className="text-xs text-gray-400 mt-2">{currentCustomer.qr_code_hash}</p>
+              </div>
+            ) : (
+              <p className="text-red-500">No QR Code generated for this customer.</p>
+            )}
+          </div>
+          <DialogFooter className="sm:justify-between">
+            <Button variant="outline" onClick={() => setIsQrModalOpen(false)}>
+              Close
+            </Button>
+            <Button onClick={() => {
+              const printContent = document.getElementById('qr-print-area');
+              const WinPrint = window.open('', '', 'width=900,height=650');
+              if (WinPrint && printContent) {
+                WinPrint.document.write(`
+                  <html>
+                    <head>
+                      <title>Print QR Code - ${currentCustomer?.name}</title>
+                      <style>
+                        body { font-family: system-ui, sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
+                        .print-container { text-align: center; }
+                        h3 { margin: 10px 0 5px; font-size: 24px; }
+                        p { margin: 0; color: #555; }
+                        .hash { margin-top: 10px; font-size: 12px; color: #888; }
+                        svg { width: 300px; height: 300px; }
+                      </style>
+                    </head>
+                    <body>
+                      <div class="print-container">
+                        ${printContent.innerHTML}
+                      </div>
+                      <script>
+                        window.onload = function() { window.print(); window.close(); }
+                      </script>
+                    </body>
+                  </html>
+                `);
+                WinPrint.document.close();
+                WinPrint.focus();
+              }
+            }}>
+              Print QR Label
             </Button>
           </DialogFooter>
         </DialogContent>

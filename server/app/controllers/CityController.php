@@ -23,7 +23,7 @@ class CityController extends Controller {
             $this->db->query("SELECT * FROM cities WHERE district_id = :did ORDER BY name ASC");
             $this->db->bind(':did', $districtId);
         } else {
-            $this->db->query("SELECT c.*, d.name as district_name FROM cities c LEFT JOIN districts d ON c.district_id = d.id ORDER BY c.name ASC LIMIT 500");
+            $this->db->query("SELECT c.*, d.name as district_name FROM cities c LEFT JOIN districts d ON c.district_id = d.id ORDER BY c.name ASC");
         }
         $cities = $this->db->resultSet();
         $this->success($cities);
