@@ -13,12 +13,12 @@ class RouteController extends Controller {
     public function index() {
         $this->requireAuth();
         $locationId = $_GET['location_id'] ?? null;
-        if (!$locationId) {
-            $this->error('Location ID is required', 400);
-            return;
+        
+        if ($locationId) {
+            $routes = $this->routeModel->getAllByLocation($locationId);
+        } else {
+            $routes = $this->routeModel->getAll();
         }
-
-        $routes = $this->routeModel->getAllByLocation($locationId);
         $this->success($routes);
     }
 

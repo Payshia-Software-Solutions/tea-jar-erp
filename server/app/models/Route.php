@@ -12,6 +12,11 @@ class Route extends Model {
         return $this->db->resultSet();
     }
 
+    public function getAll() {
+        $this->db->query("SELECT * FROM {$this->table} ORDER BY name ASC");
+        return $this->db->resultSet();
+    }
+
     public function getById($id) {
         $this->db->query("SELECT * FROM {$this->table} WHERE id = :id");
         $this->db->bind(':id', $id);
@@ -20,13 +25,14 @@ class Route extends Model {
 
     public function create($data) {
         $this->db->query("
-            INSERT INTO {$this->table} (location_id, name, description)
-            VALUES (:location_id, :name, :description)
+            INSERT INTO {$this->table} (location_id, name, description, is_active)
+            VALUES (:location_id, :name, :description, :is_active)
         ");
         
         $this->db->bind(':location_id', $data['location_id']);
         $this->db->bind(':name', $data['name']);
         $this->db->bind(':description', $data['description'] ?? null);
+        $this->db->bind(':is_active', isset($data['is_active']) ? (int)$data['is_active'] : 1);
 
         return $this->db->execute();
     }
@@ -34,12 +40,13 @@ class Route extends Model {
     public function update($id, $data) {
         $this->db->query("
             UPDATE {$this->table} 
-            SET name = :name, description = :description 
+            SET name = :name, description = :description, is_active = :is_active
             WHERE id = :id
         ");
         
         $this->db->bind(':name', $data['name']);
         $this->db->bind(':description', $data['description'] ?? null);
+        $this->db->bind(':is_active', isset($data['is_active']) ? (int)$data['is_active'] : 1);
         $this->db->bind(':id', $id);
 
         return $this->db->execute();

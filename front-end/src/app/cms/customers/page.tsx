@@ -16,7 +16,8 @@ import {
   CheckCircle,
   XCircle,
   Hash,
-  Eye
+  Eye,
+  Loader2
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -80,8 +81,7 @@ export default function CustomersPage() {
   const [customers, setCustomers] = useState<CustomerRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+    const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [currentCustomer, setCurrentCustomer] = useState<CustomerRow | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [routesList, setRoutesList] = useState<RouteModel[]>([]);
@@ -89,21 +89,7 @@ export default function CustomersPage() {
   const [isFetchingLocation, setIsFetchingLocation] = useState(false);
   const { toast } = useToast();
 
-  const [formData, setFormData] = useState({
-    name: "",
-    phone: "",
-    email: "",
-    address: "",
-    nic: "",
-    tax_number: "",
-    order_type: "External" as "Internal" | "External",
-    credit_limit: 0,
-    credit_days: 0,
-    is_active: 1,
-    route_id: "" as string,
-    latitude: "" as string,
-    longitude: "" as string,
-  });
+  
 
   useEffect(() => {
     fetchRoutes().then(data => {
@@ -112,30 +98,7 @@ export default function CustomersPage() {
     loadCustomers();
   }, []);
 
-  const handleGetLocation = () => {
-    setIsFetchingLocation(true);
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          setFormData((prev) => ({
-            ...prev,
-            latitude: position.coords.latitude.toString(),
-            longitude: position.coords.longitude.toString(),
-          }));
-          setIsFetchingLocation(false);
-          toast({ title: "Location Captured", description: "Coordinates updated successfully." });
-        },
-        (error) => {
-          setIsFetchingLocation(false);
-          toast({ title: "Location Error", description: error.message, variant: "destructive" });
-        }
-      );
-    } else {
-      setIsFetchingLocation(false);
-      toast({ title: "Location Error", description: "Geolocation is not supported by this browser.", variant: "destructive" });
-    }
-  };
-
+  
   const loadCustomers = async () => {
     setLoading(true);
     try {
@@ -154,99 +117,8 @@ export default function CustomersPage() {
     }
   };
 
-  const handleOpenModal = (customer: CustomerRow | null = null) => {
-    if (customer) {
-      setCurrentCustomer(customer);
-      setFormData({
-        name: customer.name,
-        phone: customer.phone || "",
-        email: customer.email || "",
-        address: customer.address || "",
-        nic: customer.nic || "",
-        tax_number: customer.tax_number || "",
-        order_type: customer.order_type,
-        credit_limit: customer.credit_limit || 0,
-        credit_days: customer.credit_days || 0,
-        is_active: customer.is_active,
-        route_id: customer.route_id ? String(customer.route_id) : "",
-        latitude: customer.latitude ? String(customer.latitude) : "",
-        longitude: customer.longitude ? String(customer.longitude) : "",
-      });
-      setSelectedPhoto(null);
-    } else {
-      setCurrentCustomer(null);
-      setFormData({
-        name: "",
-        phone: "",
-        email: "",
-        address: "",
-        nic: "",
-        tax_number: "",
-        order_type: "External",
-        credit_limit: 0,
-        credit_days: 0,
-        is_active: 1,
-        route_id: "",
-        latitude: "",
-        longitude: "",
-      });
-      setSelectedPhoto(null);
-    }
-    setIsModalOpen(true);
-    if (!customer || !customer.latitude || !customer.longitude) {
-      handleGetLocation();
-    }
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!formData.name) {
-      toast({
-        title: "Error",
-        description: "Customer name is required",
-        variant: "destructive",
-      });
-      return;
-    }
-    if (!formData.latitude || !formData.longitude) {
-      toast({
-        title: "Error",
-        description: "Coordinates are required to save a customer. Please wait for location to be fetched or enter manually.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    setIsSubmitting(true);
-    try {
-      const dataToSubmit = new FormData();
-      Object.entries(formData).forEach(([key, value]) => {
-        dataToSubmit.append(key, String(value));
-      });
-      if (selectedPhoto) {
-        dataToSubmit.append("photo", selectedPhoto);
-      }
-
-      if (currentCustomer) {
-        await updateCustomer(String(currentCustomer.id), dataToSubmit);
-        toast({ title: "Success", description: "Customer updated successfully" });
-      } else {
-        await createCustomer(dataToSubmit);
-        toast({ title: "Success", description: "Customer created successfully" });
-      }
-      setIsModalOpen(false);
-      loadCustomers();
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to save customer",
-        variant: "destructive",
-      });
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
+  
+  
   const handleDelete = async () => {
     if (!currentCustomer) return;
     setIsSubmitting(true);
@@ -281,10 +153,12 @@ export default function CustomersPage() {
             <h2 className="text-3xl font-bold tracking-tight">Customers</h2>
             <p className="text-muted-foreground">Manage your customer database and profiles.</p>
           </div>
-          <Button onClick={() => handleOpenModal()} className="sm:w-fit">
-            <Plus className="w-4 h-4 mr-2" />
-            Add Customer
-          </Button>
+          <Link href="/cms/customers/form">
+            <Button className="sm:w-fit">
+              <Plus className="w-4 h-4 mr-2" />
+              Add Customer
+            </Button>
+          </Link>
         </div>
 
         <div className="flex flex-col sm:flex-row gap-4">
@@ -338,8 +212,19 @@ export default function CustomersPage() {
                         {customer.address && (
                           <div className="flex items-center text-xs text-muted-foreground mt-1">
                             <MapPin className="w-3 h-3 mr-1 shrink-0" />
-                            <span className="truncate max-w-[200px]">{customer.address}</span>
+                            <span className="truncate max-w-[200px]" title={customer.address}>{customer.address}</span>
                           </div>
+                        )}
+                        {customer.latitude && customer.longitude && (
+                          <a 
+                            href={`https://www.google.com/maps?q=${customer.latitude},${customer.longitude}`} 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            className="flex items-center text-xs text-blue-600 hover:text-blue-800 hover:underline mt-1 w-fit"
+                          >
+                            <MapPin className="w-3 h-3 mr-1 shrink-0" />
+                            View on Map
+                          </a>
                         )}
                       </div>
                     </TableCell>
@@ -407,14 +292,15 @@ export default function CustomersPage() {
                             <Eye className="w-4 h-4" />
                           </Button>
                         </Link>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8 text-blue-600 hover:text-blue-700 hover:bg-blue-50"
-                          onClick={() => handleOpenModal(customer)}
-                        >
-                          <Edit className="w-4 h-4" />
-                        </Button>
+                        <Link href={`/cms/customers/form?id=${customer.id}`}>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                          >
+                            <Edit className="w-4 h-4" />
+                          </Button>
+                        </Link>
                         <Button
                           variant="ghost"
                           size="icon"
@@ -435,224 +321,6 @@ export default function CustomersPage() {
           </Table>
         </div>
       </div>
-
-      {/* Add/Edit Modal */}
-      <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
-        <DialogContent className="max-w-xl">
-          <DialogHeader>
-            <DialogTitle>{currentCustomer ? "Edit Customer" : "Add New Customer"}</DialogTitle>
-            <DialogDescription>
-              {currentCustomer ? "Update customer profile information." : "Create a new customer profile in your database."}
-            </DialogDescription>
-          </DialogHeader>
-
-          <form onSubmit={handleSubmit} className="space-y-4 py-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2 col-span-2">
-                <Label htmlFor="name">Customer Name *</Label>
-                <div className="relative">
-                  <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                  <Input
-                    id="name"
-                    className="pl-9"
-                    value={formData.name}
-                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                    placeholder="Full name or Company name"
-                  />
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="phone">Phone Number</Label>
-                <div className="relative">
-                  <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                  <Input
-                    id="phone"
-                    className="pl-9"
-                    value={formData.phone}
-                    onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                  />
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="email">Email Address</Label>
-                <div className="relative">
-                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                  <Input
-                    id="email"
-                    type="email"
-                    className="pl-9"
-                    value={formData.email}
-                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                  />
-                </div>
-              </div>
-
-              <div className="space-y-2 col-span-2">
-                <Label htmlFor="address">Service/Billing Address</Label>
-                <div className="relative">
-                  <MapPin className="absolute left-3 top-3 w-4 h-4 text-muted-foreground" />
-                  <textarea
-                    id="address"
-                    className="w-full pl-9 min-h-[80px] rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                    value={formData.address}
-                    onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-                  />
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="nic">NIC Number</Label>
-                <div className="relative">
-                  <Hash className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                  <Input
-                    id="nic"
-                    className="pl-9"
-                    value={formData.nic}
-                    onChange={(e) => setFormData({ ...formData, nic: e.target.value })}
-                    placeholder="National Identity Card #"
-                  />
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="tax_number">Tax Number (VAT/SVAT)</Label>
-                <div className="relative">
-                  <Hash className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                  <Input
-                    id="tax_number"
-                    className="pl-9"
-                    value={formData.tax_number}
-                    onChange={(e) => setFormData({ ...formData, tax_number: e.target.value })}
-                  />
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="order_type">Customer Category</Label>
-                <Select
-                  value={formData.order_type}
-                  onValueChange={(v: "Internal" | "External") => setFormData({ ...formData, order_type: v })}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select type" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="External">External Customer</SelectItem>
-                    <SelectItem value="Internal">Internal (Company)</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="credit_limit">Credit Limit</Label>
-                <Input
-                  id="credit_limit"
-                  type="number"
-                  step="0.01"
-                  value={formData.credit_limit}
-                  onChange={(e) => setFormData({ ...formData, credit_limit: Number(e.target.value) })}
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="credit_days">Credit Days</Label>
-                <Input
-                  id="credit_days"
-                  type="number"
-                  value={formData.credit_days}
-                  onChange={(e) => setFormData({ ...formData, credit_days: Number(e.target.value) })}
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="route_id">Delivery Route</Label>
-                <Select
-                  value={formData.route_id}
-                  onValueChange={(v: string) => setFormData({ ...formData, route_id: v })}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select route" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="">None</SelectItem>
-                    {routesList.map(route => (
-                      <SelectItem key={route.id} value={String(route.id)}>{route.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-2">
-                <Label>Photo Upload</Label>
-                <Input 
-                  type="file" 
-                  accept="image/*" 
-                  onChange={(e) => {
-                    if (e.target.files && e.target.files.length > 0) {
-                      setSelectedPhoto(e.target.files[0]);
-                    }
-                  }} 
-                />
-                {selectedPhoto && <p className="text-xs text-muted-foreground">{selectedPhoto.name}</p>}
-                {!selectedPhoto && currentCustomer?.photo_url && (
-                  <p className="text-xs text-muted-foreground">Current photo uploaded.</p>
-                )}
-              </div>
-
-              <div className="space-y-2 col-span-2">
-                <Label>Coordinates *</Label>
-                <div className="flex gap-2 items-center">
-                  <Input 
-                    placeholder="Latitude" 
-                    value={formData.latitude} 
-                    readOnly
-                    className="bg-muted"
-                  />
-                  <Input 
-                    placeholder="Longitude" 
-                    value={formData.longitude} 
-                    readOnly
-                    className="bg-muted"
-                  />
-                  {isFetchingLocation && (
-                    <span className="text-xs text-muted-foreground flex items-center gap-1">
-                      <Loader2 className="w-3 h-3 animate-spin" /> Fetching...
-                    </span>
-                  )}
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="is_active">Status</Label>
-                <Select
-                  value={String(formData.is_active)}
-                  onValueChange={(v) => setFormData({ ...formData, is_active: Number(v) })}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select status" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="1">Active</SelectItem>
-                    <SelectItem value="0">Inactive</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-
-            <DialogFooter className="pt-4">
-              <Button type="button" variant="outline" onClick={() => setIsModalOpen(false)}>
-                Cancel
-              </Button>
-              <Button type="submit" disabled={isSubmitting}>
-                <Save className="w-4 h-4 mr-2" />
-                {isSubmitting ? "Saving..." : "Save Customer"}
-              </Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
 
       {/* Delete Confirmation Modal */}
       <Dialog open={isDeleteModalOpen} onOpenChange={setIsDeleteModalOpen}>

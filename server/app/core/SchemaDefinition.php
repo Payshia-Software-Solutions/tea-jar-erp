@@ -4768,6 +4768,51 @@ class SchemaDefinition {
         'Default' => NULL,
         'Extra' => '',
       ),
+      'latitude' => 
+      array (
+        'Field' => 'latitude',
+        'Type' => 'decimal(10,8)',
+        'Null' => 'YES',
+        'Key' => '',
+        'Default' => NULL,
+        'Extra' => '',
+      ),
+      'longitude' => 
+      array (
+        'Field' => 'longitude',
+        'Type' => 'decimal(11,8)',
+        'Null' => 'YES',
+        'Key' => '',
+        'Default' => NULL,
+        'Extra' => '',
+      ),
+      'photo_url' => 
+      array (
+        'Field' => 'photo_url',
+        'Type' => 'varchar(255)',
+        'Null' => 'YES',
+        'Key' => '',
+        'Default' => NULL,
+        'Extra' => '',
+      ),
+      'qr_code_hash' => 
+      array (
+        'Field' => 'qr_code_hash',
+        'Type' => 'varchar(100)',
+        'Null' => 'YES',
+        'Key' => '',
+        'Default' => NULL,
+        'Extra' => '',
+      ),
+      'route_id' => 
+      array (
+        'Field' => 'route_id',
+        'Type' => 'int(11)',
+        'Null' => 'YES',
+        'Key' => 'MUL',
+        'Default' => NULL,
+        'Extra' => '',
+      ),
     ),
     'indexes' => 
     array (
@@ -4788,6 +4833,15 @@ class SchemaDefinition {
         array (
           0 => 'name',
           1 => 'phone',
+        ),
+      ),
+      'fk_customers_route' => 
+      array (
+        'Key_name' => 'fk_customers_route',
+        'Non_unique' => 1,
+        'Columns' => 
+        array (
+          0 => 'route_id',
         ),
       ),
     ),
@@ -4880,6 +4934,70 @@ class SchemaDefinition {
         array (
           0 => 'location_id',
           1 => 'name',
+        ),
+      ),
+    ),
+  ),
+  'device_tracking_logs' => 
+  array (
+    'name' => 'device_tracking_logs',
+    'columns' => 
+    array (
+      'id' => 
+      array (
+        'Field' => 'id',
+        'Type' => 'int(11)',
+        'Null' => 'NO',
+        'Key' => 'PRI',
+        'Default' => NULL,
+        'Extra' => 'auto_increment',
+      ),
+      'user_id' => 
+      array (
+        'Field' => 'user_id',
+        'Type' => 'int(11)',
+        'Null' => 'YES',
+        'Key' => '',
+        'Default' => NULL,
+        'Extra' => '',
+      ),
+      'latitude' => 
+      array (
+        'Field' => 'latitude',
+        'Type' => 'decimal(10,8)',
+        'Null' => 'YES',
+        'Key' => '',
+        'Default' => NULL,
+        'Extra' => '',
+      ),
+      'longitude' => 
+      array (
+        'Field' => 'longitude',
+        'Type' => 'decimal(11,8)',
+        'Null' => 'YES',
+        'Key' => '',
+        'Default' => NULL,
+        'Extra' => '',
+      ),
+      'created_at' => 
+      array (
+        'Field' => 'created_at',
+        'Type' => 'timestamp',
+        'Null' => 'NO',
+        'Key' => '',
+        'Default' => 'current_timestamp()',
+        'Extra' => '',
+      ),
+    ),
+    'indexes' => 
+    array (
+      'PRIMARY' => 
+      array (
+        'Key_name' => 'PRIMARY',
+        'Non_unique' => 0,
+        'Columns' => 
+        array (
+          0 => 'id',
         ),
       ),
     ),
@@ -14708,6 +14826,97 @@ class SchemaDefinition {
         'Columns' => 
         array (
           0 => 'name',
+        ),
+      ),
+    ),
+  ),
+  'routes' => 
+  array (
+    'name' => 'routes',
+    'columns' => 
+    array (
+      'id' => 
+      array (
+        'Field' => 'id',
+        'Type' => 'int(11)',
+        'Null' => 'NO',
+        'Key' => 'PRI',
+        'Default' => NULL,
+        'Extra' => 'auto_increment',
+      ),
+      'location_id' => 
+      array (
+        'Field' => 'location_id',
+        'Type' => 'int(11)',
+        'Null' => 'NO',
+        'Key' => 'MUL',
+        'Default' => NULL,
+        'Extra' => '',
+      ),
+      'name' => 
+      array (
+        'Field' => 'name',
+        'Type' => 'varchar(100)',
+        'Null' => 'NO',
+        'Key' => '',
+        'Default' => NULL,
+        'Extra' => '',
+      ),
+      'description' => 
+      array (
+        'Field' => 'description',
+        'Type' => 'text',
+        'Null' => 'YES',
+        'Key' => '',
+        'Default' => NULL,
+        'Extra' => '',
+      ),
+      'created_at' => 
+      array (
+        'Field' => 'created_at',
+        'Type' => 'timestamp',
+        'Null' => 'NO',
+        'Key' => '',
+        'Default' => 'current_timestamp()',
+        'Extra' => '',
+      ),
+      'updated_at' => 
+      array (
+        'Field' => 'updated_at',
+        'Type' => 'timestamp',
+        'Null' => 'NO',
+        'Key' => '',
+        'Default' => 'current_timestamp()',
+        'Extra' => 'on update current_timestamp()',
+      ),
+      'is_active' => 
+      array (
+        'Field' => 'is_active',
+        'Type' => 'tinyint(1)',
+        'Null' => 'NO',
+        'Key' => '',
+        'Default' => '1',
+        'Extra' => '',
+      ),
+    ),
+    'indexes' => 
+    array (
+      'PRIMARY' => 
+      array (
+        'Key_name' => 'PRIMARY',
+        'Non_unique' => 0,
+        'Columns' => 
+        array (
+          0 => 'id',
+        ),
+      ),
+      'fk_routes_location' => 
+      array (
+        'Key_name' => 'fk_routes_location',
+        'Non_unique' => 1,
+        'Columns' => 
+        array (
+          0 => 'location_id',
         ),
       ),
     ),

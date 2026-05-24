@@ -37,10 +37,13 @@ import {
   updateRoute,
   deleteRoute,
   RouteModel,
+  fetchLocations,
+  ServiceLocationRow,
 } from "@/lib/api";
 
 export default function RoutesPage() {
   const [routes, setRoutes] = useState<RouteModel[]>([]);
+  const [locations, setLocations] = useState<ServiceLocationRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -53,11 +56,26 @@ export default function RoutesPage() {
     name: "",
     description: "",
     is_active: 1,
+    location_id: "",
   });
 
   useEffect(() => {
     loadRoutes();
+    loadLocations();
   }, []);
+
+  const loadLocations = async () => {
+    try {
+      const data = await fetchLocations();
+      if (Array.isArray(data)) {
+        setLocations(data);
+      } else if (data && Array.isArray(data.data)) {
+        setLocations(data.data);
+      }
+    } catch (error) {
+      console.error("Failed to load locations", error);
+    }
+  };
 
   const loadRoutes = async () => {
     setLoading(true);
@@ -65,6 +83,8 @@ export default function RoutesPage() {
       const data = await fetchRoutes();
       if (Array.isArray(data)) {
         setRoutes(data);
+      } else if (data && Array.isArray(data.data)) {
+        setRoutes(data.data);
       }
     } catch (error) {
       toast({
@@ -84,6 +104,7 @@ export default function RoutesPage() {
         name: route.name,
         description: route.description || "",
         is_active: route.is_active,
+        location_id: route.location_id.toString(),
       });
     } else {
       setCurrentRoute(null);
@@ -91,6 +112,7 @@ export default function RoutesPage() {
         name: "",
         description: "",
         is_active: 1,
+        location_id: localStorage.getItem('location_id') || "1",
       });
     }
     setIsModalOpen(true);
@@ -107,12 +129,20 @@ export default function RoutesPage() {
       return;
     }
 
+    if (!formData.location_id) {
+      toast({
+        title: "Error",
+        description: "Please select a location",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setIsSubmitting(true);
     try {
-      const locationId = localStorage.getItem('location_id') || "1";
       const payload = {
         ...formData,
-        location_id: parseInt(locationId),
+        location_id: parseInt(formData.location_id),
       };
 
       if (currentRoute) {
@@ -190,6 +220,7 @@ export default function RoutesPage() {
             <TableHeader className="bg-muted/50">
               <TableRow>
                 <TableHead className="py-4">Route Name</TableHead>
+                <TableHead>Location</TableHead>
                 <TableHead>Description</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
@@ -198,13 +229,13 @@ export default function RoutesPage() {
             <TableBody>
               {loading ? (
                 <TableRow>
-                  <TableCell colSpan={4} className="h-24 text-center">
+                  <TableCell colSpan={5} className="h-24 text-center">
                     Loading routes...
                   </TableCell>
                 </TableRow>
               ) : filteredRoutes.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={4} className="h-24 text-center">
+                  <TableCell colSpan={5} className="h-24 text-center">
                     No routes found.
                   </TableCell>
                 </TableRow>
@@ -216,6 +247,11 @@ export default function RoutesPage() {
                         <Map className="w-4 h-4 mr-2 text-muted-foreground" />
                         <span className="font-semibold text-foreground">{route.name}</span>
                       </div>
+                    </TableCell>
+                    <TableCell>
+                      <span className="text-sm font-medium">
+                        {locations.find(l => l.id.toString() === route.location_id?.toString())?.name || "Unknown"}
+                      </span>
                     </TableCell>
                     <TableCell>
                       {route.description ? (
@@ -302,6 +338,32 @@ export default function RoutesPage() {
               />
             </div>
             
+            <div className="space-y-2">
+              <Label htmlFor="location_id">Location *</Label>
+              <select
+                id="location_id"
+                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                value={formData.location_id}
+                onChange={(e) => setFormData({ ...formData, location_id: e.target.value })}
+              >
+                <option value="">Select a location</option>
+                {locations.map((loc) => (
+                  <option key={loc.id} value={loc.id.toString()}>{loc.name}</option>
+                ))}
+              </select>
+            </div>
+
+            <div className="flex items-center space-x-2 py-2">
+              <input
+                type="checkbox"
+                id="is_active"
+                className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+                checked={formData.is_active === 1}
+                onChange={(e) => setFormData({ ...formData, is_active: e.target.checked ? 1 : 0 })}
+              />
+              <Label htmlFor="is_active" className="cursor-pointer">Active Route</Label>
+            </div>
+
             <Button type="submit" className="w-full" disabled={isSubmitting}>
               {isSubmitting ? "Saving..." : "Save Route"}
             </Button>
