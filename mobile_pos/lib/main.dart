@@ -6,8 +6,14 @@ import 'screens/login_screen.dart';
 import 'screens/dashboard_screen.dart';
 import 'screens/location_selection_screen.dart';
 import 'screens/splash_screen.dart';
+import 'services/tracking_service.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  
+  // Initialize tracking
+  await TrackingService().initialize();
+
   runApp(
     ChangeNotifierProvider(
       create: (_) => ThemeProvider(),

@@ -105,6 +105,7 @@ export const crmItems: NavItem[] = [
   { icon: MessageSquare, label: "Inquiries (Leads)", href: "/crm/inquiries", perm: "crm.inquiries.view" },
   { icon: Users, label: "Customers", href: "/cms/customers", perm: "customers.read" },
   { icon: Car, label: "Customer Vehicles", href: "/cms/vehicles", perm: "vehicles.read" },
+  { icon: Grid, label: "Routes", href: "/cms/routes", perm: "customers.read" },
 ];
 
 export const marketingItems: NavItem[] = [

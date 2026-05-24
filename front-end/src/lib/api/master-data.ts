@@ -107,13 +107,21 @@ export const fetchEcommerceCustomers = async () => {
 };
 
 export const createCustomer = async (payload: any) => {
-  const res = await api('/api/customer/create', { method: 'POST', body: JSON.stringify(payload) });
+  const isFormData = payload instanceof FormData;
+  const res = await api('/api/customer/create', { 
+    method: 'POST', 
+    body: isFormData ? payload : JSON.stringify(payload) 
+  });
   if (!res.ok) throw new Error('Failed to create customer');
   return res.json();
 };
 
 export const updateCustomer = async (id: string | number, payload: any) => {
-  const res = await api(`/api/customer/update/${id}`, { method: 'POST', body: JSON.stringify(payload) });
+  const isFormData = payload instanceof FormData;
+  const res = await api(`/api/customer/update/${id}`, { 
+    method: 'POST', 
+    body: isFormData ? payload : JSON.stringify(payload) 
+  });
   if (!res.ok) throw new Error('Failed to update customer');
   return res.json();
 };

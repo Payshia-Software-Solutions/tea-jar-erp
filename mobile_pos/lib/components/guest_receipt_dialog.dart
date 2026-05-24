@@ -44,6 +44,13 @@ class _GuestReceiptDialogState extends State<GuestReceiptDialog> {
     );
   }
 
+  String _formatCurrency(dynamic amount) {
+    double val = double.tryParse(amount?.toString() ?? '0') ?? 0.0;
+    String str = val.toStringAsFixed(2);
+    str = str.replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]},');
+    return 'LKR $str';
+  }
+
   Widget _buildRow(String label, String value, {bool isBold = false, double fontSize = 12}) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 2.0),
@@ -110,8 +117,8 @@ class _GuestReceiptDialogState extends State<GuestReceiptDialog> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Text('${qty.toStringAsFixed(0)} × @ LKR ${price.toStringAsFixed(2)}', style: const TextStyle(fontSize: 12, color: Colors.black87)),
-                      Text('LKR ${subtotal.toStringAsFixed(2)}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Colors.black)),
+                      Text('${qty.toStringAsFixed(0)} × @ ${_formatCurrency(price)}', style: const TextStyle(fontSize: 12, color: Colors.black87)),
+                      Text(_formatCurrency(subtotal), style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Colors.black)),
                     ],
                   ),
                 ],
@@ -121,14 +128,14 @@ class _GuestReceiptDialogState extends State<GuestReceiptDialog> {
           
           _buildDivider(isDashed: true),
           if (!isTaxInclusive && taxes.isNotEmpty) ...[
-            _buildRow('Subtotal', 'LKR ${grandTotal.toStringAsFixed(2)}'),
+            _buildRow('Subtotal', _formatCurrency(grandTotal)),
             ...taxes.map((t) {
               double tAmt = double.tryParse(t['amount']?.toString() ?? '0') ?? 0.0;
-              return _buildRow(t['tax_name']?.toString() ?? t['name']?.toString() ?? 'Tax', 'LKR ${tAmt.toStringAsFixed(2)}');
+              return _buildRow(t['tax_name']?.toString() ?? t['name']?.toString() ?? 'Tax', _formatCurrency(tAmt));
             }),
             _buildDivider(),
           ],
-          _buildRow('TOTAL', 'LKR ${(grandTotal + (isTaxInclusive ? 0 : totalTaxAmount)).toStringAsFixed(2)}', isBold: true, fontSize: 18),
+          _buildRow('TOTAL', _formatCurrency(grandTotal + (isTaxInclusive ? 0 : totalTaxAmount)), isBold: true, fontSize: 18),
           const SizedBox(height: 8),
           const Text('This is not a final tax invoice.', textAlign: TextAlign.center, style: TextStyle(fontSize: 10, color: Colors.black54)),
           const SizedBox(height: 8),

@@ -3,12 +3,14 @@ class Customer {
   final String name;
   final String? phone;
   final String? email;
+  final String? qrCodeHash;
 
   Customer({
     required this.id,
     required this.name,
     this.phone,
     this.email,
+    this.qrCodeHash,
   });
 
   factory Customer.fromJson(Map<String, dynamic> json) {
@@ -17,6 +19,7 @@ class Customer {
       name: json['name'] ?? 'Unknown Customer',
       phone: json['phone']?.toString(),
       email: json['email']?.toString(),
+      qrCodeHash: json['qr_code_hash']?.toString(),
     );
   }
 
@@ -25,6 +28,7 @@ class Customer {
       'id': id,
       'name': name,
       'phone': phone,
+      'qr_code_hash': qrCodeHash,
     };
   }
 }

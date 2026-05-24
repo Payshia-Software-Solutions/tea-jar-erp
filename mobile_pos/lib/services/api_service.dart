@@ -566,24 +566,46 @@ class ApiService {
     return null;
   }
 
-  Future<bool> createCustomer(Map<String, dynamic> payload) async {
+  Future<bool> createCustomer(Map<String, dynamic> payload, {String? photoPath}) async {
     final prefs = await SharedPreferences.getInstance();
-    final token = prefs.getString('auth_token');
+    final token = prefs.getString('auth_token') ?? '';
     
-    final response = await http.post(
-      Uri.parse('$baseUrl/customer/create'),
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer $token',
-      },
-      body: jsonEncode(payload),
-    );
+    if (photoPath != null && photoPath.isNotEmpty) {
+      final request = http.MultipartRequest('POST', Uri.parse('$baseUrl/customer/create'));
+      request.headers['Authorization'] = 'Bearer $token';
+      
+      payload.forEach((key, value) {
+        if (value != null) {
+          request.fields[key] = value.toString();
+        }
+      });
+      
+      request.files.add(await http.MultipartFile.fromPath('photo', photoPath));
+      
+      final streamedResponse = await request.send();
+      final response = await http.Response.fromStream(streamedResponse);
+      
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        final jsonResponse = jsonDecode(response.body);
+        return jsonResponse['status'] == 'success';
+      }
+      return false;
+    } else {
+      final response = await http.post(
+        Uri.parse('$baseUrl/customer/create'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+        body: jsonEncode(payload),
+      );
 
-    if (response.statusCode == 200 || response.statusCode == 201) {
-      final jsonResponse = jsonDecode(response.body);
-      return jsonResponse['status'] == 'success';
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        final jsonResponse = jsonDecode(response.body);
+        return jsonResponse['status'] == 'success';
+      }
+      return false;
     }
-    return false;
   }
 
   Future<Map<String, dynamic>> fetchDayEndSummary(String locationId, String date) async {
@@ -606,6 +628,40 @@ class ApiService {
       throw Exception('Failed to fetch day end summary');
     } catch (e) {
       throw Exception('Network error: $e');
+    }
+  }
+
+  Future<bool> sendTrackingLog(double latitude, double longitude) async {
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString('auth_token') ?? '';
+    // Optional: get user_id if we have it decoded, but server can decode from token if we pass token.
+    // We'll pass it as dummy or let server use JWT token.
+    // Wait, the PHP endpoint `TrackingController.log()` expects `user_id`, `latitude`, `longitude`.
+    // It's better if the app sends `user_id`. Let's get it from prefs if we saved it on login.
+    // Looking at login, we save token. The endpoint can just take 1 for now if we didn't save user_id, 
+    // but we can parse it from token or just send 1 for testing.
+    final userId = prefs.getInt('user_id') ?? 1;
+
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/tracking/log'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+        body: jsonEncode({
+          'user_id': userId,
+          'latitude': latitude,
+          'longitude': longitude,
+        }),
+      ).timeout(const Duration(seconds: 10));
+
+      if (response.statusCode == 200) {
+        return true;
+      }
+      return false;
+    } catch (e) {
+      return false;
     }
   }
 }

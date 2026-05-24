@@ -49,7 +49,9 @@ import {
   fetchCustomers, 
   createCustomer, 
   updateCustomer, 
-  deleteCustomer 
+  deleteCustomer,
+  fetchRoutes,
+  RouteModel
 } from "@/lib/api";
 import { Badge } from "@/components/ui/badge";
 import Link from "next/link";
@@ -66,6 +68,11 @@ type CustomerRow = {
   credit_limit: number;
   credit_days: number;
   is_active: number;
+  photo_url?: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
+  qr_code_hash?: string | null;
+  route_id?: number | null;
   created_at?: string;
 };
 
@@ -77,6 +84,9 @@ export default function CustomersPage() {
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [currentCustomer, setCurrentCustomer] = useState<CustomerRow | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [routesList, setRoutesList] = useState<RouteModel[]>([]);
+  const [selectedPhoto, setSelectedPhoto] = useState<File | null>(null);
+  const [isFetchingLocation, setIsFetchingLocation] = useState(false);
   const { toast } = useToast();
 
   const [formData, setFormData] = useState({
@@ -90,11 +100,41 @@ export default function CustomersPage() {
     credit_limit: 0,
     credit_days: 0,
     is_active: 1,
+    route_id: "" as string,
+    latitude: "" as string,
+    longitude: "" as string,
   });
 
   useEffect(() => {
+    fetchRoutes().then(data => {
+      if(Array.isArray(data)) setRoutesList(data);
+    }).catch(console.error);
     loadCustomers();
   }, []);
+
+  const handleGetLocation = () => {
+    setIsFetchingLocation(true);
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          setFormData((prev) => ({
+            ...prev,
+            latitude: position.coords.latitude.toString(),
+            longitude: position.coords.longitude.toString(),
+          }));
+          setIsFetchingLocation(false);
+          toast({ title: "Location Captured", description: "Coordinates updated successfully." });
+        },
+        (error) => {
+          setIsFetchingLocation(false);
+          toast({ title: "Location Error", description: error.message, variant: "destructive" });
+        }
+      );
+    } else {
+      setIsFetchingLocation(false);
+      toast({ title: "Location Error", description: "Geolocation is not supported by this browser.", variant: "destructive" });
+    }
+  };
 
   const loadCustomers = async () => {
     setLoading(true);
@@ -128,7 +168,11 @@ export default function CustomersPage() {
         credit_limit: customer.credit_limit || 0,
         credit_days: customer.credit_days || 0,
         is_active: customer.is_active,
+        route_id: customer.route_id ? String(customer.route_id) : "",
+        latitude: customer.latitude ? String(customer.latitude) : "",
+        longitude: customer.longitude ? String(customer.longitude) : "",
       });
+      setSelectedPhoto(null);
     } else {
       setCurrentCustomer(null);
       setFormData({
@@ -142,9 +186,16 @@ export default function CustomersPage() {
         credit_limit: 0,
         credit_days: 0,
         is_active: 1,
+        route_id: "",
+        latitude: "",
+        longitude: "",
       });
+      setSelectedPhoto(null);
     }
     setIsModalOpen(true);
+    if (!customer || !customer.latitude || !customer.longitude) {
+      handleGetLocation();
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -157,14 +208,30 @@ export default function CustomersPage() {
       });
       return;
     }
+    if (!formData.latitude || !formData.longitude) {
+      toast({
+        title: "Error",
+        description: "Coordinates are required to save a customer. Please wait for location to be fetched or enter manually.",
+        variant: "destructive",
+      });
+      return;
+    }
 
     setIsSubmitting(true);
     try {
+      const dataToSubmit = new FormData();
+      Object.entries(formData).forEach(([key, value]) => {
+        dataToSubmit.append(key, String(value));
+      });
+      if (selectedPhoto) {
+        dataToSubmit.append("photo", selectedPhoto);
+      }
+
       if (currentCustomer) {
-        await updateCustomer(String(currentCustomer.id), formData);
+        await updateCustomer(String(currentCustomer.id), dataToSubmit);
         toast({ title: "Success", description: "Customer updated successfully" });
       } else {
-        await createCustomer(formData);
+        await createCustomer(dataToSubmit);
         toast({ title: "Success", description: "Customer created successfully" });
       }
       setIsModalOpen(false);
@@ -497,6 +564,64 @@ export default function CustomersPage() {
                   value={formData.credit_days}
                   onChange={(e) => setFormData({ ...formData, credit_days: Number(e.target.value) })}
                 />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="route_id">Delivery Route</Label>
+                <Select
+                  value={formData.route_id}
+                  onValueChange={(v: string) => setFormData({ ...formData, route_id: v })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select route" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="">None</SelectItem>
+                    {routesList.map(route => (
+                      <SelectItem key={route.id} value={String(route.id)}>{route.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Photo Upload</Label>
+                <Input 
+                  type="file" 
+                  accept="image/*" 
+                  onChange={(e) => {
+                    if (e.target.files && e.target.files.length > 0) {
+                      setSelectedPhoto(e.target.files[0]);
+                    }
+                  }} 
+                />
+                {selectedPhoto && <p className="text-xs text-muted-foreground">{selectedPhoto.name}</p>}
+                {!selectedPhoto && currentCustomer?.photo_url && (
+                  <p className="text-xs text-muted-foreground">Current photo uploaded.</p>
+                )}
+              </div>
+
+              <div className="space-y-2 col-span-2">
+                <Label>Coordinates *</Label>
+                <div className="flex gap-2 items-center">
+                  <Input 
+                    placeholder="Latitude" 
+                    value={formData.latitude} 
+                    readOnly
+                    className="bg-muted"
+                  />
+                  <Input 
+                    placeholder="Longitude" 
+                    value={formData.longitude} 
+                    readOnly
+                    className="bg-muted"
+                  />
+                  {isFetchingLocation && (
+                    <span className="text-xs text-muted-foreground flex items-center gap-1">
+                      <Loader2 className="w-3 h-3 animate-spin" /> Fetching...
+                    </span>
+                  )}
+                </div>
               </div>
 
               <div className="space-y-2">

@@ -45,9 +45,9 @@ class Customer extends Model {
     public function create($data, $userId = null) {
         $this->db->query("
             INSERT INTO {$this->table} 
-            (name, phone, email, address, nic, tax_number, order_type, is_active, is_unsubscribed, credit_limit, credit_days, is_ecommerce_user, created_by, updated_by) 
+            (name, phone, email, address, nic, tax_number, order_type, is_active, is_unsubscribed, credit_limit, credit_days, is_ecommerce_user, created_by, updated_by, latitude, longitude, photo_url, qr_code_hash, route_id) 
             VALUES 
-            (:name, :phone, :email, :address, :nic, :tax_number, :order_type, :is_active, :is_unsubscribed, :credit_limit, :credit_days, :is_ecommerce_user, :created_by, :updated_by)
+            (:name, :phone, :email, :address, :nic, :tax_number, :order_type, :is_active, :is_unsubscribed, :credit_limit, :credit_days, :is_ecommerce_user, :created_by, :updated_by, :latitude, :longitude, :photo_url, :qr_code_hash, :route_id)
         ");
         
         $this->db->bind(':name', $data['name']);
@@ -65,11 +65,20 @@ class Customer extends Model {
         $this->db->bind(':created_by', $userId);
         $this->db->bind(':updated_by', $userId);
 
-        return $this->db->execute();
+        $this->db->bind(':latitude', $data['latitude'] ?? null);
+        $this->db->bind(':longitude', $data['longitude'] ?? null);
+        $this->db->bind(':photo_url', $data['photo_url'] ?? null);
+        $this->db->bind(':qr_code_hash', $data['qr_code_hash'] ?? null);
+        $this->db->bind(':route_id', !empty($data['route_id']) ? (int)$data['route_id'] : null);
+
+        if ($this->db->execute()) {
+            return $this->db->lastInsertId();
+        }
+        return false;
     }
 
     public function update($id, $data, $userId = null) {
-        $this->db->query("
+        $updateQuery = "
             UPDATE {$this->table} 
             SET name = :name, 
                 phone = :phone, 
@@ -83,9 +92,21 @@ class Customer extends Model {
                 credit_limit = :credit_limit,
                 credit_days = :credit_days,
                 is_ecommerce_user = :is_ecommerce_user,
-                updated_by = :updated_by 
-            WHERE id = :id
-        ");
+                latitude = :latitude,
+                longitude = :longitude,
+                route_id = :route_id,
+                updated_by = :updated_by";
+                
+        if (isset($data['photo_url'])) {
+            $updateQuery .= ", photo_url = :photo_url";
+        }
+        if (isset($data['qr_code_hash'])) {
+            $updateQuery .= ", qr_code_hash = :qr_code_hash";
+        }
+                
+        $updateQuery .= " WHERE id = :id";
+        
+        $this->db->query($updateQuery);
         
         $this->db->bind(':name', $data['name']);
         $this->db->bind(':phone', $data['phone'] ?? null);
@@ -99,6 +120,18 @@ class Customer extends Model {
         $this->db->bind(':credit_limit', $data['credit_limit'] ?? 0);
         $this->db->bind(':credit_days', $data['credit_days'] ?? 0);
         $this->db->bind(':is_ecommerce_user', isset($data['is_ecommerce_user']) ? (int)$data['is_ecommerce_user'] : 0);
+        
+        $this->db->bind(':latitude', $data['latitude'] ?? null);
+        $this->db->bind(':longitude', $data['longitude'] ?? null);
+        $this->db->bind(':route_id', !empty($data['route_id']) ? (int)$data['route_id'] : null);
+        
+        if (isset($data['photo_url'])) {
+            $this->db->bind(':photo_url', $data['photo_url']);
+        }
+        if (isset($data['qr_code_hash'])) {
+            $this->db->bind(':qr_code_hash', $data['qr_code_hash']);
+        }
+        
         $this->db->bind(':updated_by', $userId);
         $this->db->bind(':id', $id);
 

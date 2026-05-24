@@ -36,11 +36,33 @@ class CustomerController extends Controller {
         }
     }
 
+    private function processCustomerInput() {
+        $contentType = $_SERVER["CONTENT_TYPE"] ?? '';
+        if (strpos($contentType, 'multipart/form-data') !== false) {
+            $data = $_POST;
+            // Handle file upload
+            if (isset($_FILES['photo']) && $_FILES['photo']['error'] === UPLOAD_ERR_OK) {
+                $uploadDir = __DIR__ . '/../../public/uploads/customers/';
+                if (!is_dir($uploadDir)) {
+                    mkdir($uploadDir, 0777, true);
+                }
+                $fileName = time() . '_' . basename($_FILES['photo']['name']);
+                $targetFilePath = $uploadDir . $fileName;
+                if (move_uploaded_file($_FILES['photo']['tmp_name'], $targetFilePath)) {
+                    $data['photo_url'] = '/uploads/customers/' . $fileName;
+                }
+            }
+        } else {
+            $raw = file_get_contents('php://input');
+            $data = json_decode($raw, true) ?? [];
+        }
+        return $data;
+    }
+
     public function create() {
         $this->requirePermission('customers.write');
         
-        $raw = file_get_contents('php://input');
-        $data = json_decode($raw, true);
+        $data = $this->processCustomerInput();
 
         if (empty($data['name'])) {
             $this->error('Customer name is required', 400);
@@ -50,8 +72,18 @@ class CustomerController extends Controller {
         $u = $this->requireAuth();
         $userId = $u['sub'] ?? null;
 
-        if ($this->customerModel->create($data, $userId)) {
-            $this->success(null, 'Customer created successfully');
+        // Auto-generate QR Hash if not provided
+        if (empty($data['qr_code_hash'])) {
+            $data['qr_code_hash'] = 'CUSTOMER:' . strtoupper(uniqid());
+        }
+
+        $newId = $this->customerModel->create($data, $userId);
+        if ($newId) {
+            // Update qr hash with real ID if we want
+            $data['qr_code_hash'] = 'CUSTOMER:' . $newId;
+            $this->customerModel->update($newId, $data, $userId);
+            
+            $this->success(['id' => $newId, 'qr_code_hash' => $data['qr_code_hash']], 'Customer created successfully');
         } else {
             $this->error('Failed to create customer');
         }
@@ -60,8 +92,7 @@ class CustomerController extends Controller {
     public function update($id) {
         $this->requirePermission('customers.write');
         
-        $raw = file_get_contents('php://input');
-        $data = json_decode($raw, true);
+        $data = $this->processCustomerInput();
 
         if (empty($data['name'])) {
             $this->error('Customer name is required', 400);

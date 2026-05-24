@@ -21,6 +21,7 @@ export * from './expense';
 export * from './payee';
 export * from './intelligence';
 export * from './crm';
+export * from './routes';
 
 // Helper for content URLs (preserving legacy function)
 export const CONTENT_BASE_URL =

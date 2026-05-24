@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../models/customer.dart';
 import '../services/api_service.dart';
 import 'cart_screen.dart';
+import 'qr_scanner_screen.dart' as qr_scanner;
 
 class CustomerSelectionScreen extends StatefulWidget {
   final String? orderType;
@@ -97,6 +98,41 @@ class _CustomerSelectionScreenState extends State<CustomerSelectionScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Select Customer', style: TextStyle(fontWeight: FontWeight.bold)),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.qr_code_scanner),
+            onPressed: () async {
+              final result = await Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const qr_scanner.QRScannerScreen()),
+              );
+              if (result != null && result is String) {
+                // Find customer by QR code hash
+                final customer = _customers.firstWhere(
+                  (c) => c.qrCodeHash == result,
+                  orElse: () => Customer(id: 0, name: ''),
+                );
+                if (customer.id != 0) {
+                  Navigator.pushReplacement(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => CartScreen(
+                        customer: customer,
+                        orderType: widget.orderType,
+                        tableId: widget.tableId,
+                        stewardId: widget.stewardId,
+                      ),
+                    ),
+                  );
+                } else {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Customer not found for this QR code.')),
+                  );
+                }
+              }
+            },
+          ),
+        ],
       ),
       body: Column(
         children: [

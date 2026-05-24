@@ -454,6 +454,13 @@ class PaymentReceiptView extends StatelessWidget {
   final Map<String, dynamic> paymentData;
   const PaymentReceiptView({super.key, required this.paymentData});
 
+  String _formatCurrency(dynamic amount) {
+    double val = double.tryParse(amount?.toString() ?? '0') ?? 0.0;
+    String str = val.toStringAsFixed(2);
+    str = str.replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]},');
+    return 'LKR $str';
+  }
+
   Widget _buildDivider({bool isDashed = false}) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8.0),
@@ -518,9 +525,9 @@ class PaymentReceiptView extends StatelessWidget {
           _buildDivider(isDashed: true),
           _buildRow('Method', paymentData['payment_method'].toString()),
           _buildDivider(isDashed: true),
-          _buildRow('Amount Paid', 'LKR ${double.parse(paymentData['amount'].toString()).toStringAsFixed(2)}', isBold: true, fontSize: 16),
+          _buildRow('Amount Paid', _formatCurrency(paymentData['amount']), isBold: true, fontSize: 16),
           _buildDivider(),
-          _buildRow('Pending Bal', 'LKR ${double.parse(paymentData['pending_balance'].toString()).toStringAsFixed(2)}', isBold: true),
+          _buildRow('Pending Bal', _formatCurrency(paymentData['pending_balance']), isBold: true),
           const SizedBox(height: 16),
           const Text('Thank you for your payment!', textAlign: TextAlign.center, style: TextStyle(fontSize: 12, fontStyle: FontStyle.italic, color: Colors.black)),
         ],

@@ -3,7 +3,8 @@
 import React, { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { DashboardLayout } from "@/components/dashboard-layout";
-import { fetchCustomerSummary, fetchCustomerCheques } from "@/lib/api";
+import { fetchCustomerSummary, fetchCustomerCheques, CONTENT_BASE_URL } from "@/lib/api";
+import { QRCodeSVG } from "qrcode.react";
 import { 
   User, 
   Phone, 
@@ -23,7 +24,8 @@ import {
   Receipt,
   Hotel,
   Layers,
-  ArrowUpRight
+  ArrowUpRight,
+  Printer
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -153,6 +155,65 @@ export default function CustomerProfilePage() {
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
+                {customer.photo_url && (
+                  <div className="flex justify-center mb-6">
+                    <img 
+                      src={`${CONTENT_BASE_URL}${customer.photo_url}`} 
+                      alt={customer.name} 
+                      className="w-32 h-32 rounded-full object-cover border-4 border-muted"
+                    />
+                  </div>
+                )}
+                {customer.qr_code_hash && (
+                  <div className="flex flex-col items-center justify-center p-4 bg-white rounded-xl mb-6">
+                    <QRCodeSVG 
+                      id="customer-qr-code" 
+                      value={customer.qr_code_hash} 
+                      size={120} 
+                      level="H" 
+                      includeMargin={false}
+                    />
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      className="mt-4 w-full text-xs font-bold"
+                      onClick={() => {
+                        const svg = document.getElementById("customer-qr-code");
+                        if (!svg) return;
+                        const svgData = new XMLSerializer().serializeToString(svg);
+                        const canvas = document.createElement("canvas");
+                        const ctx = canvas.getContext("2d");
+                        const img = new Image();
+                        img.onload = () => {
+                          canvas.width = img.width;
+                          canvas.height = img.height;
+                          ctx?.drawImage(img, 0, 0);
+                          const pngFile = canvas.toDataURL("image/png");
+                          const printWindow = window.open('', '_blank');
+                          if (printWindow) {
+                            printWindow.document.write(`
+                              <html>
+                                <head><title>Print QR Code</title></head>
+                                <body style="display:flex; flex-direction:column; align-items:center; justify-content:center; height:100vh; margin:0;">
+                                  <h2 style="font-family:sans-serif; margin-bottom: 20px;">${customer.name}</h2>
+                                  <img src="${pngFile}" style="width:250px; height:250px;"/>
+                                  <script>
+                                    window.onload = function() { window.print(); window.close(); }
+                                  </script>
+                                </body>
+                              </html>
+                            `);
+                            printWindow.document.close();
+                          }
+                        };
+                        img.src = "data:image/svg+xml;base64," + btoa(svgData);
+                      }}
+                    >
+                      <Printer className="w-3 h-3 mr-2" /> Print ID Card
+                    </Button>
+                  </div>
+                )}
+
                 <div className="flex items-start gap-3">
                   <Phone className="w-4 h-4 text-muted-foreground mt-0.5" />
                   <div>

@@ -161,6 +161,13 @@ class DayEndReceiptView extends StatelessWidget {
 
   const DayEndReceiptView({super.key, required this.data});
 
+  String _formatCurrency(dynamic amount, {bool includeSymbol = true}) {
+    double val = double.tryParse(amount?.toString() ?? '0') ?? 0.0;
+    String str = val.toStringAsFixed(2);
+    str = str.replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]},');
+    return includeSymbol ? 'LKR $str' : str;
+  }
+
   Widget _buildDivider({bool isDashed = false}) {
     if (isDashed) {
       return Padding(
@@ -230,17 +237,17 @@ class DayEndReceiptView extends StatelessWidget {
           _buildDivider(),
           
           _buildRow('Total Invoices', invoiceCount.toString(), isBold: true),
-          _buildRow('Total Sales', 'LKR ${totalSales.toStringAsFixed(2)}', isBold: true, fontSize: 14),
-          _buildRow('Total Received', 'LKR ${totalReceived.toStringAsFixed(2)}', isBold: true, fontSize: 14),
+          _buildRow('Total Sales', _formatCurrency(totalSales), isBold: true, fontSize: 14),
+          _buildRow('Total Received', _formatCurrency(totalReceived), isBold: true, fontSize: 14),
           if (totalReturns > 0)
-            _buildRow('Total Returns', 'LKR ${totalReturns.toStringAsFixed(2)}', isBold: true, fontSize: 14),
+            _buildRow('Total Returns', _formatCurrency(totalReturns), isBold: true, fontSize: 14),
           
           _buildDivider(isDashed: true),
           const Text('PAYMENTS BY METHOD', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Colors.black)),
           const SizedBox(height: 4),
           ...payments.map((p) {
             double amount = double.tryParse(p['total']?.toString() ?? '0') ?? 0.0;
-            return _buildRow(p['payment_method']?.toString() ?? 'Unknown', 'LKR ${amount.toStringAsFixed(2)}');
+            return _buildRow(p['payment_method']?.toString() ?? 'Unknown', _formatCurrency(amount));
           }),
           
           _buildDivider(isDashed: true),
@@ -265,7 +272,7 @@ class DayEndReceiptView extends StatelessWidget {
                 children: [
                   Expanded(flex: 3, child: Text(item['name']?.toString() ?? '', style: const TextStyle(fontSize: 10, color: Colors.black))),
                   Expanded(flex: 1, child: Text(qty.toString(), textAlign: TextAlign.center, style: const TextStyle(fontSize: 10, color: Colors.black))),
-                  Expanded(flex: 2, child: Text(amount.toStringAsFixed(2), textAlign: TextAlign.right, style: const TextStyle(fontSize: 10, color: Colors.black))),
+                  Expanded(flex: 2, child: Text(_formatCurrency(amount, includeSymbol: false), textAlign: TextAlign.right, style: const TextStyle(fontSize: 10, color: Colors.black))),
                 ],
               ),
             );
