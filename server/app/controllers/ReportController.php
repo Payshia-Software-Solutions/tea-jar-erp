@@ -617,10 +617,27 @@ class ReportController extends Controller {
         $this->db->bind(':date', $date);
         $returns = $this->db->single();
 
+        // 4. Items Sold
+        $this->db->query("
+            SELECT 
+                ii.description as name, 
+                SUM(ii.quantity) as quantity, 
+                SUM(ii.line_total) as total
+            FROM invoice_items ii
+            JOIN invoices i ON ii.invoice_id = i.id
+            WHERE i.location_id IN ($inLoc) AND i.issue_date = :date AND i.status != 'Cancelled'
+            GROUP BY ii.description
+            ORDER BY quantity DESC
+        ");
+        $this->bindInList('loc', $locIds);
+        $this->db->bind(':date', $date);
+        $items_sold = $this->db->resultSet();
+
         $this->success([
             'summary' => $summary,
             'payments' => $payments,
             'returns' => $returns->total_returns ?? 0,
+            'items_sold' => $items_sold,
             'date' => $date
         ]);
     }
