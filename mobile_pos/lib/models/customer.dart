@@ -7,6 +7,8 @@ class Customer {
   final int? routeId;
   final double? latitude;
   final double? longitude;
+  final double totalOutstanding;
+  final String? lastVisitDate;
 
   Customer({
     required this.id,
@@ -17,6 +19,8 @@ class Customer {
     this.routeId,
     this.latitude,
     this.longitude,
+    this.totalOutstanding = 0.0,
+    this.lastVisitDate,
   });
 
   factory Customer.fromJson(Map<String, dynamic> json) {
@@ -29,6 +33,8 @@ class Customer {
       routeId: json['route_id'] != null ? int.tryParse(json['route_id'].toString()) : null,
       latitude: json['latitude'] != null ? double.tryParse(json['latitude'].toString()) : null,
       longitude: json['longitude'] != null ? double.tryParse(json['longitude'].toString()) : null,
+      totalOutstanding: double.tryParse(json['total_outstanding']?.toString() ?? '0') ?? 0.0,
+      lastVisitDate: json['last_visit_date']?.toString(),
     );
   }
 

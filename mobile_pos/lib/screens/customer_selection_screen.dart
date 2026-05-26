@@ -67,11 +67,11 @@ class _CustomerSelectionScreenState extends State<CustomerSelectionScreen> {
     });
   }
 
-  Future<void> _loadCustomers() async {
+  Future<void> _loadCustomers({bool force = true}) async {
     try {
       _activeRoutes = await _apiService.getActiveRoutes();
       final visitedIds = await _apiService.getTodayVisitedCustomerIds();
-      final customers = await _apiService.fetchCustomers();
+      final customers = await _apiService.fetchCustomers(forceRefresh: force);
       if (mounted) {
         setState(() {
           _visitedCustomerIds = visitedIds;
@@ -380,7 +380,31 @@ class _CustomerSelectionScreenState extends State<CustomerSelectionScreen> {
                           ListTile(
                             leading: _buildCustomerAvatar(customer),
                             title: Text(customer.name, style: const TextStyle(fontWeight: FontWeight.bold)),
-                            subtitle: Text(customer.phone ?? ''),
+                            subtitle: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                if (customer.phone != null && customer.phone!.isNotEmpty)
+                                  Text(customer.phone!),
+                                if (customer.lastVisitDate != null && customer.lastVisitDate!.isNotEmpty)
+                                  Padding(
+                                    padding: const EdgeInsets.only(top: 4),
+                                    child: Row(
+                                      children: [
+                                        const Icon(Icons.history, size: 12, color: Colors.blueAccent),
+                                        const SizedBox(width: 4),
+                                        Text(
+                                          'Last Visited: ${customer.lastVisitDate!.split(' ')[0]}',
+                                          style: const TextStyle(
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.w600,
+                                            color: Colors.blueAccent,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                              ],
+                            ),
                             trailing: IconButton(
                               icon: const Icon(Icons.print, color: Colors.blueAccent),
                               onPressed: () => _printQR(customer),
@@ -421,11 +445,14 @@ class _CustomerSelectionScreenState extends State<CustomerSelectionScreen> {
     if (_filteredCustomers.isEmpty) {
       return const Center(child: Text('No customers found'));
     }
-    return ListView.separated(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      itemCount: _filteredCustomers.length,
-      separatorBuilder: (context, index) => const SizedBox(height: 12),
-      itemBuilder: (context, index) {
+    return RefreshIndicator(
+      onRefresh: () => _loadCustomers(force: true),
+      color: Colors.blueAccent,
+      child: ListView.separated(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        itemCount: _filteredCustomers.length,
+        separatorBuilder: (context, index) => const SizedBox(height: 12),
+        itemBuilder: (context, index) {
         final customer = _filteredCustomers[index];
         return GestureDetector(
           onTap: () => _onCustomerSelected(customer),
@@ -485,6 +512,32 @@ class _CustomerSelectionScreenState extends State<CustomerSelectionScreen> {
                             ],
                           ),
                         ),
+                      if (customer.lastVisitDate != null && customer.lastVisitDate!.isNotEmpty)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 6),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: Colors.blueAccent.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Icon(Icons.history, size: 12, color: Colors.blueAccent),
+                                const SizedBox(width: 4),
+                                Text(
+                                  'Last Visited: ${customer.lastVisitDate!.split(' ')[0]}',
+                                  style: const TextStyle(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w600,
+                                    color: Colors.blueAccent,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
                     ],
                   ),
                 ),
@@ -498,8 +551,9 @@ class _CustomerSelectionScreenState extends State<CustomerSelectionScreen> {
           ),
         );
       },
-    );
-  }
+    ),
+  );
+}
 
   @override
   Widget build(BuildContext context) {

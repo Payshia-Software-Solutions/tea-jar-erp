@@ -8,6 +8,7 @@ import 'dart:typed_data';
 import '../models/cart_item.dart';
 import '../services/api_service.dart';
 import '../services/printer_service.dart';
+import 'package:geolocator/geolocator.dart';
 
 class CheckoutPaymentScreen extends StatefulWidget {
   final Customer customer;
@@ -201,6 +202,27 @@ class _CheckoutPaymentScreenState extends State<CheckoutPaymentScreen> {
       final response = await _apiService.createInvoice(payload);
 
       if (response['success']) {
+        // Auto log a visit so the shop is removed from the To Visit list 
+        // even if the user didn't explicitly check in via GPS/QR.
+        if (widget.customer.id != 0) {
+          double lat = 0.0;
+          double lng = 0.0;
+          try {
+            Position? pos = await Geolocator.getLastKnownPosition();
+            pos ??= await Geolocator.getCurrentPosition(desiredAccuracy: LocationAccuracy.medium, timeLimit: const Duration(seconds: 3));
+            lat = pos.latitude;
+            lng = pos.longitude;
+          } catch (_) {}
+
+          await _apiService.logVisit({
+            'customer_id': widget.customer.id,
+            'visit_type': 'SALE',
+            'reason': 'Invoice Created',
+            'latitude': lat,
+            'longitude': lng,
+          });
+        }
+
         final orderData = {
           'id': response['data']['invoice_no']?.toString() ?? response['data']['id']?.toString() ?? 'N/A',
           'customer': widget.customer.name,

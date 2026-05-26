@@ -11,7 +11,8 @@ class Customer extends Model {
             SELECT c.*, 
                    (SELECT COALESCE(SUM(i.grand_total - i.paid_amount), 0) 
                     FROM invoices i 
-                    WHERE i.customer_id = c.id AND i.status != 'Cancelled') as total_outstanding
+                    WHERE i.customer_id = c.id AND i.status != 'Cancelled') as total_outstanding,
+                   (SELECT MAX(cv.created_at) FROM customer_visits cv WHERE cv.customer_id = c.id) as last_visit_date
             FROM {$this->table} c 
             ORDER BY c.name ASC
         ");
@@ -34,7 +35,8 @@ class Customer extends Model {
             SELECT c.*, 
                    (SELECT COALESCE(SUM(i.grand_total - i.paid_amount), 0) 
                     FROM invoices i 
-                    WHERE i.customer_id = c.id AND i.status != 'Cancelled') as total_outstanding
+                    WHERE i.customer_id = c.id AND i.status != 'Cancelled') as total_outstanding,
+                   (SELECT MAX(cv.created_at) FROM customer_visits cv WHERE cv.customer_id = c.id) as last_visit_date
             FROM {$this->table} c 
             WHERE c.id = :id
         ");
