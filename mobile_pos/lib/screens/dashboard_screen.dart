@@ -3,6 +3,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'dart:io';
 import 'dart:async';
+import 'dart:convert';
 import '../services/api_service.dart';
 import '../services/db_service.dart';
 import 'customer_selection_screen.dart';
@@ -14,6 +15,7 @@ import 'day_end_summary_screen.dart';
 import 'offline_sync_screen.dart';
 import 'customer_registration_screen.dart';
 import '../components/guest_receipt_dialog.dart';
+import '../components/route_selector_widget.dart';
 import '../components/kot_receipt_dialog.dart';
 import '../models/service_location.dart';
 import '../services/printer_service.dart';
@@ -157,6 +159,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
         title: const Text('Dashboard', style: TextStyle(fontWeight: FontWeight.bold)),
         elevation: 0,
         actions: [
+          RouteSelectorWidget(
+            onRoutesChanged: () {
+              // Optionally trigger a silent refetch or just update UI
+              // _fetchSalesData();
+            },
+          ),
           InkWell(
             onTap: () {
               ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Checking connection...'), duration: Duration(seconds: 1)));
@@ -212,19 +220,93 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           style: TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold),
                         ),
                         const SizedBox(height: 8),
-                        Row(
-                          children: [
-                            const Icon(Icons.location_on, color: Colors.white70, size: 16),
-                            const SizedBox(width: 4),
-                            Expanded(
-                              child: Text(
-                                _activeLocationName,
-                                style: const TextStyle(color: Colors.white, fontSize: 14),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
+                        InkWell(
+                          onTap: () async {
+                            if (_activeLocationId != 0) {
+                              showDialog(
+                                context: context,
+                                barrierDismissible: false,
+                                builder: (context) => const Center(child: CircularProgressIndicator()),
+                              );
+                              try {
+                                final locations = await ApiService().fetchLocations();
+                                final taxes = await ApiService().fetchTaxes();
+                                if (mounted) Navigator.pop(context); // close loader
+                                
+                                final activeLoc = locations.firstWhere((l) => l.id == _activeLocationId, orElse: () => ServiceLocation(id: _activeLocationId, name: _activeLocationName, locationType: 'service'));
+                                
+                                List<String> taxNames = [];
+                                if (activeLoc.allowedTaxesJson != null) {
+                                  try {
+                                    List<dynamic> decodedIds = jsonDecode(activeLoc.allowedTaxesJson!);
+                                    List<int> allowedIds = decodedIds.map((e) => int.tryParse(e.toString()) ?? -1).toList();
+                                    taxNames = taxes.where((t) => t.isActive && allowedIds.contains(t.id)).map((t) => t.name).toList();
+                                  } catch (_) {}
+                                }
+
+                                if (mounted) {
+                                  showDialog(
+                                    context: context,
+                                    builder: (context) {
+                                      return AlertDialog(
+                                        title: Row(
+                                          children: [
+                                            const Icon(Icons.info, color: Colors.blueAccent),
+                                            const SizedBox(width: 8),
+                                            Expanded(child: Text(activeLoc.name)),
+                                          ],
+                                        ),
+                                        content: Column(
+                                          mainAxisSize: MainAxisSize.min,
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          children: [
+                                            Text('Type: ${activeLoc.locationType}', style: const TextStyle(fontWeight: FontWeight.bold)),
+                                            const SizedBox(height: 8),
+                                            Text('Retail allowed: ${activeLoc.allowRetail ? "Yes" : "No"}'),
+                                            Text('Dine-In allowed: ${activeLoc.allowDineIn ? "Yes" : "No"}'),
+                                            const Divider(),
+                                            const Text('Taxes & Charges', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.blueAccent)),
+                                            const SizedBox(height: 4),
+                                            Text('Service Charge: ${activeLoc.allowServiceCharge ? "${activeLoc.serviceChargeRate}%" : "Not Allowed"}'),
+                                            const SizedBox(height: 4),
+                                            Text('Applied Taxes: ${taxNames.isEmpty ? "None" : taxNames.join(', ')}'),
+                                          ],
+                                        ),
+                                        actions: [
+                                          TextButton(
+                                            onPressed: () => Navigator.pop(context),
+                                            child: const Text('Close'),
+                                          ),
+                                        ],
+                                      );
+                                    }
+                                  );
+                                }
+                              } catch (e) {
+                                if (mounted) {
+                                  Navigator.pop(context);
+                                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed to load location info: $e')));
+                                }
+                              }
+                            }
+                          },
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 4.0),
+                            child: Row(
+                              children: [
+                                const Icon(Icons.location_on, color: Colors.white70, size: 16),
+                                const SizedBox(width: 4),
+                                Expanded(
+                                  child: Text(
+                                    _activeLocationName,
+                                    style: const TextStyle(color: Colors.white, fontSize: 14, decoration: TextDecoration.underline),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                              ],
                             ),
-                          ],
+                          ),
                         ),
                       ],
                     ),
@@ -236,7 +318,20 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       Navigator.pop(context);
                       if (_activeLocationId != 0) {
                         final loc = ServiceLocation(id: _activeLocationId, name: _activeLocationName, locationType: 'service');
-                        await OrderTypeSelector.show(context, loc);
+                        final result = await OrderTypeSelector.show(context, loc);
+                        if (result != null) {
+                          await Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => CustomerSelectionScreen(
+                                orderType: result['orderType'],
+                                tableId: result['tableId'],
+                                stewardId: result['stewardId'],
+                              ),
+                            ),
+                          );
+                          _fetchSalesData();
+                        }
                       }
                     },
                   ),
@@ -246,6 +341,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     onTap: () async {
                       Navigator.pop(context);
                       await _openHeldBills(context);
+                      _fetchSalesData();
                     },
                   ),
                   ListTile(
@@ -343,9 +439,24 @@ class _DashboardScreenState extends State<DashboardScreen> {
         ),
       ),
       body: SafeArea(
-        child: SingleChildScrollView(
-          child: Padding(
-            padding: const EdgeInsets.all(24.0),
+        child: RefreshIndicator(
+          onRefresh: () async {
+            await _loadLocation();
+            await _fetchSalesData();
+            await _checkOfflineQueue();
+            
+            // Forcibly refresh all cached master data
+            try {
+              await ApiService().fetchCustomers(forceRefresh: true);
+              await ApiService().fetchProducts(forceRefresh: true);
+              await ApiService().fetchTaxes(forceRefresh: true);
+              await ApiService().fetchLocations(forceRefresh: true);
+            } catch (_) {}
+          },
+          child: SingleChildScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            child: Padding(
+              padding: const EdgeInsets.all(24.0),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
@@ -440,8 +551,20 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       onTap: () async {
                         if (_activeLocationId != 0) {
                           final loc = ServiceLocation(id: _activeLocationId, name: _activeLocationName, locationType: 'service');
-                          await OrderTypeSelector.show(context, loc);
-                          _fetchSalesData();
+                          final result = await OrderTypeSelector.show(context, loc);
+                          if (result != null) {
+                            await Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => CustomerSelectionScreen(
+                                  orderType: result['orderType'],
+                                  tableId: result['tableId'],
+                                  stewardId: result['stewardId'],
+                                ),
+                              ),
+                            );
+                            _fetchSalesData();
+                          }
                         }
                       },
                     ),
@@ -512,6 +635,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               ],
             ),
           ),
+        ),
         ),
       ),
     );
@@ -636,7 +760,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         
         final customer = Customer(id: customerId, name: customerName, phone: customerPhone);
         
-        Navigator.push(
+        await Navigator.push(
           context,
           MaterialPageRoute(
             builder: (_) => CartScreen(

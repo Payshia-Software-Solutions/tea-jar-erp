@@ -5,6 +5,7 @@ import 'dart:typed_data';
 import '../services/api_service.dart';
 import '../services/printer_service.dart';
 import 'checkout_payment_screen.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class InvoicesScreen extends StatefulWidget {
   const InvoicesScreen({super.key});
@@ -18,11 +19,22 @@ class _InvoicesScreenState extends State<InvoicesScreen> {
   bool _isLoading = true;
   List<dynamic> _invoices = [];
   String _errorMessage = '';
+  String _receiptMode = 'standard';
 
   @override
   void initState() {
     super.initState();
     _loadInvoices();
+    _loadReceiptMode();
+  }
+
+  Future<void> _loadReceiptMode() async {
+    final prefs = await SharedPreferences.getInstance();
+    if (mounted) {
+      setState(() {
+        _receiptMode = prefs.getString('receipt_mode') ?? 'standard';
+      });
+    }
   }
 
   Future<void> _loadInvoices() async {
@@ -69,15 +81,25 @@ class _InvoicesScreenState extends State<InvoicesScreen> {
         // Map backend details to orderData format expected by ReceiptView
         final orderData = {
           'id': details['invoice_no']?.toString() ?? details['id']?.toString() ?? id,
-          'customer': details['customer']?['name'] ?? 'Walk-in Customer',
+          'customer': details['customer_name'] ?? (details['customer'] is Map ? details['customer']['name'] : details['customer']) ?? 'Walk-in Customer',
           'total': double.tryParse(details['grand_total']?.toString() ?? '0')?.toStringAsFixed(2) ?? '0.00',
           'paymentMethod': details['payment_method'] ?? 'Cash',
           'amountTendered': double.tryParse(details['amount_tendered']?.toString() ?? '0') ?? 0.0,
           'grandTotal': double.tryParse(details['grand_total']?.toString() ?? '0') ?? 0.0,
           'subtotal': double.tryParse(details['subtotal']?.toString() ?? '0') ?? 0.0,
           'tax_total': double.tryParse(details['tax_total']?.toString() ?? '0') ?? 0.0,
+          'discount_total': double.tryParse(details['discount_total']?.toString() ?? '0') ?? 0.0,
+          'discount_type': details['discount_type'] ?? 'fixed',
+          'discount_value': double.tryParse(details['discount_value']?.toString() ?? '0') ?? 0.0,
+          'isReprint': true,
+          'applied_taxes': (details['applied_taxes'] as List<dynamic>? ?? []).map((t) => {
+            'name': t['tax_name'] ?? t['name'] ?? 'Tax',
+            'rate_percent': t['rate_percent'] ?? t['tax_rate'],
+            'amount': double.tryParse(t['amount']?.toString() ?? '0') ?? 0.0,
+          }).toList(),
           'taxes': (details['applied_taxes'] as List<dynamic>? ?? []).map((t) => {
             'tax_name': t['tax_name'] ?? t['name'] ?? 'Tax',
+            'rate_percent': t['rate_percent'] ?? t['tax_rate'],
             'amount': double.tryParse(t['amount']?.toString() ?? '0') ?? 0.0,
           }).toList(),
           'items': (details['items'] as List<dynamic>? ?? []).map((i) => {
@@ -119,7 +141,7 @@ class _InvoicesScreenState extends State<InvoicesScreen> {
                           color: Colors.white,
                           boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 10)],
                         ),
-                        child: ReceiptView(orderData: orderData),
+                        child: ReceiptView(orderData: orderData, receiptMode: _receiptMode),
                       ),
                     ),
                   ),
@@ -215,7 +237,7 @@ class _InvoicesScreenState extends State<InvoicesScreen> {
                           final widgetToCapture = Container(
                             width: 384, // Logical width for text wrapping
                             color: Colors.white,
-                            child: ReceiptView(orderData: orderData),
+                            child: ReceiptView(orderData: orderData, receiptMode: 'standard'),
                           );
                           final imageBytes = await screenshotController.captureFromWidget(
                             widgetToCapture, 
@@ -275,7 +297,7 @@ class _InvoicesScreenState extends State<InvoicesScreen> {
                           final widgetToCapture = Container(
                             width: 384,
                             color: Colors.white,
-                            child: ReceiptView(orderData: orderData),
+                            child: ReceiptView(orderData: orderData, receiptMode: 'inclusive'),
                           );
                           final imageBytes = await screenshotController.captureFromWidget(
                             widgetToCapture, 
@@ -344,13 +366,16 @@ class _InvoicesScreenState extends State<InvoicesScreen> {
           IconButton(icon: const Icon(Icons.refresh), onPressed: _loadInvoices),
         ],
       ),
-      body: _isLoading 
-        ? const Center(child: CircularProgressIndicator())
-        : _errorMessage.isNotEmpty
-          ? Center(child: Text(_errorMessage, style: const TextStyle(color: Colors.red)))
-          : _invoices.isEmpty
-            ? const Center(child: Text('No invoices found for today.'))
-            : ListView.builder(
+      body: RefreshIndicator(
+        onRefresh: _loadInvoices,
+        child: _isLoading 
+          ? const Center(child: CircularProgressIndicator())
+          : _errorMessage.isNotEmpty
+            ? ListView(physics: const AlwaysScrollableScrollPhysics(), children: [SizedBox(height: MediaQuery.of(context).size.height*0.4), Center(child: Text(_errorMessage, style: const TextStyle(color: Colors.red)))])
+            : _invoices.isEmpty
+              ? ListView(physics: const AlwaysScrollableScrollPhysics(), children: [SizedBox(height: MediaQuery.of(context).size.height*0.4), const Center(child: Text('No invoices found for today.'))])
+              : ListView.builder(
+                  physics: const AlwaysScrollableScrollPhysics(),
                 padding: const EdgeInsets.all(16),
                 itemCount: _invoices.length,
                 itemBuilder: (context, index) {
@@ -381,7 +406,7 @@ class _InvoicesScreenState extends State<InvoicesScreen> {
                                   ),
                                   const SizedBox(height: 4),
                                   Text(
-                                    inv['customer']?['name'] ?? 'Walk-in Customer',
+                                    (inv['customer_name'] ?? (inv['customer'] is Map ? inv['customer']['name'] : inv['customer']) ?? 'Walk-in Customer').toString(),
                                     style: TextStyle(color: Colors.grey[700], fontSize: 13),
                                   ),
                                 ],
@@ -406,6 +431,7 @@ class _InvoicesScreenState extends State<InvoicesScreen> {
                   );
                 },
               ),
+      ),
     );
   }
 }

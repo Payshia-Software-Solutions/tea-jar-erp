@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:screenshot/screenshot.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:image/image.dart' as img;
 import 'dart:typed_data';
 import '../services/printer_service.dart';
@@ -16,6 +17,21 @@ class _GuestReceiptDialogState extends State<GuestReceiptDialog> {
   bool isPrinting = false;
   bool isTaxInclusive = false;
   final ScreenshotController screenshotController = ScreenshotController();
+
+  @override
+  void initState() {
+    super.initState();
+    _loadPreference();
+  }
+
+  Future<void> _loadPreference() async {
+    final prefs = await SharedPreferences.getInstance();
+    if (mounted) {
+      setState(() {
+        isTaxInclusive = (prefs.getString('receipt_mode') ?? 'standard') == 'inclusive';
+      });
+    }
+  }
 
   Widget _buildDivider({bool isDashed = false}) {
     return Padding(

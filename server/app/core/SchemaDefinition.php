@@ -19400,6 +19400,115 @@ class SchemaDefinition {
       ),
     ),
   ),
+  'customer_visits' => 
+  array (
+    'name' => 'customer_visits',
+    'columns' => 
+    array (
+      'id' => 
+      array (
+        'Field' => 'id',
+        'Type' => 'int(11)',
+        'Null' => 'NO',
+        'Key' => 'PRI',
+        'Default' => NULL,
+        'Extra' => 'auto_increment',
+      ),
+      'customer_id' => 
+      array (
+        'Field' => 'customer_id',
+        'Type' => 'int(11)',
+        'Null' => 'NO',
+        'Key' => 'MUL',
+        'Default' => NULL,
+        'Extra' => '',
+      ),
+      'user_id' => 
+      array (
+        'Field' => 'user_id',
+        'Type' => 'int(11)',
+        'Null' => 'NO',
+        'Key' => 'MUL',
+        'Default' => NULL,
+        'Extra' => '',
+      ),
+      'visit_type' => 
+      array (
+        'Field' => 'visit_type',
+        'Type' => 'varchar(50)',
+        'Null' => 'NO',
+        'Key' => '',
+        'Default' => NULL,
+        'Extra' => '',
+      ),
+      'reason' => 
+      array (
+        'Field' => 'reason',
+        'Type' => 'varchar(255)',
+        'Null' => 'YES',
+        'Key' => '',
+        'Default' => NULL,
+        'Extra' => '',
+      ),
+      'latitude' => 
+      array (
+        'Field' => 'latitude',
+        'Type' => 'decimal(10,8)',
+        'Null' => 'YES',
+        'Key' => '',
+        'Default' => NULL,
+        'Extra' => '',
+      ),
+      'longitude' => 
+      array (
+        'Field' => 'longitude',
+        'Type' => 'decimal(11,8)',
+        'Null' => 'YES',
+        'Key' => '',
+        'Default' => NULL,
+        'Extra' => '',
+      ),
+      'created_at' => 
+      array (
+        'Field' => 'created_at',
+        'Type' => 'timestamp',
+        'Null' => 'NO',
+        'Key' => '',
+        'Default' => 'current_timestamp()',
+        'Extra' => '',
+      ),
+    ),
+    'indexes' => 
+    array (
+      'PRIMARY' => 
+      array (
+        'Key_name' => 'PRIMARY',
+        'Non_unique' => 0,
+        'Columns' => 
+        array (
+          0 => 'id',
+        ),
+      ),
+      'idx_cv_customer' => 
+      array (
+        'Key_name' => 'idx_cv_customer',
+        'Non_unique' => 1,
+        'Columns' => 
+        array (
+          0 => 'customer_id',
+        ),
+      ),
+      'idx_cv_user' => 
+      array (
+        'Key_name' => 'idx_cv_user',
+        'Non_unique' => 1,
+        'Columns' => 
+        array (
+          0 => 'user_id',
+        ),
+      ),
+    ),
+  ),
 );
     }
 }

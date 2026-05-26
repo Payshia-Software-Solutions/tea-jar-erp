@@ -5,6 +5,9 @@ class ServiceLocation {
   final bool allowDineIn;
   final bool allowTakeAway;
   final bool allowRetail;
+  final bool allowServiceCharge;
+  final double serviceChargeRate;
+  final String? allowedTaxesJson;
 
   ServiceLocation({
     required this.id,
@@ -13,6 +16,9 @@ class ServiceLocation {
     this.allowDineIn = true,
     this.allowTakeAway = true,
     this.allowRetail = true,
+    this.allowServiceCharge = false,
+    this.serviceChargeRate = 0.0,
+    this.allowedTaxesJson,
   });
 
   factory ServiceLocation.fromJson(Map<String, dynamic> json) {
@@ -23,6 +29,9 @@ class ServiceLocation {
       allowDineIn: (json['allow_dine_in']?.toString() == '1' || json['allow_dine_in'] == true),
       allowTakeAway: (json['allow_take_away']?.toString() == '1' || json['allow_take_away'] == true),
       allowRetail: (json['allow_retail']?.toString() == '1' || json['allow_retail'] == true),
+      allowServiceCharge: (json['allow_service_charge']?.toString() == '1' || json['allow_service_charge'] == true),
+      serviceChargeRate: double.tryParse(json['service_charge_rate']?.toString() ?? '0') ?? 0.0,
+      allowedTaxesJson: json['allowed_taxes_json']?.toString(),
     );
   }
 
@@ -34,6 +43,9 @@ class ServiceLocation {
       'allow_dine_in': allowDineIn ? 1 : 0,
       'allow_take_away': allowTakeAway ? 1 : 0,
       'allow_retail': allowRetail ? 1 : 0,
+      'allow_service_charge': allowServiceCharge ? 1 : 0,
+      'service_charge_rate': serviceChargeRate,
+      'allowed_taxes_json': allowedTaxesJson,
     };
   }
 }

@@ -10,8 +10,8 @@ class OrderTypeSelector extends StatefulWidget {
 
   const OrderTypeSelector({Key? key, required this.activeLocation}) : super(key: key);
 
-  static Future<void> show(BuildContext context, ServiceLocation activeLocation) async {
-    await showModalBottomSheet(
+  static Future<Map<String, dynamic>?> show(BuildContext context, ServiceLocation activeLocation) async {
+    return await showModalBottomSheet<Map<String, dynamic>>(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
@@ -325,17 +325,11 @@ class _OrderTypeSelectorState extends State<OrderTypeSelector> {
   }
 
   void _finishSelection({int? stewardId}) {
-    Navigator.pop(context); // Close the bottom sheet
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => CustomerSelectionScreen(
-          orderType: _selectedMode,
-          tableId: _selectedTableId,
-          stewardId: stewardId,
-        ),
-      ),
-    );
+    Navigator.pop(context, {
+      'orderType': _selectedMode,
+      'tableId': _selectedTableId,
+      'stewardId': stewardId,
+    });
   }
 
   Widget _buildOptionCard({

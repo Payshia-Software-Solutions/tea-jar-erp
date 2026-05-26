@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import '../models/customer.dart';
 import '../models/cart_item.dart';
 import '../models/item.dart';
+import '../models/tax.dart';
+import '../models/service_location.dart';
+import 'dart:convert';
 import '../services/printer_service.dart';
 import '../services/api_service.dart';
 import 'products_screen.dart';
@@ -39,11 +42,18 @@ class _CartScreenState extends State<CartScreen> {
   int _heldOrdersCount = 0;
   final Map<int, double> _initialQuantities = {};
   final ApiService _apiService = ApiService();
+  List<ServiceLocation> _locations = [];
+  ServiceLocation? _activeLocation;
+  List<Tax> _systemTaxes = [];
+  
+  String _billDiscountType = 'fixed';
+  double _billDiscountValue = 0.0;
 
   @override
   void initState() {
     super.initState();
     _fetchHeldOrdersCount();
+    _fetchTaxesAndLocation();
     
     if (widget.initialHeldBill != null) {
       _heldOrderId = widget.initialHeldBill!['id'] is int 
@@ -94,23 +104,127 @@ class _CartScreenState extends State<CartScreen> {
     }
   }
 
+  Future<void> _fetchTaxesAndLocation() async {
+    final taxes = await _apiService.fetchTaxes();
+    final locations = await _apiService.fetchLocations();
+    final activeLocJson = await _apiService.getActiveLocation();
+    ServiceLocation? activeLoc;
+    
+    if (activeLocJson != null) {
+      final locId = activeLocJson['id'];
+      try {
+        activeLoc = locations.firstWhere((l) => l.id == locId);
+      } catch (e) {
+        if (locations.isNotEmpty) activeLoc = locations.first;
+      }
+    } else if (locations.isNotEmpty) {
+      activeLoc = locations.first;
+    }
+
+    if (mounted) {
+      setState(() {
+        _systemTaxes = taxes;
+        _activeLocation = activeLoc;
+      });
+    }
+  }
+
+  Map<String, dynamic> _calculateTotals() {
+    double subtotal = 0;
+    for (var cartItem in _cart) {
+      subtotal += cartItem.subtotal;
+    }
+
+    double billDiscountAmt = 0;
+    if (_billDiscountValue > 0) {
+      if (_billDiscountType == 'percentage') {
+        billDiscountAmt = subtotal * (_billDiscountValue / 100);
+      } else {
+        billDiscountAmt = _billDiscountValue;
+      }
+    }
+
+    double taxableAmount = subtotal - billDiscountAmt;
+    if (taxableAmount < 0) taxableAmount = 0;
+    double currentBase = taxableAmount;
+    double taxSum = 0;
+    List<Map<String, dynamic>> appliedTaxes = [];
+
+    List<Tax> applicableTaxes = [];
+    if (_activeLocation != null && _activeLocation!.allowedTaxesJson != null) {
+      try {
+        List<dynamic> decodedIds = jsonDecode(_activeLocation!.allowedTaxesJson!);
+        List<int> allowedIds = decodedIds.map((e) => int.tryParse(e.toString()) ?? -1).toList();
+        applicableTaxes = _systemTaxes.where((t) => t.isActive && allowedIds.contains(t.id)).toList();
+      } catch (e) {
+        applicableTaxes = [];
+      }
+    }
+
+    applicableTaxes.sort((a, b) => a.sortOrder.compareTo(b.sortOrder));
+    for (var tax in applicableTaxes) {
+      double applyTo = tax.applyOn == 'base_plus_previous' ? currentBase : taxableAmount;
+      double taxAmt = applyTo * (tax.ratePercent / 100);
+      taxSum += taxAmt;
+      appliedTaxes.add({
+        'name': tax.name,
+        'code': tax.code,
+        'rate_percent': tax.ratePercent,
+        'amount': taxAmt,
+      });
+      currentBase += taxAmt;
+    }
+
+    double serviceChargeAmt = 0;
+    if ((widget.orderType?.toLowerCase() == 'dine in' || widget.orderType?.toLowerCase() == 'dine_in') && 
+        _activeLocation != null && 
+        _activeLocation!.allowServiceCharge) {
+      if (_activeLocation!.serviceChargeRate > 0) {
+        serviceChargeAmt = taxableAmount * (_activeLocation!.serviceChargeRate / 100);
+        appliedTaxes.add({
+          'name': 'Service Charge',
+          'code': 'SC',
+          'rate_percent': _activeLocation!.serviceChargeRate,
+          'amount': serviceChargeAmt,
+          'is_sc': true,
+        });
+        taxSum += serviceChargeAmt;
+      }
+    }
+
+    double grandTotal = taxableAmount + taxSum;
+
+    return {
+      'subtotal': subtotal,
+      'discount_total': billDiscountAmt,
+      'discount_type': _billDiscountType,
+      'discount_value': _billDiscountValue,
+      'tax_total': taxSum,
+      'grand_total': grandTotal,
+      'applied_taxes': appliedTaxes,
+    };
+  }
+
   void _holdAndPrintOrder() async {
     if (_cart.isEmpty) return;
 
     final location = await _apiService.getActiveLocation();
     final locId = location != null ? location['id'] as int : 1;
 
+    final totals = _calculateTotals();
+
     final payload = {
-      'id': _heldOrderId, // update if it was already held
+      'id': _heldOrderId,
       'location_id': locId,
       'customer_id': widget.customer.id,
       'order_type': widget.orderType ?? 'Retail',
       'table_id': widget.tableId,
       'steward_id': widget.stewardId,
-      'subtotal': _cartTotal,
-      'tax_total': 0.0,
+      'subtotal': totals['subtotal'],
+      'tax_total': totals['tax_total'],
+      'applied_taxes': totals['applied_taxes'],
       'discount_total': 0.0,
-      'grand_total': _cartTotal,
+      'grand_total': totals['grand_total'],
       'notes': '',
       'items': _cart.map((c) => {
         'item_id': c.item.id,
@@ -134,10 +248,12 @@ class _CartScreenState extends State<CartScreen> {
       final fullOrderData = {
         'id': 'KOT-${res['id'] ?? payload['id'] ?? '1'}',
         'customer': widget.customer.name,
-        'total': _cartTotal.toStringAsFixed(2),
+        'total': (totals['grand_total'] as double).toStringAsFixed(2),
         'paymentMethod': 'Hold (Unpaid)',
         'amountTendered': 0.0,
-        'grandTotal': _cartTotal,
+        'grandTotal': totals['grand_total'],
+        'applied_taxes': totals['applied_taxes'],
+        'tax_total': totals['tax_total'],
         'items': _cart.map((c) => {
           'name': c.item.name,
           'price': c.item.price,
@@ -218,23 +334,26 @@ class _CartScreenState extends State<CartScreen> {
   }
 
   double get _cartTotal {
-    double total = 0;
-    for (var cartItem in _cart) {
-      total += cartItem.subtotal;
-    }
-    return total;
+    return _calculateTotals()['grand_total'] as double;
   }
 
   void _checkout() async {
     if (_cart.isEmpty) return;
 
+    final totals = _calculateTotals();
     final result = await Navigator.push(
       context,
       MaterialPageRoute(
         builder: (_) => CheckoutPaymentScreen(
           customer: widget.customer,
           cart: _cart,
-          grandTotal: _cartTotal,
+          grandTotal: totals['grand_total'],
+          subtotal: totals['subtotal'],
+          taxTotal: totals['tax_total'],
+          appliedTaxes: totals['applied_taxes'],
+          discountTotal: totals['discount_total'] ?? 0.0,
+          discountType: totals['discount_type'] ?? 'fixed',
+          discountValue: totals['discount_value'] ?? 0.0,
           orderType: widget.orderType,
           tableId: widget.tableId,
           stewardId: widget.stewardId,
@@ -525,12 +644,65 @@ class _CartScreenState extends State<CartScreen> {
                     ),
                   ),
                   const SizedBox(height: 24),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text('Grand Total', style: TextStyle(color: Theme.of(context).textTheme.bodyMedium?.color?.withOpacity(0.6), fontSize: 16, fontWeight: FontWeight.w600)),
-                      Text(_formatCurrency(_cartTotal), style: const TextStyle(color: Colors.blueAccent, fontSize: 32, fontWeight: FontWeight.w900)),
-                    ],
+                  Builder(
+                    builder: (context) {
+                      final totals = _calculateTotals();
+                      final subtotal = totals['subtotal'] as double;
+                      final grandTotal = totals['grand_total'] as double;
+                      final appliedTaxes = totals['applied_taxes'] as List<dynamic>;
+
+                      final discountTotal = totals['discount_total'] as double;
+                      final discountType = totals['discount_type'] as String;
+
+                      return Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text('Subtotal :', style: TextStyle(color: Theme.of(context).textTheme.bodyMedium?.color?.withOpacity(0.6), fontSize: 16)),
+                              Text(_formatCurrency(subtotal), style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                            ],
+                          ),
+                          const SizedBox(height: 8),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              InkWell(
+                                onTap: _showBillDiscountDialog,
+                                child: Text(
+                                  discountTotal > 0 ? 'Discount ($discountType) :' : '+ Add Bill Discount',
+                                  style: const TextStyle(color: Colors.orange, fontSize: 15, fontWeight: FontWeight.bold),
+                                ),
+                              ),
+                              if (discountTotal > 0)
+                                Text('-${_formatCurrency(discountTotal)}', style: const TextStyle(color: Colors.redAccent, fontWeight: FontWeight.bold, fontSize: 15)),
+                            ],
+                          ),
+                          if (appliedTaxes.isNotEmpty) ...[
+                            const SizedBox(height: 12),
+                            Wrap(
+                              spacing: 12,
+                              runSpacing: 4,
+                              children: appliedTaxes.map((tax) {
+                                return Text(
+                                  '${tax['code'] ?? tax['name']}: ${_formatCurrency(tax['amount'])}',
+                                  style: const TextStyle(color: Colors.blueAccent, fontSize: 13, fontWeight: FontWeight.bold),
+                                );
+                              }).toList(),
+                            ),
+                          ],
+                          const SizedBox(height: 16),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              const Text('TOTAL', style: TextStyle(color: Colors.black87, fontSize: 16, fontWeight: FontWeight.bold)),
+                              Text(_formatCurrency(grandTotal), style: const TextStyle(color: Colors.teal, fontSize: 32, fontWeight: FontWeight.w900)),
+                            ],
+                          ),
+                        ],
+                      );
+                    },
                   ),
                   const SizedBox(height: 24),
                   Row(
@@ -571,6 +743,58 @@ class _CartScreenState extends State<CartScreen> {
           )
         ],
       ),
+    );
+  }
+
+  void _showBillDiscountDialog() {
+    String tempType = _billDiscountType;
+    String tempVal = _billDiscountValue == 0 ? '' : _billDiscountValue.toString();
+
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (context, setDialogState) {
+          return AlertDialog(
+            title: const Text('Add Bill Discount'),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                DropdownButtonFormField<String>(
+                  value: tempType,
+                  items: const [
+                    DropdownMenuItem(value: 'fixed', child: Text('Fixed Amount')),
+                    DropdownMenuItem(value: 'percentage', child: Text('Percentage (%)')),
+                  ],
+                  onChanged: (val) {
+                    if (val != null) setDialogState(() => tempType = val);
+                  },
+                  decoration: const InputDecoration(labelText: 'Discount Type'),
+                ),
+                const SizedBox(height: 16),
+                TextField(
+                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                  decoration: const InputDecoration(labelText: 'Discount Value', prefixIcon: Icon(Icons.money_off)),
+                  onChanged: (val) => tempVal = val,
+                  controller: TextEditingController(text: tempVal)..selection = TextSelection.collapsed(offset: tempVal.length),
+                ),
+              ],
+            ),
+            actions: [
+              TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+              TextButton(
+                onPressed: () {
+                  setState(() {
+                    _billDiscountType = tempType;
+                    _billDiscountValue = double.tryParse(tempVal) ?? 0.0;
+                  });
+                  Navigator.pop(ctx);
+                },
+                child: const Text('Apply'),
+              ),
+            ],
+          );
+        }
+      )
     );
   }
 }

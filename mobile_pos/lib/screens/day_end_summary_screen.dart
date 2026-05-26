@@ -196,7 +196,7 @@ class DayEndReceiptView extends StatelessWidget {
     return const Divider(color: Colors.black, thickness: 1.5, height: 16);
   }
 
-  Widget _buildRow(String label, String value, {bool isBold = false, double fontSize = 12}) {
+  Widget _buildRow(String label, String value, {bool isBold = false, double fontSize = 14}) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 2.0),
       child: Row(
@@ -229,36 +229,36 @@ class DayEndReceiptView extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Text('DAY END SUMMARY', textAlign: TextAlign.center, style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: Colors.black)),
+          const Text('DAY END SUMMARY', textAlign: TextAlign.center, style: TextStyle(fontSize: 24, fontWeight: FontWeight.w900, color: Colors.black)),
           const SizedBox(height: 8),
-          Text('Date: $date', textAlign: TextAlign.center, style: const TextStyle(fontSize: 12, color: Colors.black)),
+          Text('Date: $date', textAlign: TextAlign.center, style: const TextStyle(fontSize: 16, color: Colors.black)),
           const SizedBox(height: 4),
-          Text('Printed: ${DateTime.now().toString().substring(0, 16)}', textAlign: TextAlign.center, style: const TextStyle(fontSize: 12, color: Colors.black)),
+          Text('Printed: ${DateTime.now().toString().substring(0, 16)}', textAlign: TextAlign.center, style: const TextStyle(fontSize: 16, color: Colors.black)),
           _buildDivider(),
           
-          _buildRow('Total Invoices', invoiceCount.toString(), isBold: true),
-          _buildRow('Total Sales', _formatCurrency(totalSales), isBold: true, fontSize: 14),
-          _buildRow('Total Received', _formatCurrency(totalReceived), isBold: true, fontSize: 14),
+          _buildRow('Total Invoices', invoiceCount.toString(), isBold: true, fontSize: 16),
+          _buildRow('Total Sales', _formatCurrency(totalSales), isBold: true, fontSize: 18),
+          _buildRow('Total Received', _formatCurrency(totalReceived), isBold: true, fontSize: 18),
           if (totalReturns > 0)
-            _buildRow('Total Returns', _formatCurrency(totalReturns), isBold: true, fontSize: 14),
+            _buildRow('Total Returns', _formatCurrency(totalReturns), isBold: true, fontSize: 18),
           
           _buildDivider(isDashed: true),
-          const Text('PAYMENTS BY METHOD', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Colors.black)),
+          const Text('PAYMENTS BY METHOD', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.black)),
           const SizedBox(height: 4),
           ...payments.map((p) {
             double amount = double.tryParse(p['total']?.toString() ?? '0') ?? 0.0;
-            return _buildRow(p['payment_method']?.toString() ?? 'Unknown', _formatCurrency(amount));
+            return _buildRow(p['payment_method']?.toString() ?? 'Unknown', _formatCurrency(amount), fontSize: 16);
           }),
           
           _buildDivider(isDashed: true),
-          const Text('ITEMS SOLD', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Colors.black)),
+          const Text('ITEMS SOLD', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.black)),
           const SizedBox(height: 4),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: const [
-              Expanded(flex: 3, child: Text('Item', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 10, color: Colors.black))),
-              Expanded(flex: 1, child: Text('Qty', textAlign: TextAlign.center, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 10, color: Colors.black))),
-              Expanded(flex: 2, child: Text('Amount', textAlign: TextAlign.right, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 10, color: Colors.black))),
+              Expanded(flex: 3, child: Text('Item', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Colors.black))),
+              Expanded(flex: 1, child: Text('Qty', textAlign: TextAlign.center, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Colors.black))),
+              Expanded(flex: 2, child: Text('Amount', textAlign: TextAlign.right, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Colors.black))),
             ],
           ),
           const SizedBox(height: 4),
@@ -270,17 +270,17 @@ class DayEndReceiptView extends StatelessWidget {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Expanded(flex: 3, child: Text(item['name']?.toString() ?? '', style: const TextStyle(fontSize: 10, color: Colors.black))),
-                  Expanded(flex: 1, child: Text(qty.toString(), textAlign: TextAlign.center, style: const TextStyle(fontSize: 10, color: Colors.black))),
-                  Expanded(flex: 2, child: Text(_formatCurrency(amount, includeSymbol: false), textAlign: TextAlign.right, style: const TextStyle(fontSize: 10, color: Colors.black))),
+                  Expanded(flex: 3, child: Text(item['name']?.toString() ?? '', style: const TextStyle(fontSize: 14, color: Colors.black))),
+                  Expanded(flex: 1, child: Text(qty.toString(), textAlign: TextAlign.center, style: const TextStyle(fontSize: 14, color: Colors.black))),
+                  Expanded(flex: 2, child: Text(_formatCurrency(amount, includeSymbol: false), textAlign: TextAlign.right, style: const TextStyle(fontSize: 14, color: Colors.black))),
                 ],
               ),
             );
           }),
 
           const SizedBox(height: 16),
-          const Text('BizFlow ERP System', textAlign: TextAlign.center, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Colors.black)),
-          const Text('Developed by Nebulync.com', textAlign: TextAlign.center, style: TextStyle(fontSize: 10, color: Colors.black54)),
+          const Text('BizFlow ERP System', textAlign: TextAlign.center, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Colors.black)),
+          const Text('Developed by Nebulync.com', textAlign: TextAlign.center, style: TextStyle(fontSize: 12, color: Colors.black54)),
           const SizedBox(height: 16),
           const Text('* * * * * * * * *', textAlign: TextAlign.center, style: TextStyle(letterSpacing: 4, color: Colors.black54)),
         ],

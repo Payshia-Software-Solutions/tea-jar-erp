@@ -11,6 +11,7 @@ import '../models/service_location.dart';
 import '../models/table.dart';
 import '../models/steward.dart';
 import 'db_service.dart';
+import '../models/tax.dart';
 
 class ApiService {
   static const String baseUrl = 'https://server-kdu-service.payshia.com/api';
@@ -100,8 +101,58 @@ class ApiService {
     throw Exception('Failed to load customers from network and no cache available');
   }
 
-  Future<List<ServiceLocation>> fetchLocations() async {
+  Future<List<Tax>> fetchTaxes({bool forceRefresh = false}) async {
     final prefs = await SharedPreferences.getInstance();
+    
+    if (!forceRefresh) {
+      final cachedStr = prefs.getString('cached_taxes');
+      if (cachedStr != null) {
+        // Fetch in background to keep it updated silently
+        _fetchTaxesFromNetwork(prefs).catchError((_) => <Tax>[]);
+        final List<dynamic> jsonList = jsonDecode(cachedStr);
+        return jsonList.map((x) => Tax.fromJson(x)).toList();
+      }
+    }
+    return await _fetchTaxesFromNetwork(prefs);
+  }
+
+  Future<List<Tax>> _fetchTaxesFromNetwork(SharedPreferences prefs) async {
+    final token = await getToken();
+    try {
+      final response = await http.get(
+        Uri.parse('$baseUrl/tax/list?all=1'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+      ).timeout(const Duration(seconds: 15));
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        final List<dynamic> jsonList = data['data'] ?? data;
+        await prefs.setString('cached_taxes', jsonEncode(jsonList));
+        return jsonList.map((x) => Tax.fromJson(x)).toList();
+      }
+    } catch (e) {
+      // Ignore
+    }
+    return [];
+  }
+
+  Future<List<ServiceLocation>> fetchLocations({bool forceRefresh = false}) async {
+    final prefs = await SharedPreferences.getInstance();
+    
+    if (!forceRefresh) {
+      final cachedStr = prefs.getString('cached_locations');
+      if (cachedStr != null) {
+        _fetchLocationsFromNetwork(prefs).catchError((_) => <ServiceLocation>[]);
+        final List<dynamic> jsonList = jsonDecode(cachedStr);
+        return jsonList.map((x) => ServiceLocation.fromJson(x)).toList();
+      }
+    }
+    return await _fetchLocationsFromNetwork(prefs);
+  }
+
+  Future<List<ServiceLocation>> _fetchLocationsFromNetwork(SharedPreferences prefs) async {
     final token = prefs.getString('auth_token');
     
     final response = await http.get(
@@ -116,6 +167,7 @@ class ApiService {
       final decoded = json.decode(response.body);
       if (decoded['status'] == 'success') {
         final List data = decoded['data'] ?? [];
+        await prefs.setString('cached_locations', jsonEncode(data));
         return data.map((json) => ServiceLocation.fromJson(json)).toList();
       } else {
         throw Exception(decoded['message'] ?? 'Failed to fetch locations');
@@ -450,6 +502,52 @@ class ApiService {
     await prefs.remove('active_location_name');
   }
 
+  Future<void> setActiveRoutes(List<int> routeIds) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('active_route_ids', jsonEncode(routeIds));
+  }
+
+  Future<List<int>> getActiveRoutes() async {
+    final prefs = await SharedPreferences.getInstance();
+    final String? data = prefs.getString('active_route_ids');
+    if (data != null) {
+      try {
+        final List<dynamic> decoded = jsonDecode(data);
+        return decoded.map((e) => int.tryParse(e.toString()) ?? 0).where((e) => e > 0).toList();
+      } catch (_) {}
+    }
+    return [];
+  }
+
+  Future<void> setEnforceVisitBeforeSale(bool enforce) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('enforce_visit', enforce);
+  }
+
+  Future<bool> getEnforceVisitBeforeSale() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getBool('enforce_visit') ?? false; // Default false as per user "not strict"
+  }
+
+  Future<bool> logVisit(Map<String, dynamic> payload) async {
+    final token = await getToken();
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/visit/log'),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+        body: jsonEncode(payload),
+      ).timeout(const Duration(seconds: 10));
+
+      return response.statusCode == 200 || response.statusCode == 201;
+    } catch (_) {
+      return false;
+    }
+  }
+
   Future<List<Item>> fetchProducts({bool forceRefresh = false}) async {
     if (!forceRefresh) {
       final cached = await DbService().getCachedProducts();
@@ -589,7 +687,13 @@ class ApiService {
       
       if (response.statusCode == 200 || response.statusCode == 201) {
         final jsonResponse = jsonDecode(response.body);
-        return jsonResponse['status'] == 'success';
+        bool success = jsonResponse['status'] == 'success';
+        if (success) {
+          try {
+            await fetchCustomers(forceRefresh: true);
+          } catch (_) {}
+        }
+        return success;
       }
       return false;
     } else {
@@ -604,17 +708,36 @@ class ApiService {
 
       if (response.statusCode == 200 || response.statusCode == 201) {
         final jsonResponse = jsonDecode(response.body);
-        return jsonResponse['status'] == 'success';
+        bool success = jsonResponse['status'] == 'success';
+        if (success) {
+          try {
+            await fetchCustomers(forceRefresh: true);
+          } catch (_) {}
+        }
+        return success;
       }
       return false;
     }
   }
 
-  Future<List<DeliveryRoute>> fetchRoutes() async {
+  Future<List<DeliveryRoute>> fetchRoutes({int? locationId}) async {
     final token = await getToken();
+    String url = '$baseUrl/route/index';
+    
+    if (locationId == null) {
+      final activeLocation = await getActiveLocation();
+      if (activeLocation != null && activeLocation['id'] != null) {
+        locationId = activeLocation['id'] as int;
+      }
+    }
+
+    if (locationId != null) {
+      url += '?location_id=$locationId';
+    }
+
     try {
       final response = await http.get(
-        Uri.parse('$baseUrl/route/list'),
+        Uri.parse(url),
         headers: {
           'Authorization': 'Bearer $token',
           'Accept': 'application/json',

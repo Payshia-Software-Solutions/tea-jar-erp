@@ -395,6 +395,7 @@ class _ProductsScreenState extends State<ProductsScreen> {
 
   Widget _buildGridView() {
     return GridView.builder(
+      physics: const AlwaysScrollableScrollPhysics(),
       padding: const EdgeInsets.all(16),
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: 2,
@@ -512,6 +513,7 @@ class _ProductsScreenState extends State<ProductsScreen> {
 
   Widget _buildListView() {
     return ListView.separated(
+      physics: const AlwaysScrollableScrollPhysics(),
       padding: const EdgeInsets.all(16),
       itemCount: _filteredItems.length,
       separatorBuilder: (context, index) => const SizedBox(height: 12),
@@ -726,11 +728,14 @@ class _ProductsScreenState extends State<ProductsScreen> {
             ),
           ),
           Expanded(
-            child: _isLoading 
-              ? const Center(child: CircularProgressIndicator(color: Colors.blueAccent))
-              : _filteredItems.isEmpty 
-                ? const Center(child: Text('No products available'))
-                : _isGridView ? _buildGridView() : _buildListView(),
+            child: RefreshIndicator(
+              onRefresh: _loadItems,
+              child: _isLoading 
+                ? const Center(child: CircularProgressIndicator(color: Colors.blueAccent))
+                : _filteredItems.isEmpty 
+                  ? ListView(physics: const AlwaysScrollableScrollPhysics(), children: [SizedBox(height: MediaQuery.of(context).size.height*0.4), const Center(child: Text('No products available'))])
+                  : _isGridView ? _buildGridView() : _buildListView(),
+            ),
           ),
         ],
       ),

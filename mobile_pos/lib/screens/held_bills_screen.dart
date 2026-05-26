@@ -124,12 +124,15 @@ class _HeldBillsScreenState extends State<HeldBillsScreen> {
         backgroundColor: Colors.orange.withOpacity(0.1),
         foregroundColor: Colors.deepOrange,
       ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : _heldBills.isEmpty
-              ? const Center(child: Text('No held bills currently pending.'))
-              : ListView.builder(
-                  padding: const EdgeInsets.all(16.0),
+      body: RefreshIndicator(
+        onRefresh: _loadHeldBills,
+        child: _isLoading
+            ? const Center(child: CircularProgressIndicator())
+            : _heldBills.isEmpty
+                ? ListView(physics: const AlwaysScrollableScrollPhysics(), children: [SizedBox(height: MediaQuery.of(context).size.height*0.4), const Center(child: Text('No held bills currently pending.'))])
+                : ListView.builder(
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    padding: const EdgeInsets.all(16.0),
                   itemCount: _heldBills.length,
                   itemBuilder: (context, index) {
                     final bill = _heldBills[index];
@@ -171,6 +174,7 @@ class _HeldBillsScreenState extends State<HeldBillsScreen> {
                     );
                   },
                 ),
+      ),
     );
   }
 }
