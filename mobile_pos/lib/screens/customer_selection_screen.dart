@@ -6,6 +6,7 @@ import '../models/customer.dart';
 import '../services/api_service.dart';
 import '../services/printer_service.dart';
 import 'cart_screen.dart';
+import 'qr_checkin_screen.dart';
 import 'qr_scanner_screen.dart' as qr_scanner;
 
 class CustomerSelectionScreen extends StatefulWidget {
@@ -29,6 +30,8 @@ class _CustomerSelectionScreenState extends State<CustomerSelectionScreen> {
   List<Customer> _customers = [];
   List<Customer> _filteredCustomers = [];
   List<int> _activeRoutes = [];
+  List<int> _visitedCustomerIds = [];
+  bool _showVisited = false;
   bool _isLoading = true;
   bool _isMapView = false;
   final TextEditingController _searchController = TextEditingController();
@@ -55,7 +58,11 @@ class _CustomerSelectionScreenState extends State<CustomerSelectionScreen> {
         final matchesSearch = c.name.toLowerCase().contains(query) || 
                               (c.phone != null && c.phone!.contains(query)) ||
                               (c.email != null && c.email!.toLowerCase().contains(query));
-        return matchesRoute && matchesSearch;
+        
+        final isVisited = _visitedCustomerIds.contains(c.id);
+        final matchesVisitedStatus = _showVisited ? isVisited : !isVisited;
+
+        return matchesRoute && matchesSearch && matchesVisitedStatus;
       }).toList();
     });
   }
@@ -63,9 +70,11 @@ class _CustomerSelectionScreenState extends State<CustomerSelectionScreen> {
   Future<void> _loadCustomers() async {
     try {
       _activeRoutes = await _apiService.getActiveRoutes();
+      final visitedIds = await _apiService.getTodayVisitedCustomerIds();
       final customers = await _apiService.fetchCustomers();
       if (mounted) {
         setState(() {
+          _visitedCustomerIds = visitedIds;
           _customers = customers;
           _isLoading = false;
         });
@@ -137,27 +146,49 @@ class _CustomerSelectionScreenState extends State<CustomerSelectionScreen> {
           children: [
             const Text('Log Shop Visit', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
             const SizedBox(height: 16),
-            const Text('A physical visit is required before creating an order for this customer.', style: TextStyle(color: Colors.grey)),
+            const Text('A physical visit is required before creating an order. You can either use GPS to verify your location or scan the shop\'s QR code.', style: TextStyle(color: Colors.grey)),
             const SizedBox(height: 16),
             ElevatedButton.icon(
-              onPressed: () => _handleCheckIn(ctx, customer, 'SALE', 'Start Order'),
+              onPressed: () {
+                Navigator.pop(ctx);
+                _handleCheckIn(customer, 'SALE', 'Start Order');
+              },
               icon: const Icon(Icons.shopping_cart, color: Colors.white),
               label: const Text('Start Order', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
               style: ElevatedButton.styleFrom(backgroundColor: Colors.green, padding: const EdgeInsets.symmetric(vertical: 12)),
             ),
             const SizedBox(height: 8),
+            ElevatedButton.icon(
+              onPressed: () {
+                Navigator.pop(ctx);
+                _handleQRCheckIn(customer);
+              },
+              icon: const Icon(Icons.qr_code_scanner, color: Colors.white),
+              label: const Text('Scan Shop QR to Check In', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+              style: ElevatedButton.styleFrom(backgroundColor: Colors.blueAccent, padding: const EdgeInsets.symmetric(vertical: 12)),
+            ),
+            const SizedBox(height: 8),
             OutlinedButton(
-              onPressed: () => _handleCheckIn(ctx, customer, 'NO_SALE', 'Shop Closed'),
+              onPressed: () {
+                Navigator.pop(ctx);
+                _handleCheckIn(customer, 'NO_SALE', 'Shop Closed');
+              },
               child: const Text('No Sale - Shop Closed'),
             ),
             const SizedBox(height: 8),
             OutlinedButton(
-              onPressed: () => _handleCheckIn(ctx, customer, 'NO_SALE', 'Overstocked'),
+              onPressed: () {
+                Navigator.pop(ctx);
+                _handleCheckIn(customer, 'NO_SALE', 'Overstocked');
+              },
               child: const Text('No Sale - Overstocked'),
             ),
             const SizedBox(height: 8),
             OutlinedButton(
-              onPressed: () => _handleCheckIn(ctx, customer, 'NO_SALE', 'Owner Unavailable'),
+              onPressed: () {
+                Navigator.pop(ctx);
+                _handleCheckIn(customer, 'NO_SALE', 'Owner Unavailable');
+              },
               child: const Text('No Sale - Owner Unavailable'),
             ),
             const SizedBox(height: 24),
@@ -167,7 +198,13 @@ class _CustomerSelectionScreenState extends State<CustomerSelectionScreen> {
     );
   }
 
-  Future<void> _handleCheckIn(BuildContext ctx, Customer customer, String type, String reason) async {
+  Future<void> _handleCheckIn(Customer customer, String type, String reason) async {
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Verifying location...'), duration: Duration(seconds: 2))
+      );
+    }
+
     // 1. Check permissions
     bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
     if (!serviceEnabled) {
@@ -189,8 +226,20 @@ class _CustomerSelectionScreenState extends State<CustomerSelectionScreen> {
       return;
     }
 
-    // 2. Get current position
-    Position position = await Geolocator.getCurrentPosition();
+    // 2. Get current position with timeout
+    Position? position;
+    try {
+      position = await Geolocator.getCurrentPosition(
+        timeLimit: const Duration(seconds: 10),
+      );
+    } catch (e) {
+      // If high accuracy fails or times out, try last known position
+      position = await Geolocator.getLastKnownPosition();
+      if (position == null) {
+        if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Failed to get location. Please try again.')));
+        return;
+      }
+    }
 
     // 3. Verify distance
     if (customer.latitude != null && customer.longitude != null && customer.latitude != 0) {
@@ -208,7 +257,6 @@ class _CustomerSelectionScreenState extends State<CustomerSelectionScreen> {
     }
 
     // 4. Log Visit
-    Navigator.pop(ctx); // Close dialog
     final success = await ApiService().logVisit({
       'customer_id': customer.id,
       'visit_type': type,
@@ -218,12 +266,69 @@ class _CustomerSelectionScreenState extends State<CustomerSelectionScreen> {
     });
 
     if (success) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Visit logged successfully!')));
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Visit logged successfully!')));
+        setState(() {
+          if (!_visitedCustomerIds.contains(customer.id)) {
+            _visitedCustomerIds.add(customer.id);
+          }
+        });
+        _onSearchChanged();
+      }
       if (type == 'SALE') {
         _proceedToCart(customer);
       }
     } else {
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Failed to log visit to server.')));
+    }
+  }
+
+  Future<void> _handleQRCheckIn(Customer customer) async {
+    final expectedQrCode = 'CUSTOMER:${customer.id}';
+    final result = await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => QrCheckinScreen(
+          expectedQrCode: expectedQrCode,
+          customerName: customer.name,
+        ),
+      ),
+    );
+
+    if (result == true) {
+      // Scanned successfully! Log visit as SALE and proceed.
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('QR Code verified! Logging visit...'))
+        );
+      }
+
+      // We use dummy coordinates (0,0) or last known because GPS is bypassed by QR
+      Position? position;
+      try { position = await Geolocator.getLastKnownPosition(); } catch (_) {}
+      
+      final success = await ApiService().logVisit({
+        'customer_id': customer.id,
+        'visit_type': 'SALE',
+        'reason': 'QR Scan',
+        'latitude': position?.latitude ?? 0.0,
+        'longitude': position?.longitude ?? 0.0,
+      });
+
+      if (success) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Visit logged successfully via QR!')));
+          setState(() {
+            if (!_visitedCustomerIds.contains(customer.id)) {
+              _visitedCustomerIds.add(customer.id);
+            }
+          });
+          _onSearchChanged();
+        }
+        _proceedToCart(customer);
+      } else {
+        if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Failed to log visit to server.')));
+      }
     }
   }
 
@@ -299,7 +404,11 @@ class _CustomerSelectionScreenState extends State<CustomerSelectionScreen> {
                     ),
                   );
                 },
-                child: const Icon(Icons.location_on, color: Colors.red, size: 40),
+                child: Icon(
+                  _visitedCustomerIds.contains(customer.id) ? Icons.check_circle : Icons.location_on, 
+                  color: _visitedCustomerIds.contains(customer.id) ? Colors.green : Colors.red, 
+                  size: 40
+                ),
               ),
             );
           }).toList(),
@@ -342,9 +451,17 @@ class _CustomerSelectionScreenState extends State<CustomerSelectionScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        customer.name, 
-                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Theme.of(context).textTheme.bodyLarge?.color),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              customer.name, 
+                              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Theme.of(context).textTheme.bodyLarge?.color),
+                            ),
+                          ),
+                          if (_visitedCustomerIds.contains(customer.id))
+                            const Icon(Icons.check_circle, color: Colors.green, size: 18),
+                        ],
                       ),
                       if (customer.phone != null && customer.phone!.isNotEmpty)
                         Padding(
@@ -446,6 +563,35 @@ class _CustomerSelectionScreenState extends State<CustomerSelectionScreen> {
                   borderSide: BorderSide.none,
                 ),
                 contentPadding: const EdgeInsets.symmetric(vertical: 0),
+              ),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+            child: SegmentedButton<bool>(
+              segments: const [
+                ButtonSegment<bool>(
+                  value: false,
+                  label: Text('To Visit'),
+                  icon: Icon(Icons.location_on_outlined),
+                ),
+                ButtonSegment<bool>(
+                  value: true,
+                  label: Text('Visited'),
+                  icon: Icon(Icons.check_circle_outline),
+                ),
+              ],
+              selected: {_showVisited},
+              onSelectionChanged: (Set<bool> newSelection) {
+                setState(() {
+                  _showVisited = newSelection.first;
+                });
+                _onSearchChanged();
+              },
+              style: SegmentedButton.styleFrom(
+                backgroundColor: Theme.of(context).cardColor,
+                selectedForegroundColor: Colors.white,
+                selectedBackgroundColor: Colors.blueAccent,
               ),
             ),
           ),

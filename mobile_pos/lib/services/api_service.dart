@@ -548,6 +548,27 @@ class ApiService {
     }
   }
 
+  Future<List<int>> getTodayVisitedCustomerIds() async {
+    final token = await getToken();
+    try {
+      final response = await http.get(
+        Uri.parse('$baseUrl/visit/today_visits'),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Accept': 'application/json',
+        },
+      ).timeout(const Duration(seconds: 10));
+
+      if (response.statusCode == 200) {
+        final decoded = json.decode(response.body);
+        if (decoded['status'] == 'success') {
+          return List<int>.from(decoded['data'] ?? []);
+        }
+      }
+    } catch (_) {}
+    return [];
+  }
+
   Future<List<Item>> fetchProducts({bool forceRefresh = false}) async {
     if (!forceRefresh) {
       final cached = await DbService().getCachedProducts();

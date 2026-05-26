@@ -54,4 +54,41 @@ class VisitController extends Controller {
             $this->error('Failed to log visit', 500);
         }
     }
+
+    public function today_visits() {
+        $u = $this->requireAuth();
+        $userId = $u['sub'] ?? null;
+        if (!$userId) {
+            $this->error('Unauthorized', 401);
+            return;
+        }
+
+        $db = new Database();
+        
+        // Ensure table exists (fail-safe for new deployments)
+        $db->exec("CREATE TABLE IF NOT EXISTS customer_visits (
+            id INT AUTO_INCREMENT PRIMARY KEY, 
+            customer_id INT NOT NULL, 
+            user_id INT NOT NULL, 
+            visit_type VARCHAR(50) NOT NULL, 
+            reason VARCHAR(255) NULL, 
+            latitude DECIMAL(10,8) NULL, 
+            longitude DECIMAL(11,8) NULL, 
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )");
+
+        $db->query("SELECT customer_id FROM customer_visits WHERE user_id = :user_id AND DATE(created_at) = CURDATE()");
+        $db->bind(':user_id', $userId);
+        
+        $results = $db->resultSet();
+        $visitedIds = [];
+        if ($results) {
+            foreach ($results as $row) {
+                $visitedIds[] = (int)$row->customer_id;
+            }
+        }
+        
+        // Return unique IDs
+        $this->success(array_values(array_unique($visitedIds)));
+    }
 }
