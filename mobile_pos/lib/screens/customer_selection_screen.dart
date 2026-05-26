@@ -332,6 +332,149 @@ class _CustomerSelectionScreenState extends State<CustomerSelectionScreen> {
     }
   }
 
+  Future<void> _showVisitHistoryDialog(Customer customer) async {
+    showDialog(
+      context: context,
+      builder: (context) {
+        return Dialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          child: Container(
+            padding: const EdgeInsets.all(20),
+            constraints: const BoxConstraints(maxHeight: 500),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.between,
+                  children: [
+                    Expanded(
+                      child: Text(
+                        '${customer.name} - Visits',
+                        style: const TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.close),
+                      onPressed: () => Navigator.pop(context),
+                    ),
+                  ],
+                ),
+                const Divider(),
+                Expanded(
+                  child: FutureBuilder<List<Map<String, dynamic>>>(
+                    future: ApiService().fetchVisitHistory(customer.id),
+                    builder: (context, snapshot) {
+                      if (snapshot.connectionState == ConnectionState.waiting) {
+                        return const Center(
+                          child: CircularProgressIndicator(color: Colors.blueAccent),
+                        );
+                      }
+                      if (snapshot.hasError || snapshot.data == null) {
+                        return const Center(child: Text('Failed to load visit history.'));
+                      }
+                      final visits = snapshot.data!;
+                      if (visits.isEmpty) {
+                        return const Center(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(Icons.history_toggle_off, size: 48, color: Colors.grey),
+                              SizedBox(height: 12),
+                              Text('No visits recorded yet', style: TextStyle(color: Colors.grey, fontWeight: FontWeight.w500)),
+                            ],
+                          ),
+                        );
+                      }
+                      return ListView.separated(
+                        shrinkWrap: true,
+                        itemCount: visits.length,
+                        separatorBuilder: (context, index) => const Divider(height: 1),
+                        itemBuilder: (context, index) {
+                          final v = visits[index];
+                          final isSale = v['visit_type'] == 'SALE';
+                          final dateStr = v['created_at'] ?? '';
+                          final reason = v['reason'] ?? 'N/A';
+                          final repName = v['user_name'] ?? 'Unknown Rep';
+                          final lat = v['latitude'];
+                          final lng = v['longitude'];
+
+                          return Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 12),
+                            child: Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.all(6),
+                                  decoration: BoxDecoration(
+                                    color: isSale ? Colors.green.withOpacity(0.1) : Colors.red.withOpacity(0.1),
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: Icon(
+                                    isSale ? Icons.shopping_bag : Icons.cancel_presentation,
+                                    color: isSale ? Colors.green : Colors.red,
+                                    size: 20,
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Row(
+                                        mainAxisAlignment: MainAxisAlignment.between,
+                                        children: [
+                                          Text(
+                                            isSale ? 'Sale Visit' : 'No-Sale Visit',
+                                            style: TextStyle(
+                                              fontWeight: FontWeight.bold,
+                                              color: isSale ? Colors.green : Colors.red,
+                                            ),
+                                          ),
+                                          Text(
+                                            dateStr.split(' ')[0],
+                                            style: const TextStyle(fontSize: 12, color: Colors.grey),
+                                          ),
+                                        ],
+                                      ),
+                                      const SizedBox(height: 4),
+                                      Text(
+                                        'Reason: $reason',
+                                        style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
+                                      ),
+                                      Text(
+                                        'Logged by: $repName',
+                                        style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                                      ),
+                                      if (lat != null && lng != null && double.tryParse(lat.toString()) != 0)
+                                        Text(
+                                          'GPS: ${double.tryParse(lat.toString())?.toStringAsFixed(4)}, ${double.tryParse(lng.toString())?.toStringAsFixed(4)}',
+                                          style: const TextStyle(fontSize: 11, fontFamily: 'monospace', color: Colors.grey),
+                                        ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          );
+                        },
+                      );
+                    },
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
   Future<void> _printQR(Customer customer) async {
     ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Printing QR...')));
     await PrinterService().printCustomerQR(customer.toMap());
@@ -388,26 +531,46 @@ class _CustomerSelectionScreenState extends State<CustomerSelectionScreen> {
                                 if (customer.lastVisitDate != null && customer.lastVisitDate!.isNotEmpty)
                                   Padding(
                                     padding: const EdgeInsets.only(top: 4),
-                                    child: Row(
-                                      children: [
-                                        const Icon(Icons.history, size: 12, color: Colors.blueAccent),
-                                        const SizedBox(width: 4),
-                                        Text(
-                                          'Last Visited: ${customer.lastVisitDate!.split(' ')[0]}',
-                                          style: const TextStyle(
-                                            fontSize: 12,
-                                            fontWeight: FontWeight.w600,
-                                            color: Colors.blueAccent,
+                                    child: InkWell(
+                                      onTap: () {
+                                        Navigator.pop(ctx);
+                                        _showVisitHistoryDialog(customer);
+                                      },
+                                      borderRadius: BorderRadius.circular(4),
+                                      child: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          const Icon(Icons.history, size: 12, color: Colors.blueAccent),
+                                          const SizedBox(width: 4),
+                                          Text(
+                                            'Last Visited: ${customer.lastVisitDate!.split(' ')[0]}',
+                                            style: const TextStyle(
+                                              fontSize: 12,
+                                              fontWeight: FontWeight.w600,
+                                              color: Colors.blueAccent,
+                                            ),
                                           ),
-                                        ),
-                                      ],
+                                        ],
+                                      ),
                                     ),
                                   ),
                               ],
                             ),
-                            trailing: IconButton(
-                              icon: const Icon(Icons.print, color: Colors.blueAccent),
-                              onPressed: () => _printQR(customer),
+                            trailing: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                IconButton(
+                                  icon: const Icon(Icons.history, color: Colors.blueAccent),
+                                  onPressed: () {
+                                    Navigator.pop(ctx);
+                                    _showVisitHistoryDialog(customer);
+                                  },
+                                ),
+                                IconButton(
+                                  icon: const Icon(Icons.print, color: Colors.blueAccent),
+                                  onPressed: () => _printQR(customer),
+                                ),
+                              ],
                             ),
                           ),
                           const SizedBox(height: 16),
@@ -515,31 +678,40 @@ class _CustomerSelectionScreenState extends State<CustomerSelectionScreen> {
                       if (customer.lastVisitDate != null && customer.lastVisitDate!.isNotEmpty)
                         Padding(
                           padding: const EdgeInsets.only(top: 6),
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                            decoration: BoxDecoration(
-                              color: Colors.blueAccent.withOpacity(0.1),
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                const Icon(Icons.history, size: 12, color: Colors.blueAccent),
-                                const SizedBox(width: 4),
-                                Text(
-                                  'Last Visited: ${customer.lastVisitDate!.split(' ')[0]}',
-                                  style: const TextStyle(
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.w600,
-                                    color: Colors.blueAccent,
+                          child: InkWell(
+                            onTap: () => _showVisitHistoryDialog(customer),
+                            borderRadius: BorderRadius.circular(8),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                              decoration: BoxDecoration(
+                                color: Colors.blueAccent.withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const Icon(Icons.history, size: 12, color: Colors.blueAccent),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    'Last Visited: ${customer.lastVisitDate!.split(' ')[0]}',
+                                    style: const TextStyle(
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w600,
+                                      color: Colors.blueAccent,
+                                    ),
                                   ),
-                                ),
-                              ],
+                                ],
+                              ),
                             ),
                           ),
                         ),
                     ],
                   ),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.history, color: Colors.blueAccent),
+                  tooltip: 'Visit History',
+                  onPressed: () => _showVisitHistoryDialog(customer),
                 ),
                 IconButton(
                   icon: const Icon(Icons.print, color: Colors.blueAccent),

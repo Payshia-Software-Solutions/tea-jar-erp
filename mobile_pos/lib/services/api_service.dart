@@ -569,6 +569,27 @@ class ApiService {
     return [];
   }
 
+  Future<List<Map<String, dynamic>>> fetchVisitHistory(int customerId) async {
+    final token = await getToken();
+    try {
+      final response = await http.get(
+        Uri.parse('$baseUrl/visit/history/$customerId'),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Accept': 'application/json',
+        },
+      ).timeout(const Duration(seconds: 10));
+
+      if (response.statusCode == 200) {
+        final decoded = json.decode(response.body);
+        if (decoded['status'] == 'success') {
+          return List<Map<String, dynamic>>.from(decoded['data'] ?? []);
+        }
+      }
+    } catch (_) {}
+    return [];
+  }
+
   Future<List<Item>> fetchProducts({bool forceRefresh = false}) async {
     if (!forceRefresh) {
       final cached = await DbService().getCachedProducts();

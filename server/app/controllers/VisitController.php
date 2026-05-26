@@ -91,4 +91,39 @@ class VisitController extends Controller {
         // Return unique IDs
         $this->success(array_values(array_unique($visitedIds)));
     }
+
+    public function history($customerId) {
+        $this->requirePermission('customers.read');
+        
+        if (!$customerId) {
+            $this->error('Customer ID is required', 400);
+            return;
+        }
+
+        $db = new Database();
+        
+        // Ensure table exists (fail-safe for new deployments)
+        $db->exec("CREATE TABLE IF NOT EXISTS customer_visits (
+            id INT AUTO_INCREMENT PRIMARY KEY, 
+            customer_id INT NOT NULL, 
+            user_id INT NOT NULL, 
+            visit_type VARCHAR(50) NOT NULL, 
+            reason VARCHAR(255) NULL, 
+            latitude DECIMAL(10,8) NULL, 
+            longitude DECIMAL(11,8) NULL, 
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )");
+
+        $db->query("
+            SELECT cv.*, u.name as user_name 
+            FROM customer_visits cv 
+            LEFT JOIN users u ON u.id = cv.user_id 
+            WHERE cv.customer_id = :customer_id 
+            ORDER BY cv.created_at DESC
+        ");
+        $db->bind(':customer_id', $customerId);
+        
+        $results = $db->resultSet();
+        $this->success($results);
+    }
 }
