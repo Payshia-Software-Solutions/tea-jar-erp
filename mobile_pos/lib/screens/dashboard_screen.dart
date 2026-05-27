@@ -24,6 +24,7 @@ import 'products_screen.dart';
 import 'cart_screen.dart';
 import 'held_bills_screen.dart';
 import 'payment_screen.dart';
+import 'visit_map_screen.dart';
 import '../components/gradient_background.dart';
 
 class DashboardScreen extends StatefulWidget {
@@ -378,7 +379,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     title: const Text("Tracking & Visit Map"),
                     onTap: () {
                       Navigator.pop(context);
-                      Navigator.push(context, MaterialPageRoute(builder: (_) => const VisitMapScreen()));
+                      Navigator.push(context, MaterialPageRoute(builder: (_) => VisitMapScreen()));
                     },
                   ),
                   const Divider(),

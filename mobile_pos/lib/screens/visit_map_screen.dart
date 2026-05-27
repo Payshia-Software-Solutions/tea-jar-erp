@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:intl/intl.dart';
+import 'dart:convert';
+import 'package:http/http.dart' as http;
 import '../services/api_service.dart';
 import '../services/db_service.dart';
 import '../models/customer.dart';
@@ -11,6 +13,22 @@ class VisitMapScreen extends StatefulWidget {
 
   @override
   State<VisitMapScreen> createState() => _VisitMapScreenState();
+}
+
+class TimelineEvent {
+  final DateTime time;
+  final String title;
+  final String? subtitle;
+  final IconData icon;
+  final Color iconColor;
+
+  TimelineEvent({
+    required this.time,
+    required this.title,
+    this.subtitle,
+    required this.icon,
+    required this.iconColor,
+  });
 }
 
 class _VisitMapScreenState extends State<VisitMapScreen> {
@@ -23,6 +41,7 @@ class _VisitMapScreenState extends State<VisitMapScreen> {
   bool _isLoading = false;
   List<LatLng> _trackingRoute = [];
   List<Marker> _customerMarkers = [];
+  List<TimelineEvent> _timelineEvents = [];
   
   final MapController _mapController = MapController();
 
@@ -59,6 +78,43 @@ class _VisitMapScreenState extends State<VisitMapScreen> {
     }
   }
 
+  Future<List<LatLng>> _getRoadSnappedRoute(List<LatLng> rawPoints) async {
+    if (rawPoints.length < 2) return rawPoints;
+    
+    List<LatLng> snappedPoints = [];
+    const int chunkSize = 50; // OSRM handles up to 100 well, 50 is safe
+    
+    for (int i = 0; i < rawPoints.length - 1; i += (chunkSize - 1)) {
+      int end = i + chunkSize;
+      if (end > rawPoints.length) end = rawPoints.length;
+      
+      final chunk = rawPoints.sublist(i, end);
+      final coordsStr = chunk.map((p) => '${p.longitude},${p.latitude}').join(';');
+      
+      final url = Uri.parse('http://router.project-osrm.org/route/v1/driving/$coordsStr?overview=full&geometries=geojson');
+      try {
+        final response = await http.get(url).timeout(const Duration(seconds: 15));
+        if (response.statusCode == 200) {
+          final data = json.decode(response.body);
+          if (data['code'] == 'Ok' && data['routes'] != null && data['routes'].isNotEmpty) {
+            final coords = data['routes'][0]['geometry']['coordinates'] as List;
+            for (var c in coords) {
+              snappedPoints.add(LatLng((c[1] as num).toDouble(), (c[0] as num).toDouble()));
+            }
+          } else {
+            snappedPoints.addAll(chunk);
+          }
+        } else {
+          snappedPoints.addAll(chunk);
+        }
+      } catch (e) {
+        snappedPoints.addAll(chunk);
+      }
+    }
+    
+    return snappedPoints;
+  }
+
   Future<void> _loadData() async {
     setState(() => _isLoading = true);
     
@@ -68,9 +124,12 @@ class _VisitMapScreenState extends State<VisitMapScreen> {
 
       // 1. Fetch Tracking Logs
       final trackingData = await _apiService.fetchTrackingLogs(startDate: startStr, endDate: endStr);
-      _trackingRoute = trackingData
+      final rawRoute = trackingData
           .map((e) => LatLng(double.parse(e['latitude'].toString()), double.parse(e['longitude'].toString())))
           .toList();
+          
+      // Snap to road
+      _trackingRoute = await _getRoadSnappedRoute(rawRoute);
 
       // 2. Fetch Visited Customers
       final visitedIds = await _apiService.getVisitedCustomerIds(startDate: startStr, endDate: endStr);
@@ -89,15 +148,15 @@ class _VisitMapScreenState extends State<VisitMapScreen> {
       }
 
       // 4. Build Markers
-      List<Customer> localCustomers = await _dbService.getCustomers();
+      List<Customer> localCustomers = (await _dbService.getCachedCustomers()).map((c) => Customer.fromJson(c as Map<String, dynamic>)).toList();
       _customerMarkers = [];
       
       for (var cid in visitedIds) {
         try {
           final cust = localCustomers.firstWhere((c) => c.id == cid);
           if (cust.latitude != null && cust.longitude != null) {
-            double lat = double.parse(cust.latitude!);
-            double lng = double.parse(cust.longitude!);
+            double lat = cust.latitude!;
+            double lng = cust.longitude!;
             
             final saleAmount = salesByCustomer[cid] ?? 0.0;
             final bool hasSale = saleAmount > 0;
@@ -136,6 +195,34 @@ class _VisitMapScreenState extends State<VisitMapScreen> {
           // Customer not found in local db, ignore
         }
       }
+
+      // 5. Build Timeline Events
+      List<TimelineEvent> events = [];
+      for (var log in trackingData) {
+         if (log['created_at'] != null) {
+           events.add(TimelineEvent(
+             time: DateTime.parse(log['created_at'].toString()),
+             title: 'Location Logged',
+             subtitle: 'Lat: ${log['latitude']}, Lng: ${log['longitude']}',
+             icon: Icons.my_location,
+             iconColor: Colors.blueAccent,
+           ));
+         }
+      }
+      for (var inv in invoices) {
+         if (inv['created_at'] != null) {
+           final double total = double.tryParse(inv['grand_total'].toString()) ?? 0.0;
+           events.add(TimelineEvent(
+             time: DateTime.parse(inv['created_at'].toString()),
+             title: 'Sale: ${inv['customer_name'] ?? 'Unknown'}',
+             subtitle: 'Amount: Rs.${total.toStringAsFixed(2)}',
+             icon: Icons.receipt_long,
+             iconColor: Colors.green,
+           ));
+         }
+      }
+      events.sort((a, b) => b.time.compareTo(a.time)); // Newest first
+      _timelineEvents = events;
 
       // If we have route data or markers, try to center the map
       if (_trackingRoute.isNotEmpty || _customerMarkers.isNotEmpty) {
@@ -198,25 +285,37 @@ class _VisitMapScreenState extends State<VisitMapScreen> {
         ? dateFmt.format(_startDate)
         : '${dateFmt.format(_startDate)} - ${dateFmt.format(_endDate)}';
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Visit & Tracking Map', style: TextStyle(fontWeight: FontWeight.bold)),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.date_range),
-            onPressed: _selectDateRange,
-            tooltip: 'Select Date Range',
+    return DefaultTabController(
+      length: 2,
+      child: Scaffold(
+        appBar: AppBar(
+          title: const Text('Visit & Tracking Map', style: TextStyle(fontWeight: FontWeight.bold)),
+          actions: [
+            IconButton(
+              icon: const Icon(Icons.date_range),
+              onPressed: _selectDateRange,
+              tooltip: 'Select Date Range',
+            ),
+            IconButton(
+              icon: const Icon(Icons.refresh),
+              onPressed: _loadData,
+              tooltip: 'Refresh',
+            ),
+          ],
+          bottom: const TabBar(
+            tabs: [
+              Tab(icon: Icon(Icons.map), text: "Map View"),
+              Tab(icon: Icon(Icons.format_list_bulleted), text: "Timeline"),
+            ],
           ),
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            onPressed: _loadData,
-            tooltip: 'Refresh',
-          ),
-        ],
-      ),
-      body: Stack(
-        children: [
-          FlutterMap(
+        ),
+        body: TabBarView(
+          physics: const NeverScrollableScrollPhysics(), // Map can conflict with swipes
+          children: [
+            // MAP TAB
+            Stack(
+              children: [
+                FlutterMap(
             mapController: _mapController,
             options: MapOptions(
               initialCenter: const LatLng(6.9271, 79.8612), // Colombo default
@@ -242,11 +341,12 @@ class _VisitMapScreenState extends State<VisitMapScreen> {
               ),
               PolylineLayer(
                 polylines: [
-                  Polyline(
-                    points: _trackingRoute,
-                    strokeWidth: 4.0,
-                    color: Colors.blueAccent.withOpacity(0.8),
-                  ),
+                  if (_trackingRoute.isNotEmpty)
+                    Polyline(
+                      points: _trackingRoute,
+                      strokeWidth: 4.0,
+                      color: Colors.blueAccent.withOpacity(0.8),
+                    ),
                 ],
               ),
               MarkerLayer(
@@ -286,12 +386,54 @@ class _VisitMapScreenState extends State<VisitMapScreen> {
             ),
           ),
           
-          if (_isLoading)
-            const Center(
-              child: CircularProgressIndicator(),
-            ),
+              if (_isLoading)
+                const Center(
+                  child: CircularProgressIndicator(),
+                ),
+            ],
+          ),
+          
+          // TIMELINE TAB
+          _isLoading 
+            ? const Center(child: CircularProgressIndicator())
+            : _timelineEvents.isEmpty 
+              ? const Center(child: Text("No tracking or sale data for this period."))
+              : ListView.builder(
+                  padding: const EdgeInsets.all(16),
+                  itemCount: _timelineEvents.length,
+                  itemBuilder: (context, index) {
+                    final event = _timelineEvents[index];
+                    return Card(
+                      margin: const EdgeInsets.only(bottom: 12),
+                      elevation: 2,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      child: ListTile(
+                        leading: CircleAvatar(
+                          backgroundColor: event.iconColor.withOpacity(0.2),
+                          child: Icon(event.icon, color: event.iconColor),
+                        ),
+                        title: Text(event.title, style: const TextStyle(fontWeight: FontWeight.bold)),
+                        subtitle: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            if (event.subtitle != null) ...[
+                              const SizedBox(height: 4),
+                              Text(event.subtitle!),
+                            ],
+                            const SizedBox(height: 4),
+                            Text(
+                              DateFormat('MMM dd, yyyy - hh:mm a').format(event.time),
+                              style: TextStyle(fontSize: 12, color: Theme.of(context).textTheme.bodySmall?.color),
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  },
+                ),
         ],
       ),
-    );
+    ),
+  );
   }
 }
