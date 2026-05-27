@@ -14,7 +14,9 @@ class TrackingController extends Controller {
             $input = json_decode(file_get_contents('php://input'), true);
             $latitude = isset($input['latitude']) ? $input['latitude'] : null;
             $longitude = isset($input['longitude']) ? $input['longitude'] : null;
-            $createdAt = isset($input['created_at']) ? $input['created_at'] : date('Y-m-d H:i:s');
+            // Explicitly force Sri Lanka timezone for the server
+            date_default_timezone_set('Asia/Colombo');
+            $createdAt = date('Y-m-d H:i:s');
 
             if ($userId && $latitude && $longitude) {
                 // Force format to YYYY-MM-DD HH:MM:SS
