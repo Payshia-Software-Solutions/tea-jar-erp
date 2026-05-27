@@ -4979,6 +4979,15 @@ class SchemaDefinition {
         'Default' => NULL,
         'Extra' => '',
       ),
+      'app_time' => 
+      array (
+        'Field' => 'app_time',
+        'Type' => 'datetime',
+        'Null' => 'YES',
+        'Key' => '',
+        'Default' => NULL,
+        'Extra' => '',
+      ),
       'created_at' => 
       array (
         'Field' => 'created_at',

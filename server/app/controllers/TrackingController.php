@@ -14,19 +14,26 @@ class TrackingController extends Controller {
             $input = json_decode(file_get_contents('php://input'), true);
             $latitude = isset($input['latitude']) ? $input['latitude'] : null;
             $longitude = isset($input['longitude']) ? $input['longitude'] : null;
-            // Explicitly force Sri Lanka timezone for the server
+            $appTime = isset($input['app_time']) ? $input['app_time'] : null;
+            
+            // Explicitly force Sri Lanka timezone for the server's receive time
             date_default_timezone_set('Asia/Colombo');
             $createdAt = date('Y-m-d H:i:s');
 
             if ($userId && $latitude && $longitude) {
-                // Force format to YYYY-MM-DD HH:MM:SS
-                $createdAt = str_replace('T', ' ', substr($createdAt, 0, 19));
+                // If app_time is provided, ensure format is correct, else fallback to created_at
+                if ($appTime) {
+                    $appTime = str_replace('T', ' ', substr($appTime, 0, 19));
+                } else {
+                    $appTime = $createdAt;
+                }
                 
-                $this->db->query('INSERT INTO device_tracking_logs (user_id, latitude, longitude, created_at) VALUES (:user_id, :latitude, :longitude, :created_at)');
+                $this->db->query('INSERT INTO device_tracking_logs (user_id, latitude, longitude, created_at, app_time) VALUES (:user_id, :latitude, :longitude, :created_at, :app_time)');
                 $this->db->bind(':user_id', $userId);
                 $this->db->bind(':latitude', $latitude);
                 $this->db->bind(':longitude', $longitude);
                 $this->db->bind(':created_at', $createdAt);
+                $this->db->bind(':app_time', $appTime);
                 if ($this->db->execute()) {
                     echo json_encode(['status' => 'success', 'message' => 'Tracking log saved']);
                     return;
@@ -50,6 +57,9 @@ class TrackingController extends Controller {
                 return;
             }
 
+            date_default_timezone_set('Asia/Colombo');
+            $createdAt = date('Y-m-d H:i:s'); // the time the sync batch arrived
+
             $input = json_decode(file_get_contents('php://input'), true);
             $logs = isset($input['logs']) ? $input['logs'] : [];
 
@@ -58,17 +68,21 @@ class TrackingController extends Controller {
                 foreach ($logs as $log) {
                     $lat = $log['latitude'] ?? null;
                     $lng = $log['longitude'] ?? null;
-                    $createdAt = $log['created_at'] ?? null;
                     
-                    if ($lat && $lng && $createdAt) {
-                        $this->db->query('INSERT INTO device_tracking_logs (user_id, latitude, longitude, created_at) VALUES (:user_id, :latitude, :longitude, :created_at)');
+                    // Offline logs from the app's SQLite DB currently send 'created_at', 
+                    // but we will treat it as the 'app_time' (the time it was recorded offline).
+                    // We also support 'app_time' natively if the app sends it directly.
+                    $appTime = $log['app_time'] ?? $log['created_at'] ?? $createdAt;
+                    
+                    if ($lat && $lng) {
+                        $appTime = str_replace('T', ' ', substr($appTime, 0, 19));
+                        
+                        $this->db->query('INSERT INTO device_tracking_logs (user_id, latitude, longitude, created_at, app_time) VALUES (:user_id, :latitude, :longitude, :created_at, :app_time)');
                         $this->db->bind(':user_id', $userId);
                         $this->db->bind(':latitude', $lat);
                         $this->db->bind(':longitude', $lng);
-                        // Convert ISO8601 to MySQL datetime if necessary, usually MySQL handles 'YYYY-MM-DDTHH:MM:SS...' fine, 
-                        // but let's replace T with space just in case.
-                        $createdAt = str_replace('T', ' ', substr($createdAt, 0, 19));
                         $this->db->bind(':created_at', $createdAt);
+                        $this->db->bind(':app_time', $appTime);
                         if ($this->db->execute()) {
                             $successCount++;
                         }
@@ -105,7 +119,7 @@ class TrackingController extends Controller {
 
         // Include entire end date by appending time
         $this->db->query("
-            SELECT latitude, longitude, created_at 
+            SELECT latitude, longitude, created_at, COALESCE(app_time, created_at) AS app_time
             FROM device_tracking_logs 
             WHERE user_id = :user_id 
               AND created_at >= :start_date 

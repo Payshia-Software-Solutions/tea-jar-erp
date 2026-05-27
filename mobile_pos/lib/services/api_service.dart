@@ -922,6 +922,7 @@ class ApiService {
           'latitude': latitude,
           'longitude': longitude,
           'created_at': DateTime.now().toIso8601String(),
+          'app_time': DateTime.now().toIso8601String(),
         }),
       ).timeout(const Duration(seconds: 10));
 

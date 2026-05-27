@@ -202,9 +202,9 @@ class _VisitMapScreenState extends State<VisitMapScreen> {
       // 5. Build Timeline Events
       List<TimelineEvent> events = [];
       for (var log in trackingData) {
-         if (log['created_at'] != null) {
+         if (log['app_time'] != null || log['created_at'] != null) {
            events.add(TimelineEvent(
-             time: DateTime.parse(log['created_at'].toString()),
+             time: DateTime.parse((log['app_time'] ?? log['created_at']).toString()),
              title: 'Location Logged',
              subtitle: 'Lat: ${log['latitude']}, Lng: ${log['longitude']}',
              icon: Icons.my_location,
@@ -213,10 +213,10 @@ class _VisitMapScreenState extends State<VisitMapScreen> {
          }
       }
       for (var inv in invoices) {
-         if (inv['created_at'] != null) {
+         if (inv['app_time'] != null || inv['created_at'] != null) {
            final double total = double.tryParse(inv['grand_total'].toString()) ?? 0.0;
            events.add(TimelineEvent(
-             time: DateTime.parse(inv['created_at'].toString()),
+             time: DateTime.parse((inv['app_time'] ?? inv['created_at']).toString()),
              title: 'Sale: ${inv['customer_name'] ?? 'Unknown'}',
              subtitle: 'Amount: Rs.${total.toStringAsFixed(2)}',
              icon: Icons.receipt_long,
