@@ -6,6 +6,7 @@ import 'screens/login_screen.dart';
 import 'screens/dashboard_screen.dart';
 import 'screens/location_selection_screen.dart';
 import 'screens/splash_screen.dart';
+import 'services/api_service.dart';
 import 'services/tracking_service.dart';
 
 void main() async {
@@ -25,11 +26,31 @@ void main() async {
 class MobilePOSApp extends StatelessWidget {
   const MobilePOSApp({super.key});
 
+  static final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
+
   @override
   Widget build(BuildContext context) {
+    // Set session expiration handler
+    ApiService.onUnauthorized = () {
+      final context = navigatorKey.currentContext;
+      if (context != null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Session expired. Please log in again.'),
+            backgroundColor: Colors.redAccent,
+          ),
+        );
+      }
+      navigatorKey.currentState?.pushAndRemoveUntil(
+        MaterialPageRoute(builder: (_) => const LoginScreen()),
+        (route) => false,
+      );
+    };
+
     return Consumer<ThemeProvider>(
       builder: (context, themeProvider, child) {
         return MaterialApp(
+          navigatorKey: navigatorKey,
           title: 'BizPOS',
           themeMode: themeProvider.themeMode,
           theme: ThemeData(

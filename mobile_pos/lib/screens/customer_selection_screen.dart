@@ -145,8 +145,75 @@ class _CustomerSelectionScreenState extends State<CustomerSelectionScreen> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             const Text('Log Shop Visit', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 8),
+            
+            // --- NEW: Inline Visit History ---
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.blueAccent.withOpacity(0.05),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.blueAccent.withOpacity(0.2)),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Row(
+                    children: [
+                      Icon(Icons.history, size: 16, color: Colors.blueAccent),
+                      SizedBox(width: 6),
+                      Text('Recent Visits', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.blueAccent)),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  FutureBuilder<List<Map<String, dynamic>>>(
+                    future: ApiService().fetchVisitHistory(customer.id),
+                    builder: (context, snapshot) {
+                      if (snapshot.connectionState == ConnectionState.waiting) {
+                        return const Center(child: Padding(padding: EdgeInsets.all(8.0), child: SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))));
+                      }
+                      if (snapshot.hasError || !snapshot.hasData || snapshot.data!.isEmpty) {
+                        return const Text('No recent visits recorded.', style: TextStyle(color: Colors.grey, fontSize: 12));
+                      }
+                      final visits = snapshot.data!.take(3).toList(); // Show top 3
+                      return Column(
+                        children: visits.map((v) {
+                          final isSale = v['visit_type'] == 'SALE';
+                          final dateStr = (v['created_at'] ?? '').toString().split(' ')[0];
+                          final reason = v['reason'] ?? 'N/A';
+                          return Padding(
+                            padding: const EdgeInsets.only(bottom: 6.0),
+                            child: Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Icon(
+                                  isSale ? Icons.shopping_bag : Icons.cancel_presentation,
+                                  color: isSale ? Colors.green : Colors.red,
+                                  size: 14,
+                                ),
+                                const SizedBox(width: 6),
+                                Expanded(
+                                  child: Text(
+                                    '$dateStr - $reason',
+                                    style: const TextStyle(fontSize: 12),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          );
+                        }).toList(),
+                      );
+                    },
+                  ),
+                ],
+              ),
+            ),
             const SizedBox(height: 16),
-            const Text('A physical visit is required before creating an order. You can either use GPS to verify your location or scan the shop\'s QR code.', style: TextStyle(color: Colors.grey)),
+            // ---------------------------------
+
+            const Text('A physical visit is required before creating an order. You can either use GPS to verify your location or scan the shop\'s QR code.', style: TextStyle(color: Colors.grey, fontSize: 13)),
             const SizedBox(height: 16),
             ElevatedButton.icon(
               onPressed: () {
@@ -346,7 +413,7 @@ class _CustomerSelectionScreenState extends State<CustomerSelectionScreen> {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 Row(
-                  mainAxisAlignment: MainAxisAlignment.between,
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Expanded(
                       child: Text(
@@ -427,7 +494,7 @@ class _CustomerSelectionScreenState extends State<CustomerSelectionScreen> {
                                     crossAxisAlignment: CrossAxisAlignment.start,
                                     children: [
                                       Row(
-                                        mainAxisAlignment: MainAxisAlignment.between,
+                                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                         children: [
                                           Text(
                                             isSale ? 'Sale Visit' : 'No-Sale Visit',
@@ -542,12 +609,15 @@ class _CustomerSelectionScreenState extends State<CustomerSelectionScreen> {
                                         children: [
                                           const Icon(Icons.history, size: 12, color: Colors.blueAccent),
                                           const SizedBox(width: 4),
-                                          Text(
-                                            'Last Visited: ${customer.lastVisitDate!.split(' ')[0]}',
-                                            style: const TextStyle(
-                                              fontSize: 12,
-                                              fontWeight: FontWeight.w600,
-                                              color: Colors.blueAccent,
+                                          Flexible(
+                                            child: Text(
+                                              'Last Visited: ${customer.lastVisitDate!.split(' ')[0]}',
+                                              style: const TextStyle(
+                                                fontSize: 12,
+                                                fontWeight: FontWeight.w600,
+                                                color: Colors.blueAccent,
+                                              ),
+                                              overflow: TextOverflow.ellipsis,
                                             ),
                                           ),
                                         ],
@@ -660,7 +730,14 @@ class _CustomerSelectionScreenState extends State<CustomerSelectionScreen> {
                             children: [
                               Icon(Icons.phone, size: 12, color: Theme.of(context).textTheme.bodyMedium?.color?.withOpacity(0.5)),
                               const SizedBox(width: 4),
-                              Text(customer.phone!, style: TextStyle(fontSize: 12, color: Theme.of(context).textTheme.bodyMedium?.color?.withOpacity(0.7))),
+                              Expanded(
+                                child: Text(
+                                  customer.phone!, 
+                                  style: TextStyle(fontSize: 12, color: Theme.of(context).textTheme.bodyMedium?.color?.withOpacity(0.7)),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
                             ],
                           ),
                         ),
@@ -671,7 +748,14 @@ class _CustomerSelectionScreenState extends State<CustomerSelectionScreen> {
                             children: [
                               Icon(Icons.email, size: 12, color: Theme.of(context).textTheme.bodyMedium?.color?.withOpacity(0.5)),
                               const SizedBox(width: 4),
-                              Text(customer.email!, style: TextStyle(fontSize: 12, color: Theme.of(context).textTheme.bodyMedium?.color?.withOpacity(0.7))),
+                              Expanded(
+                                child: Text(
+                                  customer.email!, 
+                                  style: TextStyle(fontSize: 12, color: Theme.of(context).textTheme.bodyMedium?.color?.withOpacity(0.7)),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
                             ],
                           ),
                         ),
@@ -692,12 +776,16 @@ class _CustomerSelectionScreenState extends State<CustomerSelectionScreen> {
                                 children: [
                                   const Icon(Icons.history, size: 12, color: Colors.blueAccent),
                                   const SizedBox(width: 4),
-                                  Text(
-                                    'Last Visited: ${customer.lastVisitDate!.split(' ')[0]}',
-                                    style: const TextStyle(
-                                      fontSize: 11,
-                                      fontWeight: FontWeight.w600,
-                                      color: Colors.blueAccent,
+                                  Flexible(
+                                    child: Text(
+                                      'Last Visited: ${customer.lastVisitDate!.split(' ')[0]}',
+                                      style: const TextStyle(
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.w600,
+                                        color: Colors.blueAccent,
+                                      ),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
                                     ),
                                   ),
                                 ],

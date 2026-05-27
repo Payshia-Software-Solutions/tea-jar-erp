@@ -24,6 +24,7 @@ import 'products_screen.dart';
 import 'cart_screen.dart';
 import 'held_bills_screen.dart';
 import 'payment_screen.dart';
+import '../components/gradient_background.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -154,11 +155,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Dashboard', style: TextStyle(fontWeight: FontWeight.bold)),
-        elevation: 0,
-        actions: [
+    return GradientBackground(
+      child: Scaffold(
+        backgroundColor: Colors.transparent, // Let gradient show through
+        appBar: AppBar(
+          backgroundColor: Colors.transparent, // Let gradient show through
+          title: const Text('Dashboard', style: TextStyle(fontWeight: FontWeight.bold)),
+          elevation: 0,
+          actions: [
           RouteSelectorWidget(
             onRoutesChanged: () {
               // Optionally trigger a silent refetch or just update UI
@@ -638,7 +642,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         ),
         ),
       ),
-    );
+    ));
   }
 
   Widget _buildStatCard(BuildContext context, String title, String value, IconData icon, Color color) {

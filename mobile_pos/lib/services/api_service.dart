@@ -15,6 +15,16 @@ import '../models/tax.dart';
 
 class ApiService {
   static const String baseUrl = 'https://server-kdu-service.payshia.com/api';
+  static void Function()? onUnauthorized;
+
+  void _checkResponse(http.Response response) {
+    if (response.statusCode == 401) {
+      logout();
+      if (onUnauthorized != null) {
+        onUnauthorized!();
+      }
+    }
+  }
 
   Future<String?> getToken() async {
     final prefs = await SharedPreferences.getInstance();
@@ -86,6 +96,7 @@ class ApiService {
         },
       ).timeout(const Duration(seconds: 15)); // Give it more time since it's often background
       
+      _checkResponse(response);
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         final List<dynamic> customersJson = data['data'] ?? data;
@@ -126,6 +137,7 @@ class ApiService {
           'Authorization': 'Bearer $token',
         },
       ).timeout(const Duration(seconds: 15));
+      _checkResponse(response);
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         final List<dynamic> jsonList = data['data'] ?? data;
@@ -372,6 +384,7 @@ class ApiService {
         body: json.encode(payload),
       ).timeout(const Duration(seconds: 20));
 
+      _checkResponse(response);
       if (response.statusCode == 200 || response.statusCode == 201) {
         final decoded = json.decode(response.body);
         if (decoded['status'] == 'success') {
@@ -624,6 +637,7 @@ class ApiService {
         },
       ).timeout(const Duration(seconds: 15));
       
+      _checkResponse(response);
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         final List<dynamic> productsJson = data['data'] ?? data;
