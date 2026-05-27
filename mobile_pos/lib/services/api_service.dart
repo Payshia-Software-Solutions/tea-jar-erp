@@ -444,10 +444,12 @@ class ApiService {
     }
   }
 
-  Future<List<dynamic>> fetchInvoices({String? date}) async {
+  Future<List<dynamic>> fetchInvoices({String? date, String? startDate, String? endDate}) async {
     final token = await getToken();
     String url = '$baseUrl/invoice/list';
-    if (date != null) {
+    if (startDate != null && endDate != null) {
+      url += '?start_date=$startDate&end_date=$endDate';
+    } else if (date != null) {
       url += '?date=$date';
     }
     
@@ -576,6 +578,48 @@ class ApiService {
         final decoded = json.decode(response.body);
         if (decoded['status'] == 'success') {
           return List<int>.from(decoded['data'] ?? []);
+        }
+      }
+    } catch (_) {}
+    return [];
+  }
+
+  Future<List<int>> getVisitedCustomerIds({required String startDate, required String endDate}) async {
+    final token = await getToken();
+    try {
+      final response = await http.get(
+        Uri.parse('$baseUrl/visit/today_visits?start_date=$startDate&end_date=$endDate'),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Accept': 'application/json',
+        },
+      ).timeout(const Duration(seconds: 10));
+
+      if (response.statusCode == 200) {
+        final decoded = json.decode(response.body);
+        if (decoded['status'] == 'success') {
+          return List<int>.from(decoded['data'] ?? []);
+        }
+      }
+    } catch (_) {}
+    return [];
+  }
+
+  Future<List<Map<String, dynamic>>> fetchTrackingLogs({required String startDate, required String endDate}) async {
+    final token = await getToken();
+    try {
+      final response = await http.get(
+        Uri.parse('$baseUrl/tracking/history?start_date=$startDate&end_date=$endDate'),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Accept': 'application/json',
+        },
+      ).timeout(const Duration(seconds: 10));
+
+      if (response.statusCode == 200) {
+        final decoded = json.decode(response.body);
+        if (decoded['status'] == 'success') {
+          return List<Map<String, dynamic>>.from(decoded['data'] ?? []);
         }
       }
     } catch (_) {}

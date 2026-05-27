@@ -373,6 +373,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       Navigator.push(context, MaterialPageRoute(builder: (_) => const DayEndSummaryScreen()));
                     },
                   ),
+                  ListTile(
+                    leading: const Icon(Icons.map_outlined),
+                    title: const Text("Tracking & Visit Map"),
+                    onTap: () {
+                      Navigator.pop(context);
+                      Navigator.push(context, MaterialPageRoute(builder: (_) => const VisitMapScreen()));
+                    },
+                  ),
                   const Divider(),
                   ListTile(
                     leading: const Icon(Icons.person_add),

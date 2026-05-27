@@ -59,7 +59,11 @@ class MobilePOSApp extends StatelessWidget {
               seedColor: Colors.blueAccent,
               brightness: Brightness.light,
             ),
-            scaffoldBackgroundColor: const Color(0xFFF5F5F5),
+            scaffoldBackgroundColor: Colors.transparent,
+            appBarTheme: const AppBarTheme(
+              backgroundColor: Colors.transparent,
+              elevation: 0,
+            ),
           ),
           darkTheme: ThemeData(
             useMaterial3: true,
@@ -67,9 +71,9 @@ class MobilePOSApp extends StatelessWidget {
               seedColor: Colors.blueAccent,
               brightness: Brightness.dark,
             ),
-            scaffoldBackgroundColor: const Color(0xFF0A0A0A),
+            scaffoldBackgroundColor: Colors.transparent,
             appBarTheme: const AppBarTheme(
-              backgroundColor: Color(0xFF141414),
+              backgroundColor: Colors.transparent,
               foregroundColor: Colors.white,
               elevation: 0,
             ),
@@ -81,6 +85,21 @@ class MobilePOSApp extends StatelessWidget {
           ),
           home: const SplashScreen(),
           debugShowCheckedModeBanner: false,
+          builder: (context, child) {
+            final isDark = Theme.of(context).brightness == Brightness.dark;
+            return Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: isDark
+                      ? [const Color(0xFF1E293B), const Color(0xFF000000)] // Premium dark gradient
+                      : [const Color(0xFFE0E7FF), const Color(0xFFF8FAFC)], // Premium light gradient
+                ),
+              ),
+              child: child,
+            );
+          },
         );
       },
     );

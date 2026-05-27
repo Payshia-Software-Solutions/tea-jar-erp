@@ -31,4 +31,38 @@ class TrackingController extends Controller {
             echo json_encode(['status' => 'error', 'message' => 'Method not allowed']);
         }
     }
+    public function history() {
+        if ($_SERVER['REQUEST_METHOD'] !== 'GET') {
+            http_response_code(405);
+            echo json_encode(['status' => 'error', 'message' => 'Method not allowed']);
+            return;
+        }
+        
+        $u = $this->requireAuth();
+        $userId = $u['sub'] ?? null;
+        if (!$userId) {
+            http_response_code(401);
+            echo json_encode(['status' => 'error', 'message' => 'Unauthorized']);
+            return;
+        }
+
+        $startDate = $_GET['start_date'] ?? date('Y-m-d');
+        $endDate = $_GET['end_date'] ?? date('Y-m-d');
+
+        // Include entire end date by appending time
+        $this->db->query("
+            SELECT latitude, longitude, created_at 
+            FROM device_tracking_logs 
+            WHERE user_id = :user_id 
+              AND created_at >= :start_date 
+              AND created_at <= :end_date
+            ORDER BY created_at ASC
+        ");
+        $this->db->bind(':user_id', $userId);
+        $this->db->bind(':start_date', $startDate . ' 00:00:00');
+        $this->db->bind(':end_date', $endDate . ' 23:59:59');
+        
+        $logs = $this->db->resultSet();
+        echo json_encode(['status' => 'success', 'data' => $logs]);
+    }
 }

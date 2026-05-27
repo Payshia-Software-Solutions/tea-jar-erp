@@ -7,12 +7,10 @@
 class VisitController extends Controller {
 
     public function log() {
-        // TEMPORARY: Public for testing
-        // $this->requirePermission('orders.write'); // Or a specific visits.write permission
+        $this->requirePermission('orders.write'); // Or a specific visits.write permission
         
-        // $u = $this->requireAuth();
-        // $userId = $u['sub'] ?? null;
-        $userId = 1; // MOCK for testing
+        $u = $this->requireAuth();
+        $userId = $u['sub'] ?? null;
 
         $raw = file_get_contents('php://input');
         $data = json_decode($raw, true) ?? [];
@@ -58,14 +56,12 @@ class VisitController extends Controller {
     }
 
     public function today_visits() {
-        // TEMPORARY: Public for testing
-        // $u = $this->requireAuth();
-        // $userId = $u['sub'] ?? null;
-        // if (!$userId) {
-        //     $this->error('Unauthorized', 401);
-        //     return;
-        // }
-        $userId = 1; // MOCK for testing
+        $u = $this->requireAuth();
+        $userId = $u['sub'] ?? null;
+        if (!$userId) {
+            $this->error('Unauthorized', 401);
+            return;
+        }
 
         $db = new Database();
         
@@ -81,8 +77,13 @@ class VisitController extends Controller {
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )");
 
-        $db->query("SELECT customer_id FROM customer_visits WHERE user_id = :user_id AND DATE(created_at) = CURDATE()");
+        $startDate = $_GET['start_date'] ?? date('Y-m-d');
+        $endDate = $_GET['end_date'] ?? date('Y-m-d');
+
+        $db->query("SELECT customer_id FROM customer_visits WHERE user_id = :user_id AND created_at >= :start_date AND created_at <= :end_date");
         $db->bind(':user_id', $userId);
+        $db->bind(':start_date', $startDate . ' 00:00:00');
+        $db->bind(':end_date', $endDate . ' 23:59:59');
         
         $results = $db->resultSet();
         $visitedIds = [];
@@ -97,8 +98,7 @@ class VisitController extends Controller {
     }
 
     public function history($customerId) {
-        // TEMPORARY: Public for testing
-        // $this->requirePermission('customers.read');
+        $this->requirePermission('customers.read');
         
         if (!$customerId) {
             $this->error('Customer ID is required', 400);

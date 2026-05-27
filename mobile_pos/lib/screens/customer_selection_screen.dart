@@ -1,7 +1,9 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:geolocator_android/geolocator_android.dart';
 import '../models/customer.dart';
 import '../services/api_service.dart';
 import '../services/printer_service.dart';
@@ -35,12 +37,54 @@ class _CustomerSelectionScreenState extends State<CustomerSelectionScreen> {
   bool _isLoading = true;
   bool _isMapView = false;
   final TextEditingController _searchController = TextEditingController();
+  Position? _currentPosition;
 
   @override
   void initState() {
     super.initState();
     _loadCustomers();
+    _fetchLocationAndSort();
     _searchController.addListener(_onSearchChanged);
+  }
+
+  Future<void> _fetchLocationAndSort() async {
+    try {
+      bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      if (!serviceEnabled) return;
+
+      LocationPermission permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+        if (permission == LocationPermission.denied) return;
+      }
+      if (permission == LocationPermission.deniedForever) return;
+
+      LocationSettings locationSettings;
+      if (Platform.isAndroid) {
+        locationSettings = AndroidSettings(
+          accuracy: LocationAccuracy.high,
+          forceLocationManager: true, // Forces true GPS, ignoring VPN/Network location
+          timeLimit: const Duration(seconds: 10),
+        );
+      } else {
+        locationSettings = const LocationSettings(
+          accuracy: LocationAccuracy.high,
+          timeLimit: Duration(seconds: 10),
+        );
+      }
+
+      _currentPosition = await Geolocator.getCurrentPosition(
+        locationSettings: locationSettings,
+      );
+    } catch (_) {
+      try {
+        _currentPosition = await Geolocator.getLastKnownPosition();
+      } catch (_) {}
+    }
+    
+    if (mounted && _currentPosition != null) {
+      _onSearchChanged();
+    }
   }
 
   @override
@@ -64,6 +108,27 @@ class _CustomerSelectionScreenState extends State<CustomerSelectionScreen> {
 
         return matchesRoute && matchesSearch && matchesVisitedStatus;
       }).toList();
+
+      if (_currentPosition != null) {
+        _filteredCustomers.sort((a, b) {
+          final hasLocA = a.latitude != null && a.longitude != null && a.latitude != 0 && a.longitude != 0;
+          final hasLocB = b.latitude != null && b.longitude != null && b.latitude != 0 && b.longitude != 0;
+          
+          if (!hasLocA && !hasLocB) return 0;
+          if (!hasLocA) return 1; // Send shops without location to the bottom
+          if (!hasLocB) return -1;
+
+          final distA = Geolocator.distanceBetween(
+            _currentPosition!.latitude, _currentPosition!.longitude,
+            a.latitude!, a.longitude!
+          );
+          final distB = Geolocator.distanceBetween(
+            _currentPosition!.latitude, _currentPosition!.longitude,
+            b.latitude!, b.longitude!
+          );
+          return distA.compareTo(distB);
+        });
+      }
     });
   }
 
@@ -99,17 +164,43 @@ class _CustomerSelectionScreenState extends State<CustomerSelectionScreen> {
       if (parts.length > 1) {
         initials = '${parts[0][0]}${parts[1][0]}'.toUpperCase();
       } else {
-        initials = customer.name.substring(0, 1).toUpperCase();
+        initials = customer.name.substring(0, customer.name.length >= 2 ? 2 : 1).toUpperCase();
       }
     }
 
     return CircleAvatar(
       backgroundColor: Colors.blueAccent.withOpacity(0.2),
       foregroundColor: Colors.blueAccent,
-      radius: 24,
-      child: Text(initials, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+      child: Text(initials, style: const TextStyle(fontWeight: FontWeight.bold)),
     );
   }
+
+  String? _getDistanceString(Customer customer) {
+    if (_currentPosition == null) return null;
+    if (customer.latitude == null || customer.longitude == null || customer.latitude == 0 || customer.longitude == 0) return null;
+
+    final distanceMeters = Geolocator.distanceBetween(
+      _currentPosition!.latitude, 
+      _currentPosition!.longitude,
+      customer.latitude!, 
+      customer.longitude!
+    );
+
+    if (distanceMeters < 1000) {
+      return '${distanceMeters.toStringAsFixed(0)} m away';
+    } else {
+      return '${(distanceMeters / 1000).toStringAsFixed(1)} km away';
+    }
+  }
+
+  String _formatDateToMinutes(String dateStr) {
+    if (dateStr.length >= 16) {
+      return dateStr.substring(0, 16);
+    }
+    return dateStr;
+  }
+
+
 
   Future<void> _onCustomerSelected(Customer customer) async {
     final enforceVisit = await ApiService().getEnforceVisitBeforeSale();
@@ -179,7 +270,7 @@ class _CustomerSelectionScreenState extends State<CustomerSelectionScreen> {
                       return Column(
                         children: visits.map((v) {
                           final isSale = v['visit_type'] == 'SALE';
-                          final dateStr = (v['created_at'] ?? '').toString().split(' ')[0];
+                          final dateStr = _formatDateToMinutes((v['created_at'] ?? '').toString());
                           final reason = v['reason'] ?? 'N/A';
                           return Padding(
                             padding: const EdgeInsets.only(bottom: 6.0),
@@ -296,16 +387,37 @@ class _CustomerSelectionScreenState extends State<CustomerSelectionScreen> {
     // 2. Get current position with timeout
     Position? position;
     try {
+      LocationSettings locationSettings;
+      if (Platform.isAndroid) {
+        locationSettings = AndroidSettings(
+          accuracy: LocationAccuracy.high,
+          forceLocationManager: true, // Forces true GPS, ignoring VPN/Network location
+          timeLimit: const Duration(seconds: 15),
+        );
+      } else {
+        locationSettings = const LocationSettings(
+          accuracy: LocationAccuracy.high,
+          timeLimit: Duration(seconds: 15),
+        );
+      }
+
       position = await Geolocator.getCurrentPosition(
-        timeLimit: const Duration(seconds: 10),
+        locationSettings: locationSettings,
       );
     } catch (e) {
-      // If high accuracy fails or times out, try last known position
-      position = await Geolocator.getLastKnownPosition();
-      if (position == null) {
-        if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Failed to get location. Please try again.')));
-        return;
+      if (mounted) {
+        showDialog(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            title: const Text('GPS Signal Weak'),
+            content: const Text('Failed to get a precise GPS location in time. Please step outside or wait for a better signal and try again.'),
+            actions: [
+              TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('OK')),
+            ],
+          ),
+        );
       }
+      return;
     }
 
     // 3. Verify distance
@@ -316,7 +428,18 @@ class _CustomerSelectionScreenState extends State<CustomerSelectionScreen> {
       );
 
       if (distanceInMeters > 50) {
-        if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('You are too far from the shop (${distanceInMeters.toStringAsFixed(0)}m). Must be within 50m to check in.')));
+        if (mounted) {
+          showDialog(
+            context: context,
+            builder: (ctx) => AlertDialog(
+              title: const Text('Location Error'),
+              content: Text('You are too far from the shop (${distanceInMeters.toStringAsFixed(0)}m).\n\nMust be within 50m to check in. Please ensure you are physically at the shop.'),
+              actions: [
+                TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('OK')),
+              ],
+            ),
+          );
+        }
         return;
       }
     } else {
@@ -543,7 +666,96 @@ class _CustomerSelectionScreenState extends State<CustomerSelectionScreen> {
   }
 
   Future<void> _printQR(Customer customer) async {
-    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Printing QR...')));
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Verifying location...'), duration: Duration(seconds: 2))
+      );
+    }
+
+    // 1. Check permissions
+    bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+    if (!serviceEnabled) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Location services are disabled.')));
+      return;
+    }
+
+    LocationPermission permission = await Geolocator.checkPermission();
+    if (permission == LocationPermission.denied) {
+      permission = await Geolocator.requestPermission();
+      if (permission == LocationPermission.denied) {
+        if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Location permissions are denied')));
+        return;
+      }
+    }
+
+    if (permission == LocationPermission.deniedForever) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Location permissions are permanently denied, we cannot request permissions.')));
+      return;
+    }
+
+    // 2. Get current position with timeout
+    Position? position;
+    try {
+      LocationSettings locationSettings;
+      if (Platform.isAndroid) {
+        locationSettings = AndroidSettings(
+          accuracy: LocationAccuracy.high,
+          forceLocationManager: true, // Forces true GPS, ignoring VPN/Network location
+          timeLimit: const Duration(seconds: 15),
+        );
+      } else {
+        locationSettings = const LocationSettings(
+          accuracy: LocationAccuracy.high,
+          timeLimit: Duration(seconds: 15),
+        );
+      }
+
+      position = await Geolocator.getCurrentPosition(
+        locationSettings: locationSettings,
+      );
+    } catch (e) {
+      if (mounted) {
+        showDialog(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            title: const Text('GPS Signal Weak'),
+            content: const Text('Failed to get a precise GPS location in time. Please step outside or wait for a better signal and try again.'),
+            actions: [
+              TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('OK')),
+            ],
+          ),
+        );
+      }
+      return;
+    }
+
+    // 3. Verify distance
+    if (customer.latitude != null && customer.longitude != null && customer.latitude != 0) {
+      double distanceInMeters = Geolocator.distanceBetween(
+        position.latitude, position.longitude,
+        customer.latitude!, customer.longitude!
+      );
+
+      if (distanceInMeters > 50) {
+        if (mounted) {
+          showDialog(
+            context: context,
+            builder: (ctx) => AlertDialog(
+              title: const Text('Location Error'),
+              content: Text('You are too far from the shop (${distanceInMeters.toStringAsFixed(0)}m).\n\nMust be within 50m to print. Please ensure you are physically at the shop.'),
+              actions: [
+                TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('OK')),
+              ],
+            ),
+          );
+        }
+        return;
+      }
+    } else {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Warning: Customer has no saved GPS coordinates. Printing anyway.')));
+    }
+
+    if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Printing QR...')));
     await PrinterService().printCustomerQR(customer.toMap());
   }
 
@@ -611,7 +823,7 @@ class _CustomerSelectionScreenState extends State<CustomerSelectionScreen> {
                                           const SizedBox(width: 4),
                                           Flexible(
                                             child: Text(
-                                              'Last Visited: ${customer.lastVisitDate!.split(' ')[0]}',
+                                              _formatDateToMinutes(customer.lastVisitDate!),
                                               style: const TextStyle(
                                                 fontSize: 12,
                                                 fontWeight: FontWeight.w600,
@@ -741,16 +953,16 @@ class _CustomerSelectionScreenState extends State<CustomerSelectionScreen> {
                             ],
                           ),
                         ),
-                      if (customer.email != null && customer.email!.isNotEmpty)
+                      if (_getDistanceString(customer) != null)
                         Padding(
                           padding: const EdgeInsets.only(top: 2),
                           child: Row(
                             children: [
-                              Icon(Icons.email, size: 12, color: Theme.of(context).textTheme.bodyMedium?.color?.withOpacity(0.5)),
+                              Icon(Icons.location_on, size: 12, color: Theme.of(context).textTheme.bodyMedium?.color?.withOpacity(0.5)),
                               const SizedBox(width: 4),
                               Expanded(
                                 child: Text(
-                                  customer.email!, 
+                                  _getDistanceString(customer)!, 
                                   style: TextStyle(fontSize: 12, color: Theme.of(context).textTheme.bodyMedium?.color?.withOpacity(0.7)),
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
@@ -778,7 +990,7 @@ class _CustomerSelectionScreenState extends State<CustomerSelectionScreen> {
                                   const SizedBox(width: 4),
                                   Flexible(
                                     child: Text(
-                                      'Last Visited: ${customer.lastVisitDate!.split(' ')[0]}',
+                                      _formatDateToMinutes(customer.lastVisitDate!),
                                       style: const TextStyle(
                                         fontSize: 11,
                                         fontWeight: FontWeight.w600,

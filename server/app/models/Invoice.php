@@ -170,12 +170,19 @@ class Invoice extends Model {
         if (!empty($filters['customer_id'])) {
             $sql .= " AND i.customer_id = :customer_id";
         }
+        if (!empty($filters['start_date']) && !empty($filters['end_date'])) {
+            $sql .= " AND i.issue_date >= :start_date AND i.issue_date <= :end_date";
+        }
 
         $sql .= " ORDER BY i.created_at DESC";
 
         $this->db->query($sql);
         if (!empty($filters['status'])) $this->db->bind(':status', $filters['status']);
         if (!empty($filters['customer_id'])) $this->db->bind(':customer_id', $filters['customer_id']);
+        if (!empty($filters['start_date']) && !empty($filters['end_date'])) {
+            $this->db->bind(':start_date', $filters['start_date']);
+            $this->db->bind(':end_date', $filters['end_date']);
+        }
 
         return $this->db->resultSet();
     }

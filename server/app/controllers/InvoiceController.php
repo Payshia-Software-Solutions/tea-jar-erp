@@ -18,9 +18,14 @@ class InvoiceController extends Controller {
             return;
         }
 
+        $startDate = $_GET['start_date'] ?? $_GET['date'] ?? null;
+        $endDate = $_GET['end_date'] ?? $_GET['date'] ?? null;
+
         $filters = [
             'status' => $_GET['status'] ?? null,
-            'customer_id' => $_GET['customer_id'] ?? null
+            'customer_id' => $_GET['customer_id'] ?? null,
+            'start_date' => $startDate,
+            'end_date' => $endDate
         ];
 
         $invoices = $this->invoiceModel->getAll($filters);
