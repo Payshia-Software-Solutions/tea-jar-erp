@@ -933,4 +933,25 @@ class ApiService {
       return false;
     }
   }
+
+  Future<bool> syncTrackingLogs(List<Map<String, dynamic>> logs) async {
+    final token = await getToken();
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/tracking/sync'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+        body: jsonEncode({'logs': logs}),
+      ).timeout(const Duration(seconds: 15));
+
+      if (response.statusCode == 200) {
+        return true;
+      }
+      return false;
+    } catch (e) {
+      return false;
+    }
+  }
 }

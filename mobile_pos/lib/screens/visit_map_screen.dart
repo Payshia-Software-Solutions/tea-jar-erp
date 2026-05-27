@@ -39,6 +39,7 @@ class _VisitMapScreenState extends State<VisitMapScreen> {
   DateTime _endDate = DateTime.now();
   
   bool _isLoading = false;
+  List<LatLng> _rawTrackingPoints = [];
   List<LatLng> _trackingRoute = [];
   List<Marker> _customerMarkers = [];
   List<TimelineEvent> _timelineEvents = [];
@@ -127,6 +128,8 @@ class _VisitMapScreenState extends State<VisitMapScreen> {
       final rawRoute = trackingData
           .map((e) => LatLng(double.parse(e['latitude'].toString()), double.parse(e['longitude'].toString())))
           .toList();
+          
+      _rawTrackingPoints = rawRoute;
           
       // Snap to road
       _trackingRoute = await _getRoadSnappedRoute(rawRoute);
@@ -349,6 +352,15 @@ class _VisitMapScreenState extends State<VisitMapScreen> {
                     ),
                 ],
               ),
+              CircleLayer(
+                circles: _rawTrackingPoints.map((point) => CircleMarker(
+                  point: point,
+                  radius: 4,
+                  color: Colors.redAccent,
+                  borderColor: Colors.white,
+                  borderStrokeWidth: 1.5,
+                )).toList(),
+              ),
               MarkerLayer(
                 markers: _customerMarkers,
               ),
@@ -403,30 +415,83 @@ class _VisitMapScreenState extends State<VisitMapScreen> {
                   itemCount: _timelineEvents.length,
                   itemBuilder: (context, index) {
                     final event = _timelineEvents[index];
-                    return Card(
-                      margin: const EdgeInsets.only(bottom: 12),
-                      elevation: 2,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                      child: ListTile(
-                        leading: CircleAvatar(
-                          backgroundColor: event.iconColor.withOpacity(0.2),
-                          child: Icon(event.icon, color: event.iconColor),
-                        ),
-                        title: Text(event.title, style: const TextStyle(fontWeight: FontWeight.bold)),
-                        subtitle: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            if (event.subtitle != null) ...[
-                              const SizedBox(height: 4),
-                              Text(event.subtitle!),
-                            ],
-                            const SizedBox(height: 4),
-                            Text(
-                              DateFormat('MMM dd, yyyy - hh:mm a').format(event.time),
-                              style: TextStyle(fontSize: 12, color: Theme.of(context).textTheme.bodySmall?.color),
+                    return IntrinsicHeight(
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          // Left Time
+                          Container(
+                            width: 65,
+                            alignment: Alignment.topLeft,
+                            padding: const EdgeInsets.only(top: 14),
+                            child: Text(
+                              DateFormat('hh:mm a\nMMM dd').format(event.time),
+                              style: const TextStyle(fontSize: 10, color: Colors.grey),
+                              textAlign: TextAlign.right,
                             ),
-                          ],
-                        ),
+                          ),
+                          const SizedBox(width: 12),
+                          // Middle Line & Dot
+                          Column(
+                            children: [
+                              Container(
+                                margin: const EdgeInsets.only(top: 16),
+                                width: 12,
+                                height: 12,
+                                decoration: BoxDecoration(
+                                  color: event.iconColor,
+                                  shape: BoxShape.circle,
+                                  border: Border.all(color: Colors.white, width: 2),
+                                  boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 2)],
+                                ),
+                              ),
+                              if (index != _timelineEvents.length - 1)
+                                Expanded(
+                                  child: Container(
+                                    width: 2,
+                                    color: Colors.grey[300],
+                                  ),
+                                ),
+                            ],
+                          ),
+                          const SizedBox(width: 12),
+                          // Right Content
+                          Expanded(
+                            child: Container(
+                              margin: const EdgeInsets.only(bottom: 16, top: 4),
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                color: isDark ? Colors.grey[900] : Colors.white,
+                                borderRadius: BorderRadius.circular(12),
+                                boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 4, offset: Offset(0, 2))],
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    children: [
+                                      Icon(event.icon, size: 16, color: event.iconColor),
+                                      const SizedBox(width: 6),
+                                      Expanded(
+                                        child: Text(
+                                          event.title, 
+                                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  if (event.subtitle != null) ...[
+                                    const SizedBox(height: 6),
+                                    Text(
+                                      event.subtitle!, 
+                                      style: TextStyle(fontSize: 11, color: isDark ? Colors.grey[400] : Colors.grey[700]),
+                                    ),
+                                  ],
+                                ],
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                     );
                   },

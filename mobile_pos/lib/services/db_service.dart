@@ -21,7 +21,7 @@ class DbService {
 
     return await openDatabase(
       path,
-      version: 1,
+      version: 2,
       onCreate: (Database db, int version) async {
         await db.execute('''
           CREATE TABLE products (
@@ -42,6 +42,26 @@ class DbService {
             created_at TEXT
           )
         ''');
+        await db.execute('''
+          CREATE TABLE offline_tracking_logs (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            latitude REAL,
+            longitude REAL,
+            created_at TEXT
+          )
+        ''');
+      },
+      onUpgrade: (Database db, int oldVersion, int newVersion) async {
+        if (oldVersion < 2) {
+          await db.execute('''
+            CREATE TABLE offline_tracking_logs (
+              id INTEGER PRIMARY KEY AUTOINCREMENT,
+              latitude REAL,
+              longitude REAL,
+              created_at TEXT
+            )
+          ''');
+        }
       },
     );
   }
@@ -98,6 +118,32 @@ class DbService {
       'offline_invoices',
       where: 'id = ?',
       whereArgs: [tempId],
+    );
+  }
+
+  // --- Offline Tracking Logs ---
+  Future<void> saveOfflineTrackingLog(double latitude, double longitude) async {
+    final db = await database;
+    await db.insert('offline_tracking_logs', {
+      'latitude': latitude,
+      'longitude': longitude,
+      'created_at': DateTime.now().toIso8601String(),
+    });
+  }
+
+  Future<List<Map<String, dynamic>>> getOfflineTrackingLogs() async {
+    final db = await database;
+    return await db.query('offline_tracking_logs', orderBy: 'id ASC');
+  }
+
+  Future<void> deleteOfflineTrackingLogs(List<int> ids) async {
+    if (ids.isEmpty) return;
+    final db = await database;
+    // SQLite limits parameters, but for small batches this is fine.
+    await db.delete(
+      'offline_tracking_logs',
+      where: 'id IN (${ids.map((_) => '?').join(', ')})',
+      whereArgs: ids,
     );
   }
 }

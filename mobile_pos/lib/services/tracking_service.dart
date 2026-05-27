@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:geolocator/geolocator.dart';
 import 'package:workmanager/workmanager.dart';
 import 'api_service.dart';
+import 'db_service.dart';
 
 const String trackingTaskKey = "com.payshia.trackingTask";
 
@@ -12,7 +13,22 @@ void callbackDispatcher() {
       final position = await Geolocator.getCurrentPosition(
         desiredAccuracy: LocationAccuracy.high,
       );
-      await ApiService().sendTrackingLog(position.latitude, position.longitude);
+      
+      // Try to sync offline logs first
+      final offlineLogs = await DbService().getOfflineTrackingLogs();
+      if (offlineLogs.isNotEmpty) {
+        final success = await ApiService().syncTrackingLogs(offlineLogs);
+        if (success) {
+          final syncedIds = offlineLogs.map((e) => e['id'] as int).toList();
+          await DbService().deleteOfflineTrackingLogs(syncedIds);
+        }
+      }
+
+      // Log current
+      final success = await ApiService().sendTrackingLog(position.latitude, position.longitude);
+      if (!success) {
+        await DbService().saveOfflineTrackingLog(position.latitude, position.longitude);
+      }
       return true;
     } catch (e) {
       return false;
@@ -58,16 +74,42 @@ class TrackingService {
 
   void _startForegroundTracking() {
     _foregroundTimer?.cancel();
-    _foregroundTimer = Timer.periodic(const Duration(minutes: 5), (timer) async {
-      try {
-        final position = await Geolocator.getCurrentPosition(
-          desiredAccuracy: LocationAccuracy.high,
-        );
-        await ApiService().sendTrackingLog(position.latitude, position.longitude);
-      } catch (e) {
-        // Log silently
-      }
+    
+    // Log immediately when starting
+    _logCurrentLocation();
+
+    // Then log periodically
+    _foregroundTimer = Timer.periodic(const Duration(minutes: 5), (timer) {
+      _logCurrentLocation();
     });
+  }
+
+  Future<void> _logCurrentLocation() async {
+    try {
+      // 1. Fetch current location immediately
+      final position = await Geolocator.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.high,
+      );
+      
+      // 2. Try to sync any existing offline logs
+      final offlineLogs = await DbService().getOfflineTrackingLogs();
+      if (offlineLogs.isNotEmpty) {
+        final syncSuccess = await ApiService().syncTrackingLogs(offlineLogs);
+        if (syncSuccess) {
+          final syncedIds = offlineLogs.map((e) => e['id'] as int).toList();
+          await DbService().deleteOfflineTrackingLogs(syncedIds);
+        }
+      }
+
+      // 3. Try to upload current location
+      final logSuccess = await ApiService().sendTrackingLog(position.latitude, position.longitude);
+      if (!logSuccess) {
+        // If it fails (no network or server error), save it to SQLite!
+        await DbService().saveOfflineTrackingLog(position.latitude, position.longitude);
+      }
+    } catch (e) {
+      // Log silently
+    }
   }
 
   void stop() {

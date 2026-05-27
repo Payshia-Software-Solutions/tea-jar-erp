@@ -51,18 +51,16 @@ class VisitController extends Controller {
         if ($db->execute()) {
             $this->success(['id' => $db->lastInsertId()], 'Visit logged successfully');
         } else {
-            $this->error('Failed to log visit', 500);
         }
     }
 
     public function today_visits() {
-        // $u = $this->requireAuth();
-        // $userId = $u['sub'] ?? null;
-        // if (!$userId) {
-        //     $this->error('Unauthorized', 401);
-        //     return;
-        // }
-        $userId = 1; // HARDCODED for public test
+        $u = $this->requireAuth();
+        $userId = $u['sub'] ?? null;
+        if (!$userId) {
+            $this->error('Unauthorized', 401);
+            return;
+        }
 
         $db = new Database();
         
