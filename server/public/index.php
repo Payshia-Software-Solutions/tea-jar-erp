@@ -3,6 +3,9 @@
  * Entry Point for the Repair Management API
  */
 
+// Set Server Timezone to Sri Lanka (LK)
+date_default_timezone_set('Asia/Colombo');
+
 // Load Configuration
 require_once '../config/config.php';
 

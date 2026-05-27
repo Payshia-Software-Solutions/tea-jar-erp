@@ -919,9 +919,9 @@ class ApiService {
           'Authorization': 'Bearer $token',
         },
         body: jsonEncode({
-          'user_id': userId,
           'latitude': latitude,
           'longitude': longitude,
+          'created_at': DateTime.now().toIso8601String(),
         }),
       ).timeout(const Duration(seconds: 10));
 

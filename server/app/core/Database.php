@@ -37,6 +37,8 @@ class Database {
         // Create PDO instance
         try {
             $this->dbh = new PDO($dsn, $this->user, $this->pass, $options);
+            // Ensure MySQL uses Sri Lanka time for all CURRENT_TIMESTAMP and datetime functions
+            $this->dbh->exec("SET time_zone = '+05:30'");
             self::$sharedDbh = $this->dbh;
         } catch (PDOException $e) {
             $this->error = $e->getMessage();

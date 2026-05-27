@@ -14,9 +14,16 @@ class TrackingController extends Controller {
             $input = json_decode(file_get_contents('php://input'), true);
             $latitude = isset($input['latitude']) ? $input['latitude'] : null;
             $longitude = isset($input['longitude']) ? $input['longitude'] : null;
+            $createdAt = isset($input['created_at']) ? $input['created_at'] : null;
 
             if ($userId && $latitude && $longitude) {
-                $this->db->query('INSERT INTO device_tracking_logs (user_id, latitude, longitude) VALUES (:user_id, :latitude, :longitude)');
+                if ($createdAt) {
+                    $createdAt = str_replace('T', ' ', substr($createdAt, 0, 19));
+                    $this->db->query('INSERT INTO device_tracking_logs (user_id, latitude, longitude, created_at) VALUES (:user_id, :latitude, :longitude, :created_at)');
+                    $this->db->bind(':created_at', $createdAt);
+                } else {
+                    $this->db->query('INSERT INTO device_tracking_logs (user_id, latitude, longitude) VALUES (:user_id, :latitude, :longitude)');
+                }
                 $this->db->bind(':user_id', $userId);
                 $this->db->bind(':latitude', $latitude);
                 $this->db->bind(':longitude', $longitude);
