@@ -43,7 +43,7 @@ class VisitController extends Controller {
 
         // Ensure column exists
         try {
-            $pdo = $db->getConnection();
+            $pdo = $db->getDb();
             $stmt = $pdo->query("SHOW COLUMNS FROM `customer_visits` LIKE 'device_id'");
             if (!$stmt->fetch()) {
                 $pdo->exec("ALTER TABLE customer_visits ADD COLUMN device_id VARCHAR(100) NULL");
