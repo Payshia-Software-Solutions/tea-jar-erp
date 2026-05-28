@@ -10,7 +10,7 @@ class Part extends Model {
     }
 
     public function getLocationStock($partId, $locationId) {
-        // // $this->ensureSchema();
+        // // // // // $this->ensureSchema();
         $pid = (int)$partId;
         $loc = (int)$locationId;
         if ($pid <= 0 || $loc <= 0) return null;
@@ -60,7 +60,7 @@ class Part extends Model {
     }
 
     public function list($q = '', $supplierId = null) {
-        // // $this->ensureSchema();
+        // // // // // $this->ensureSchema();
         $q = is_string($q) ? trim($q) : '';
         $sid = $supplierId !== null ? (int)$supplierId : 0;
 
@@ -113,7 +113,7 @@ class Part extends Model {
     }
 
     public function listLocationBalances($locationId, $q = '') {
-        // // $this->ensureSchema();
+        // // // // // $this->ensureSchema();
         $locId = (int)$locationId;
         if ($locId <= 0) $locId = 1;
         $q = is_string($q) ? trim($q) : '';
@@ -194,7 +194,7 @@ class Part extends Model {
     }
 
     public function getById($id) {
-        // // $this->ensureSchema();
+        // // // // // $this->ensureSchema();
         $this->db->query("
             SELECT p.*, b.name AS brand_name,
                    s.name AS section_name,
@@ -252,7 +252,7 @@ class Part extends Model {
     }
 
     public function setSuppliers($partId, $supplierIds, $userId = null) {
-        // // $this->ensureSchema();
+        // // // // // $this->ensureSchema();
         $pid = (int)$partId;
         if ($pid <= 0) return false;
         $ids = is_array($supplierIds) ? $supplierIds : [];
@@ -289,7 +289,7 @@ class Part extends Model {
     }
 
     public function create($data, $userId = null) {
-        // // $this->ensureSchema();
+        // // // // // $this->ensureSchema();
         
         $finalSlug = $data['slug'] ?? null;
         if (!$finalSlug) {
@@ -365,7 +365,7 @@ class Part extends Model {
     }
 
     public function update($id, $data, $userId = null) {
-        // // $this->ensureSchema();
+        // // // // // $this->ensureSchema();
         
         $finalSlug = $data['slug'] ?? null;
         if (!$finalSlug) {
@@ -480,7 +480,7 @@ class Part extends Model {
     }
 
     public function setImage($id, $filename, $userId = null) {
-        // // $this->ensureSchema();
+        // // // // // $this->ensureSchema();
         $this->db->query("UPDATE {$this->table} SET image_filename = :fn, updated_by = :u WHERE id = :id");
         $this->db->bind(':fn', $filename);
         $this->db->bind(':u', $userId);
@@ -489,14 +489,14 @@ class Part extends Model {
     }
 
     public function delete($id) {
-        // // $this->ensureSchema();
+        // // // // // $this->ensureSchema();
         $this->db->query("DELETE FROM {$this->table} WHERE id = :id");
         $this->db->bind(':id', (int)$id);
         return $this->db->execute();
     }
 
     public function adjustStock($partId, $qtyChange, $notes = null, $userId = null, $locationId = 1, $movementType = 'ADJUSTMENT', $batchId = null) {
-        // // $this->ensureSchema();
+        // // // // // $this->ensureSchema();
         $pid = (int)$partId;
         $delta = (float)$qtyChange;
         $loc = (int)$locationId;
@@ -555,7 +555,7 @@ class Part extends Model {
      * Deduct Stock using FIFO logic across batches
      */
     public function deductStockFIFO($partId, $qtyToDeduct, $notes = null, $userId = null, $locationId = 1, $movementType = 'SALE', $refTable = null, $refId = null) {
-        // // $this->ensureSchema();
+        // // // // // $this->ensureSchema();
         $pid = (int)$partId;
         $totalNeeded = abs((float)$qtyToDeduct);
         $loc = (int)$locationId;
@@ -646,7 +646,7 @@ class Part extends Model {
     }
 
     public function listMovements($partId, $limit = 200, $locationId = 0, $from = null, $to = null, $offset = 0) {
-        // // $this->ensureSchema();
+        // // // // // $this->ensureSchema();
         $pid = (int)$partId;
         $lim = (int)$limit;
         if ($lim <= 0) $lim = 200;
@@ -743,7 +743,7 @@ class Part extends Model {
     }
 
     public function bulkUpdateDiscount($ids, $type, $value) {
-        // // $this->ensureSchema();
+        // // // // // $this->ensureSchema();
         if (empty($ids)) return false;
         
         $placeholders = implode(',', array_fill(0, count($ids), '?'));
@@ -779,7 +779,7 @@ class Part extends Model {
     }
 
     public function getBySlug($slug) {
-        // // $this->ensureSchema();
+        // // // // // $this->ensureSchema();
         $this->db->query("SELECT id FROM parts WHERE slug = :slug LIMIT 1");
         $this->db->bind(':slug', $slug);
         $row = $this->db->single();
@@ -788,7 +788,7 @@ class Part extends Model {
     }
 
     public function syncSlugs() {
-        // // $this->ensureSchema();
+        // // // // // $this->ensureSchema();
         $this->db->query("SELECT id, part_name FROM parts WHERE slug IS NULL OR slug = ''");
         $items = $this->db->resultSet();
         $count = 0;

@@ -124,7 +124,7 @@ class Vehicle extends Model {
     }
 
     public function create($data, $userId = null) {
-        // // $this->ensureSchema();
+        // // // // // $this->ensureSchema();
         $this->db->query("
             INSERT INTO {$this->table} (customer_id, department_id, make, model, year, vin, image_filename, category, work_type, driver_name, fuel_capacity, external_location, external_make, external_model, service_interval_mileage, created_by, updated_by)
             VALUES (:customer_id, :department_id, :make, :model, :year, :vin, :image_filename, :category, :work_type, :driver_name, :fuel_capacity, :external_location, :external_make, :external_model, :service_interval_mileage, :created_by, :updated_by)
@@ -150,7 +150,7 @@ class Vehicle extends Model {
     }
 
     public function update($id, $data, $userId = null) {
-        // // $this->ensureSchema();
+        // // // // // $this->ensureSchema();
         $this->db->query("
             UPDATE {$this->table}
             SET customer_id = :customer_id,
@@ -207,7 +207,7 @@ class Vehicle extends Model {
     }
 
     public function upsertFromApi($data) {
-        // // $this->ensureSchema();
+        // // // // // $this->ensureSchema();
         // Check if exists
         $this->db->query("SELECT id FROM {$this->table} WHERE external_id = :external_id");
         $this->db->bind(':external_id', $data['external_id']);

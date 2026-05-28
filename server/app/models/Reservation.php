@@ -8,7 +8,7 @@ class Reservation extends Model {
     public function __construct() {
         parent::__construct();
         // Schema migrations should not run on every instantiation
-        // // // $this->ensureSchema();
+        // // // // // // $this->ensureSchema();
     }
 
     public function ensureSchema() { return;

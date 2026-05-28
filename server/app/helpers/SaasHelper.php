@@ -6,19 +6,31 @@
 class SaasHelper {
     private static $config = null;
     private static $cache_ttl = 3600;
+    private static $apiKey = null;
 
     public static function getApiKey() {
+        if (self::$apiKey !== null) return self::$apiKey;
         try {
             // Using a raw PDO connection to avoid potential circular dependencies if Database class is complex
             $pdo = new PDO("mysql:host=" . DB_HOST . ";dbname=" . DB_NAME, DB_USER, DB_PASS);
             $stmt = $pdo->prepare("SELECT setting_value FROM system_settings WHERE setting_key = 'nexus_api_key' LIMIT 1");
             $stmt->execute();
             $row = $stmt->fetch(PDO::FETCH_OBJ);
-            if ($row && !empty($row->setting_value)) return $row->setting_value;
+            if ($row && !empty($row->setting_value)) {
+                self::$apiKey = $row->setting_value;
+                return self::$apiKey;
+            }
         } catch (Exception $e) {}
         
-        if (defined('NEXUS_API_KEY') && !empty(NEXUS_API_KEY)) return NEXUS_API_KEY;
-        if (defined('NEXUS_LICENSE_KEY') && !empty(NEXUS_LICENSE_KEY)) return NEXUS_LICENSE_KEY;
+        if (defined('NEXUS_API_KEY') && !empty(NEXUS_API_KEY)) {
+            self::$apiKey = NEXUS_API_KEY;
+            return self::$apiKey;
+        }
+        if (defined('NEXUS_LICENSE_KEY') && !empty(NEXUS_LICENSE_KEY)) {
+            self::$apiKey = NEXUS_LICENSE_KEY;
+            return self::$apiKey;
+        }
+        self::$apiKey = '';
         return '';
     }
 

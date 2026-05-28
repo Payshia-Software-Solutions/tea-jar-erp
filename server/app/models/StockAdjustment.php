@@ -15,7 +15,7 @@ class StockAdjustment extends Model {
     }
 
     public function list($q = '', $locationId = 1) {
-        // // $this->ensureSchema();
+        // // // // // $this->ensureSchema();
         $locId = (int)$locationId;
         if ($locId <= 0) $locId = 1;
         $q = is_string($q) ? trim($q) : '';
@@ -58,7 +58,7 @@ class StockAdjustment extends Model {
     }
 
     public function getById($id, $locationId = 1) {
-        // // $this->ensureSchema();
+        // // // // // $this->ensureSchema();
         $aid = (int)$id;
         $locId = (int)$locationId;
         if ($locId <= 0) $locId = 1;
@@ -108,7 +108,7 @@ class StockAdjustment extends Model {
      * - For variance = 0 (included for audit), stock is not changed and stock_movements is not written.
      */
     public function create($data, $userId = null, $locationId = 1) {
-        // // $this->ensureSchema();
+        // // // // // $this->ensureSchema();
         $locId = (int)$locationId;
         if ($locId <= 0) $locId = 1;
         $items = isset($data['items']) && is_array($data['items']) ? $data['items'] : [];
