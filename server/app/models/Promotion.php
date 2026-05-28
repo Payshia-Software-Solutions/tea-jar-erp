@@ -288,11 +288,8 @@ class Promotion extends Model {
                     });
 
                     // 3. How many cycles do we have?
-                    $cycles = floor($totalTriggerQty / ($xCount + ($triggerItems === $rewardItems ? $yCount : 0)));
-                    if ($triggerItems !== $rewardItems) {
-                        // If reward is different, cycles is just based on triggers
-                        $cycles = floor($totalTriggerQty / $xCount);
-                    }
+                    // To match the frontend's discount behavior, cycles are based solely on the trigger quantity.
+                    $cycles = floor($totalTriggerQty / $xCount);
                     
                     if ($cycles <= 0) break;
 
