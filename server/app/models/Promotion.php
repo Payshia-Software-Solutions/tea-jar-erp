@@ -133,6 +133,60 @@ class Promotion extends Model {
     }
 
     /**
+     * Get a detailed string explaining why a promotion is rejected for a cart.
+     */
+    public function getPromotionRejectionReason($promoId, $cartItems, $subtotal, $bankId = null, $cardCategory = null, $locationId = null) {
+        $promo = $this->getPromotion($promoId);
+        if (!$promo) return "Promotion ID {$promoId} does not exist.";
+        if (!$promo->is_active) return "Promotion '{$promo->name}' is not active.";
+        
+        $today = date('Y-m-d');
+        if ($promo->start_date && $promo->start_date > $today) return "Promotion '{$promo->name}' has not started yet.";
+        if ($promo->end_date && $promo->end_date < $today) return "Promotion '{$promo->name}' has expired.";
+        
+        if ($locationId && $promo->applicable_locations) {
+            $locs = json_decode($promo->applicable_locations, true) ?: [];
+            if (!in_array((string)$locationId, $locs) && !in_array((int)$locationId, $locs)) {
+                return "Promotion '{$promo->name}' is not applicable at this location.";
+            }
+        }
+
+        // Check conditions
+        if (!empty($promo->conditions)) {
+            foreach ($promo->conditions as $cond) {
+                switch ($cond->condition_type) {
+                    case 'MinAmount':
+                        if ($subtotal < (float)$cond->requirement_value) return "Minimum order amount of {$cond->requirement_value} not met.";
+                        break;
+                    case 'MinQty':
+                        $totalQty = array_reduce($cartItems, function($acc, $item) { return $acc + $item->quantity; }, 0);
+                        if ($totalQty < (int)$cond->requirement_value) return "Minimum quantity of {$cond->requirement_value} not met.";
+                        break;
+                    case 'ItemList':
+                        $required = json_decode($cond->requirement_value, true) ?: [];
+                        $itemIdsInCart = array_map(function($i) { return (int)($i->item_id ?? $i->id ?? 0); }, $cartItems);
+                        $intersect = array_intersect($required, $itemIdsInCart);
+                        if ($cond->operator === 'IN' && empty($intersect)) return "Required promotional items are missing from the cart.";
+                        break;
+                    case 'BankCard':
+                        if (!$bankId || (int)$cond->requirement_value !== (int)$bankId) return "Promotion requires a specific bank card.";
+                        break;
+                    case 'CardCategory':
+                        if ($cond->requirement_value !== 'Any' && $cardCategory !== $cond->requirement_value) return "Promotion requires a {$cond->requirement_value} card.";
+                        break;
+                }
+            }
+        }
+
+        $benefit = $this->calculateBenefitValue($promo, $cartItems, $subtotal);
+        if ($benefit->discount_value <= 0 && empty($benefit->missing_rewards)) {
+            return "Cart does not contain the required combination or quantities of items to trigger the discount.";
+        }
+
+        return "Unknown validation failure.";
+    }
+
+    /**
      * Logic to find the SINGLE BEST promotion for a given cart.
      * $cartItems: Array of objects with [id, quantity, unit_price, collection_id]
      * $bankId: Optional ID of the bank selected during checkout

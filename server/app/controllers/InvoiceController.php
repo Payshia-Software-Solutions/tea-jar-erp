@@ -99,7 +99,15 @@ class InvoiceController extends Controller {
             }
             
             if (!$found) {
-                $this->error('The applied promotion is no longer valid for this cart. Please refresh and try again.', 400);
+                $reason = $promoModel->getPromotionRejectionReason(
+                    $data['applied_promotion_id'],
+                    $itemsObj,
+                    $subtotal,
+                    $data['bank_id'] ?? null,
+                    $data['card_category'] ?? null,
+                    $data['location_id'] ?? null
+                );
+                $this->error('The applied promotion is no longer valid for this cart: ' . $reason . ' Please refresh and try again.', 400);
                 return;
             }
         }
