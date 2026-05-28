@@ -403,14 +403,32 @@ class _CustomerSelectionScreenState extends State<CustomerSelectionScreen> {
 
   Future<void> _handleCheckIn(Customer customer, String type, String reason) async {
     if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Verifying location...'), duration: Duration(seconds: 2))
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (ctx) => AlertDialog(
+          content: Row(
+            children: const [
+              CircularProgressIndicator(),
+              SizedBox(width: 20),
+              Text('Logging...'),
+            ],
+          ),
+        ),
       );
+    }
+
+    // Helper to close dialog safely
+    void closeLoadingDialog() {
+      if (mounted && Navigator.canPop(context)) {
+        Navigator.pop(context);
+      }
     }
 
     // 1. Check permissions
     bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
     if (!serviceEnabled) {
+      closeLoadingDialog();
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Location services are disabled.')));
       return;
     }
@@ -419,12 +437,14 @@ class _CustomerSelectionScreenState extends State<CustomerSelectionScreen> {
     if (permission == LocationPermission.denied) {
       permission = await Geolocator.requestPermission();
       if (permission == LocationPermission.denied) {
+        closeLoadingDialog();
         if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Location permissions are denied')));
         return;
       }
     }
 
     if (permission == LocationPermission.deniedForever) {
+      closeLoadingDialog();
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Location permissions are permanently denied, we cannot request permissions.')));
       return;
     }
@@ -450,6 +470,7 @@ class _CustomerSelectionScreenState extends State<CustomerSelectionScreen> {
         locationSettings: locationSettings,
       );
     } catch (e) {
+      closeLoadingDialog();
       if (mounted) {
         showDialog(
           context: context,
@@ -473,6 +494,7 @@ class _CustomerSelectionScreenState extends State<CustomerSelectionScreen> {
       );
 
       if (distanceInMeters > 50) {
+        closeLoadingDialog();
         if (mounted) {
           showDialog(
             context: context,
@@ -500,6 +522,8 @@ class _CustomerSelectionScreenState extends State<CustomerSelectionScreen> {
       'longitude': position.longitude,
     });
 
+    closeLoadingDialog();
+
     if (success) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Visit logged successfully!')));
@@ -518,7 +542,7 @@ class _CustomerSelectionScreenState extends State<CustomerSelectionScreen> {
         }
       }
     } else {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Failed to log visit to server.')));
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Failed to log visit. Please try again.')));
     }
   }
 
