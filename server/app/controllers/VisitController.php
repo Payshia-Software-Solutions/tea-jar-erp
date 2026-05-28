@@ -29,29 +29,6 @@ class VisitController extends Controller {
         $db = new Database();
         
         // Schema checks removed for performance. The table is already deployed.
-        /*
-        // Ensure table exists (fail-safe for new deployments)
-        /* /* /* /* /* $db->exec("CREATE TABLE IF NOT EXISTS customer_visits (
-            id INT AUTO_INCREMENT PRIMARY KEY, 
-            customer_id INT NOT NULL, 
-            user_id INT NOT NULL, 
-            visit_type VARCHAR(50) NOT NULL, 
-            reason VARCHAR(255) NULL, 
-            latitude DECIMAL(10,8) NULL, 
-            longitude DECIMAL(11,8) NULL, 
-            device_id VARCHAR(100) NULL,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        )");
-
-        // Ensure column exists
-        try {
-            $pdo = $db->getDb();
-            $stmt = $pdo->query("SHOW COLUMNS FROM `customer_visits` LIKE 'device_id'");
-            if (!$stmt->fetch()) {
-                $pdo->exec("ALTER TABLE customer_visits ADD COLUMN device_id VARCHAR(100) NULL");
-            }
-        } catch (Exception $e) {} */ */ */ */ */
-        */
 
         $deviceId = $data['device_id'] ?? null;
 
@@ -81,17 +58,7 @@ class VisitController extends Controller {
         $db = new Database();
         
         // Ensure table exists (fail-safe for new deployments)
-        /* /* /* /* /* $db->exec("CREATE TABLE IF NOT EXISTS customer_visits (
-            id INT AUTO_INCREMENT PRIMARY KEY, 
-            customer_id INT NOT NULL, 
-            user_id INT NOT NULL, 
-            visit_type VARCHAR(50) NOT NULL, 
-            reason VARCHAR(255) NULL, 
-            latitude DECIMAL(10,8) NULL, 
-            longitude DECIMAL(11,8) NULL, 
-            device_id VARCHAR(100) NULL,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        )");
+        // Schema checks removed for performance.
 
         $startDate = $_GET['start_date'] ?? date('Y-m-d');
         $endDate = $_GET['end_date'] ?? date('Y-m-d');
@@ -124,17 +91,7 @@ class VisitController extends Controller {
         $db = new Database();
         
         // Ensure table exists (fail-safe for new deployments)
-        /* /* /* /* /* $db->exec("CREATE TABLE IF NOT EXISTS customer_visits (
-            id INT AUTO_INCREMENT PRIMARY KEY, 
-            customer_id INT NOT NULL, 
-            user_id INT NOT NULL, 
-            visit_type VARCHAR(50) NOT NULL, 
-            reason VARCHAR(255) NULL, 
-            latitude DECIMAL(10,8) NULL, 
-            longitude DECIMAL(11,8) NULL, 
-            device_id VARCHAR(100) NULL,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        )");
+        // Schema checks removed for performance.
 
         $db->query("
             SELECT cv.*, u.name as user_name 
