@@ -293,9 +293,17 @@ class _CartScreenState extends State<CartScreen> {
         final item = Item.fromJson(productJson);
         setState(() {
            _cart.add(CartItem(
-              item: item,
+              item: Item(
+                id: item.id,
+                name: item.name,
+                price: 0.0,
+                stockLevel: item.stockLevel,
+                imageUrl: item.imageUrl,
+                sku: item.sku,
+                itemType: item.itemType,
+              ),
               quantity: qty.toDouble(),
-              discount: item.price * (pct / 100),
+              discount: 0,
               isReward: true,
            ));
            _appliedPromotion = promo;
@@ -306,31 +314,29 @@ class _CartScreenState extends State<CartScreen> {
   }
 
   Map<String, dynamic> _calculateTotals() {
-    double subtotal = 0;
+    double grossSubtotal = 0;
+    double lineDiscountTotal = 0;
+    double promoDiscountTotal = 0;
+
     for (var cartItem in _cart) {
-      subtotal += cartItem.subtotal;
+      grossSubtotal += (cartItem.item.price * cartItem.quantity);
+      lineDiscountTotal += cartItem.discount; // discount is total line discount
+      promoDiscountTotal += cartItem.promoDiscount; // promoDiscount is total line promo discount
     }
 
-    double promoDiscountAmt = _appliedPromotion != null ? (_appliedPromotion!['discount_value'] as num).toDouble() : 0.0;
-    double rewardLineDiscounts = 0;
-    for (var c in _cart) {
-      if (c.isReward) {
-        rewardLineDiscounts += c.discount * c.quantity;
-      }
-    }
-    promoDiscountAmt -= rewardLineDiscounts;
-    if (promoDiscountAmt < 0) promoDiscountAmt = 0;
+    // The subtotal displayed in the UI usually means Gross Subtotal
+    double netSubtotal = grossSubtotal - lineDiscountTotal - promoDiscountTotal;
 
-    double billDiscountAmt = promoDiscountAmt;
+    double billDiscountAmt = 0;
     if (_billDiscountValue > 0) {
       if (_billDiscountType == 'percentage') {
-        billDiscountAmt = subtotal * (_billDiscountValue / 100);
+        billDiscountAmt = netSubtotal * (_billDiscountValue / 100);
       } else {
         billDiscountAmt = _billDiscountValue;
       }
     }
 
-    double taxableAmount = subtotal - billDiscountAmt;
+    double taxableAmount = netSubtotal - billDiscountAmt;
     if (taxableAmount < 0) taxableAmount = 0;
     double currentBase = taxableAmount;
     double taxSum = 0;
@@ -381,11 +387,12 @@ class _CartScreenState extends State<CartScreen> {
     double grandTotal = taxableAmount + taxSum;
 
     return {
-      'subtotal': subtotal,
+      'subtotal': grossSubtotal,
+      'net_subtotal': netSubtotal, // keep this if needed elsewhere
       'discount_total': billDiscountAmt,
       'discount_type': _billDiscountType,
       'discount_value': _billDiscountValue,
-      'promo_discount': promoDiscountAmt,
+      'promo_discount': promoDiscountTotal,
       'tax_total': taxSum,
       'grand_total': grandTotal,
       'applied_taxes': appliedTaxes,
@@ -407,10 +414,10 @@ class _CartScreenState extends State<CartScreen> {
       'order_type': widget.orderType ?? 'Retail',
       'table_id': widget.tableId,
       'steward_id': widget.stewardId,
-      'subtotal': totals['subtotal'],
+      'subtotal': totals['net_subtotal'],
       'tax_total': totals['tax_total'],
       'applied_taxes': totals['applied_taxes'],
-      'discount_total': totals['promo_discount'],
+      'discount_total': totals['discount_total'] ?? 0.0,
       'grand_total': totals['grand_total'],
       'applied_promotion_id': _appliedPromotion != null ? int.tryParse(_appliedPromotion!['promotion_id']?.toString() ?? '') : null,
       'applied_promotion_name': _appliedPromotion != null ? _appliedPromotion!['name'] : null,
@@ -421,7 +428,7 @@ class _CartScreenState extends State<CartScreen> {
         'item_type': c.item.itemType ?? 'Part',
         'quantity': c.quantity,
         'unit_price': c.item.price,
-        'discount': c.discount,
+        'discount': (c.discount + c.promoDiscount) / (c.quantity > 0 ? c.quantity : 1),
         'is_reward': c.isReward ? 1 : 0,
         'line_total': c.subtotal,
       }).toList(),
@@ -538,7 +545,7 @@ class _CartScreenState extends State<CartScreen> {
           customer: widget.customer,
           cart: _cart,
           grandTotal: totals['grand_total'],
-          subtotal: totals['subtotal'],
+          subtotal: totals['net_subtotal'],
           taxTotal: totals['tax_total'],
           appliedTaxes: totals['applied_taxes'],
           discountTotal: totals['discount_total'] ?? 0.0,
@@ -776,7 +783,7 @@ class _CartScreenState extends State<CartScreen> {
                                     ),
                                     if ((cartItem.discount + cartItem.promoDiscount) > 0)
                                       Text(
-                                        'Discount: -${_formatCurrency(cartItem.discount + cartItem.promoDiscount)}',
+                                        'Discount: -${_formatCurrency((cartItem.discount + cartItem.promoDiscount) / (cartItem.quantity > 0 ? cartItem.quantity : 1))}',
                                         style: const TextStyle(color: Colors.redAccent, fontSize: 12)
                                       ),
                                   ],
@@ -860,12 +867,12 @@ class _CartScreenState extends State<CartScreen> {
                             ],
                           ),
                           const SizedBox(height: 8),
-                          if (_appliedPromotion != null)
+                          if (_appliedPromotion != null || totals['promo_discount'] > 0)
                              Row(
                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                children: [
                                  Text(
-                                   'Promo: ${_appliedPromotion!['name']} :',
+                                   _appliedPromotion != null ? 'Promo: ${_appliedPromotion!['name']} :' : 'Promo Discount :',
                                    style: const TextStyle(color: Colors.green, fontSize: 15, fontWeight: FontWeight.bold),
                                  ),
                                  Text('-${_formatCurrency(totals['promo_discount'])}', style: const TextStyle(color: Colors.green, fontWeight: FontWeight.bold, fontSize: 15)),
@@ -902,7 +909,7 @@ class _CartScreenState extends State<CartScreen> {
                           Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
-                              const Text('TOTAL', style: TextStyle(color: Colors.black87, fontSize: 16, fontWeight: FontWeight.bold)),
+                              Text('TOTAL', style: TextStyle(color: Theme.of(context).textTheme.bodyLarge?.color, fontSize: 16, fontWeight: FontWeight.bold)),
                               Text(_formatCurrency(grandTotal), style: const TextStyle(color: Colors.teal, fontSize: 32, fontWeight: FontWeight.w900)),
                             ],
                           ),

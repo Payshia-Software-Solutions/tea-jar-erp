@@ -247,8 +247,15 @@ class Promotion extends Model {
                     $rewardPool = [];
                     foreach ($cartRewardMatches as $item) {
                         $itemId = (int)($item->item_id ?? $item->id ?? 0);
+                        $itemPrice = (float)$item->unit_price;
+                        if ($itemPrice == 0) {
+                            $this->db->query("SELECT price FROM parts WHERE id = :id");
+                            $this->db->bind(':id', $itemId);
+                            $r = $this->db->single();
+                            if ($r) $itemPrice = (float)$r->price;
+                        }
                         for ($i = 0; $i < $item->quantity; $i++) {
-                            $rewardPool[] = (object)['id' => $itemId, 'price' => (float)$item->unit_price];
+                            $rewardPool[] = (object)['id' => $itemId, 'price' => $itemPrice];
                         }
                     }
                     usort($rewardPool, function($a, $b) { return $a->price <=> $b->price; });

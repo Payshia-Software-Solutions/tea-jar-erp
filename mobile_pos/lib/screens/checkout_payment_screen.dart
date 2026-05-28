@@ -161,7 +161,7 @@ class _CheckoutPaymentScreenState extends State<CheckoutPaymentScreen> {
           'item_type': cartItem.item.itemType ?? 'Part',
           'quantity': cartItem.quantity,
           'unit_price': cartItem.item.price,
-          'discount': cartItem.discount + cartItem.promoDiscount,
+          'discount': (cartItem.discount + cartItem.promoDiscount) / (cartItem.quantity > 0 ? cartItem.quantity : 1),
           'tax_amount': 0,
           'line_total': cartItem.subtotal,
         };

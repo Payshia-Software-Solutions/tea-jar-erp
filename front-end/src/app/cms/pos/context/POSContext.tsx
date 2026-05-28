@@ -767,8 +767,8 @@ export const POSProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         description: (product.part_name || product.description) + " (Reward)",
         item_type: product.item_type === "Service" ? "Service" : "Part",
         quantity: reward.qty,
-        unit_price: Number(product.price || 0),
-        discount: Number(product.price || 0), // 100% discount
+        unit_price: 0, // Explicitly zero for easier tracking of free items
+        discount: 0,
         is_reward: true,
         promotion_id: promo.promotion_id
       };
