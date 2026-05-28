@@ -92,7 +92,7 @@ class StockTransfer extends Model {
     }
 
     public function listByLocations($locationIds = []) {
-        // // // // // $this->ensureSchema();
+        // // // // // // $this->ensureSchema();
         $ids = array_values(array_filter(array_map('intval', (array)$locationIds), function($x) { return $x > 0; }));
         if (count($ids) === 0) return [];
         $in = implode(',', array_fill(0, count($ids), '?'));
@@ -128,7 +128,7 @@ class StockTransfer extends Model {
     }
 
     public function getById($id) {
-        // // // // // $this->ensureSchema();
+        // // // // // // $this->ensureSchema();
         $this->db->query("
             SELECT r.*, 
                    lf.name AS from_location_name,
@@ -160,7 +160,7 @@ class StockTransfer extends Model {
     }
 
     public function create($data, $userId = null) {
-        // // // // // $this->ensureSchema();
+        // // // // // // $this->ensureSchema();
         $fromId = (int)($data['from_location_id'] ?? $data['fromLocationId'] ?? 0);
         $toId = (int)($data['to_location_id'] ?? $data['toLocationId'] ?? 0);
         $reqId = (int)($data['requisition_id'] ?? $data['requisitionId'] ?? 0);
@@ -318,7 +318,7 @@ class StockTransfer extends Model {
     }
 
     public function receive($id, $userId = null) {
-        // // // // // $this->ensureSchema();
+        // // // // // // $this->ensureSchema();
         $tid = (int)$id;
         if ($tid <= 0) return ['error' => 'Invalid transfer'];
 

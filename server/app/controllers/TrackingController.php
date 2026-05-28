@@ -65,38 +65,64 @@ class TrackingController extends Controller {
 
             if (!empty($logs)) {
                 $successCount = 0;
-                $this->db->beginTransaction();
-                try {
-                    foreach ($logs as $log) {
-                        $lat = $log['latitude'] ?? null;
-                        $lng = $log['longitude'] ?? null;
-                        
-                        // Offline logs from the app's SQLite DB currently send 'created_at', 
-                        // but we will treat it as the 'app_time' (the time it was recorded offline).
-                        // We also support 'app_time' natively if the app sends it directly.
-                        $appTime = $log['app_time'] ?? $log['created_at'] ?? $createdAt;
-                        
-                        if ($lat && $lng) {
-                            $appTime = str_replace('T', ' ', substr($appTime, 0, 19));
-                            
-                            $this->db->query('INSERT INTO device_tracking_logs (user_id, latitude, longitude, created_at, app_time) VALUES (:user_id, :latitude, :longitude, :created_at, :app_time)');
-                            $this->db->bind(':user_id', $userId);
-                            $this->db->bind(':latitude', $lat);
-                            $this->db->bind(':longitude', $lng);
-                            $this->db->bind(':created_at', $createdAt);
-                            $this->db->bind(':app_time', $appTime);
-                            if ($this->db->execute()) {
-                                $successCount++;
-                            }
-                        }
+                
+                // Filter and compile valid logs first
+                $validLogs = [];
+                foreach ($logs as $log) {
+                    $lat = $log['latitude'] ?? null;
+                    $lng = $log['longitude'] ?? null;
+                    
+                    // Offline logs from the app's SQLite DB currently send 'created_at', 
+                    // but we will treat it as the 'app_time' (the time it was recorded offline).
+                    // We also support 'app_time' natively if the app sends it directly.
+                    $appTime = $log['app_time'] ?? $log['created_at'] ?? $createdAt;
+                    
+                    if ($lat && $lng) {
+                        $appTime = str_replace('T', ' ', substr($appTime, 0, 19));
+                        $validLogs[] = [
+                            'user_id' => $userId,
+                            'latitude' => $lat,
+                            'longitude' => $lng,
+                            'created_at' => $createdAt,
+                            'app_time' => $appTime
+                        ];
                     }
-                    $this->db->commit();
-                } catch (Exception $e) {
-                    $this->db->rollBack();
-                    http_response_code(500);
-                    echo json_encode(['status' => 'error', 'message' => 'Sync failed: ' . $e->getMessage()]);
-                    return;
                 }
+                
+                if (!empty($validLogs)) {
+                    // Build a single bulk INSERT query:
+                    // INSERT INTO device_tracking_logs (user_id, latitude, longitude, created_at, app_time) VALUES (?,?,?,?,?), (?,?,?,?,?), ...
+                    $sql = 'INSERT INTO device_tracking_logs (user_id, latitude, longitude, created_at, app_time) VALUES ';
+                    $rowPlaceholders = [];
+                    $params = [];
+                    
+                    foreach ($validLogs as $logData) {
+                        $rowPlaceholders[] = '(?, ?, ?, ?, ?)';
+                        $params[] = $logData['user_id'];
+                        $params[] = $logData['latitude'];
+                        $params[] = $logData['longitude'];
+                        $params[] = $logData['created_at'];
+                        $params[] = $logData['app_time'];
+                    }
+                    
+                    $sql .= implode(', ', $rowPlaceholders);
+                    
+                    $this->db->beginTransaction();
+                    try {
+                        $pdo = $this->db->getDb();
+                        $stmt = $pdo->prepare($sql);
+                        if ($stmt->execute($params)) {
+                            $successCount = count($validLogs);
+                        }
+                        $this->db->commit();
+                    } catch (Exception $e) {
+                        $this->db->rollBack();
+                        http_response_code(500);
+                        echo json_encode(['status' => 'error', 'message' => 'Sync failed: ' . $e->getMessage()]);
+                        return;
+                    }
+                }
+                
                 echo json_encode(['status' => 'success', 'message' => "Synced $successCount logs"]);
                 return;
             }

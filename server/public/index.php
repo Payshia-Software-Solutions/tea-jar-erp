@@ -94,8 +94,8 @@ require_once '../app/helpers/ShippingCarrierSchema.php';
 
 // Schema checks should be run via a dedicated migration script or endpoint.
 // Running them on every request causes massive performance issues and DB locks.
-// // // // // CityPostalSchema::ensure();
-// // // // // ShippingCarrierSchema::ensure();
-// // // // // SystemSchema::ensure();
+// // // // // // CityPostalSchema::ensure();
+// // // // // // ShippingCarrierSchema::ensure();
+// // // // // // SystemSchema::ensure();
 
 $init = new App();

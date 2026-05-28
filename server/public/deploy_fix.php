@@ -1,5 +1,5 @@
 <?php
-// Fixes the ensureSchema(), SaasHelper cache, database timezones, tracking transactional sync, and database lock issues on the live server.
+// Fixes the ensureSchema(), SaasHelper cache, database timezones, tracking transactional bulk sync, and database lock issues on the live server.
 // Upload this file to the public/ directory of your server and run it via browser:
 // https://server-kdu-service.payshia.com/deploy_fix.php
 
@@ -207,30 +207,158 @@ if (file_exists($dbFile)) {
     }
 }
 
-// --- Part 9: Fix TrackingController transactional sync ---
+// --- Part 9: Fix TrackingController transactional bulk sync ---
 $tcFile = __DIR__ . '/../app/controllers/TrackingController.php';
 if (file_exists($tcFile)) {
     $content = file_get_contents($tcFile);
     $originalContent = $content;
     
-    // Wrap sync loop in transaction if missing
-    if (strpos($content, 'beginTransaction()') === false) {
-        $content = preg_replace(
-            '/if\s*\(\s*\!empty\s*\(\s*\$logs\s*\)\s*\)\s*\{\s*\$successCount\s*=\s*0\s*;\s*foreach\s*\(\s*\$logs\s+as\s+\$log\s*\)\s*\{/i',
-            "if (!empty(\$logs)) {\n                \$successCount = 0;\n                \$this->db->beginTransaction();\n                try {\n                    foreach (\$logs as \$log) {",
-            $content
-        );
-        
-        $content = preg_replace(
-            '/(\}\s*\}\s*echo\s+json_encode\s*\(\s*\[\s*\'status\'\s*=>\s*\'success\'\s*,\s*\'message\'\s*=>\s*["\']Synced\s+\$successCount\s+logs["\']\s*\]\s*\)\s*;)/i',
-            "}\n                    \$this->db->commit();\n                } catch (Exception \$e) {\n                    \$this->db->rollBack();\n                    http_response_code(500);\n                    echo json_encode(['status' => 'error', 'message' => 'Sync failed: ' . \$e->getMessage()]);\n                    return;\n                }\n                echo json_encode(['status' => 'success', 'message' => \"Synced \$successCount logs\"]);",
-            $content
-        );
+    // Wrap sync loop in transaction and use bulk insert if not already using bulk query
+    if (strpos($content, 'rowPlaceholders') === false) {
+        $oldSyncMethodBody = '    public function sync() {
+        if ($_SERVER[\'REQUEST_METHOD\'] == \'POST\') {
+            $u = $this->requireAuth();
+            $userId = $u[\'sub\'] ?? null;
+            if (!$userId) {
+                http_response_code(401);
+                echo json_encode([\'status\' => \'error\', \'message\' => \'Unauthorized\']);
+                return;
+            }
+
+            date_default_timezone_set(\'Asia/Colombo\');
+            $createdAt = date(\'Y-m-d H:i:s\'); // the time the sync batch arrived
+
+            $input = json_decode(file_get_contents(\'php://input\'), true);
+            $logs = isset($input[\'logs\']) ? $input[\'logs\'] : [];
+
+            if (!empty($logs)) {
+                $successCount = 0;
+                foreach ($logs as $log) {
+                    $lat = $log[\'latitude\'] ?? null;
+                    $lng = $log[\'longitude\'] ?? null;
+                    
+                    // Offline logs from the app\'s SQLite DB currently send \'created_at\', 
+                    // but we will treat it as the \'app_time\' (the time it was recorded offline).
+                    // We also support \'app_time\' natively if the app sends it directly.
+                    $appTime = $log[\'app_time\'] ?? $log[\'created_at\'] ?? $createdAt;
+                    
+                    if ($lat && $lng) {
+                        $appTime = str_replace(\'T\', \' \', substr($appTime, 0, 19));
+                        
+                        $this->db->query(\'INSERT INTO device_tracking_logs (user_id, latitude, longitude, created_at, app_time) VALUES (:user_id, :latitude, :longitude, :created_at, :app_time)\');
+                        $this->db->bind(\':user_id\', $userId);
+                        $this->db->bind(\':latitude\', $lat);
+                        $this->db->bind(\':longitude\', $lng);
+                        $this->db->bind(\':created_at\', $createdAt);
+                        $this->db->bind(\':app_time\', $appTime);
+                        if ($this->db->execute()) {
+                            $successCount++;
+                        }
+                    }
+                }
+                echo json_encode([\'status\' => \'success\', \'message\' => "Synced $successCount logs"]);
+                return;
+            }
+            
+            http_response_code(400);
+            echo json_encode([\'status\' => \'error\', \'message\' => \'No valid logs provided\']);
+        } else {
+            http_response_code(405);
+            echo json_encode([\'status\' => \'error\', \'message\' => \'Method not allowed\']);
+        }
+    }';
+
+        $newSyncMethodBody = '    public function sync() {
+        if ($_SERVER[\'REQUEST_METHOD\'] == \'POST\') {
+            $u = $this->requireAuth();
+            $userId = $u[\'sub\'] ?? null;
+            if (!$userId) {
+                http_response_code(401);
+                echo json_encode([\'status\' => \'error\', \'message\' => \'Unauthorized\']);
+                return;
+            }
+
+            date_default_timezone_set(\'Asia/Colombo\');
+            $createdAt = date(\'Y-m-d H:i:s\'); // the time the sync batch arrived
+
+            $input = json_decode(file_get_contents(\'php://input\'), true);
+            $logs = isset($input[\'logs\']) ? $input[\'logs\'] : [];
+
+            if (!empty($logs)) {
+                $successCount = 0;
+                
+                // Filter and compile valid logs first
+                $validLogs = [];
+                foreach ($logs as $log) {
+                    $lat = $log[\'latitude\'] ?? null;
+                    $lng = $log[\'longitude\'] ?? null;
+                    
+                    $appTime = $log[\'app_time\'] ?? $log[\'created_at\'] ?? $createdAt;
+                    
+                    if ($lat && $lng) {
+                        $appTime = str_replace(\'T\', \' \', substr($appTime, 0, 19));
+                        $validLogs[] = [
+                            \'user_id\' => $userId,
+                            \'latitude\' => $lat,
+                            \'longitude\' => $lng,
+                            \'created_at\' => $createdAt,
+                            \'app_time\' => $appTime
+                        ];
+                    }
+                }
+                
+                if (!empty($validLogs)) {
+                    // Build a single bulk INSERT query:
+                    $sql = \'INSERT INTO device_tracking_logs (user_id, latitude, longitude, created_at, app_time) VALUES \';
+                    $rowPlaceholders = [];
+                    $params = [];
+                    
+                    foreach ($validLogs as $logData) {
+                        $rowPlaceholders[] = \'(?, ?, ?, ?, ?)\';
+                        $params[] = $logData[\'user_id\'];
+                        $params[] = $logData[\'latitude\'];
+                        $params[] = $logData[\'longitude\'];
+                        $params[] = $logData[\'created_at\'];
+                        $params[] = $logData[\'app_time\'];
+                    }
+                    
+                    $sql .= implode(\', \', $rowPlaceholders);
+                    
+                    $this->db->beginTransaction();
+                    try {
+                        $pdo = $this->db->getDb();
+                        $stmt = $pdo->prepare($sql);
+                        if ($stmt->execute($params)) {
+                            $successCount = count($validLogs);
+                        }
+                        $this->db->commit();
+                    } catch (Exception $e) {
+                        $this->db->rollBack();
+                        http_response_code(500);
+                        echo json_encode([\'status\' => \'error\', \'message\' => \'Sync failed: \' . $e->getMessage()]);
+                        return;
+                    }
+                }
+                
+                echo json_encode([\'status\' => \'success\', \'message\' => "Synced \$successCount logs"]);
+                return;
+            }
+            
+            http_response_code(400);
+            echo json_encode([\'status\' => \'error\', \'message\' => \'No valid logs provided\']);
+        } else {
+            http_response_code(405);
+            echo json_encode([\'status\' => \'error\', \'message\' => \'Method not allowed\']);
+        }
+    }';
+
+        // Apply replacement directly (handling CRLF vs LF)
+        $content = str_replace(str_replace("\r\n", "\n", $oldSyncMethodBody), str_replace("\r\n", "\n", $newSyncMethodBody), str_replace("\r\n", "\n", $content));
     }
     
     if ($content !== $originalContent) {
         file_put_contents($tcFile, $content);
-        echo "Patched TrackingController.php transactional sync.\n";
+        echo "Patched TrackingController.php transactional bulk sync.\n";
     }
 }
 

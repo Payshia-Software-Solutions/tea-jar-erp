@@ -351,11 +351,11 @@ class AdminController extends Controller {
     
         // Ensure column exists (older installs).
         /*
-        /* /* /* /* try {
+        /* /* /* /* /* try {
             $this->db->exec("ALTER TABLE users ADD COLUMN is_active TINYINT(1) NOT NULL DEFAULT 1");
         } catch (Exception $e) {
             // ignore (exists)
-        } */ */ */ */
+        } */ */ */ */ */
         */
 
         $this->db->query("UPDATE users SET is_active = :is_active WHERE id = :id");
