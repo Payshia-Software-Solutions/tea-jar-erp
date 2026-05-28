@@ -240,12 +240,12 @@ class Invoice extends Model {
                 invoice_no, order_id, online_order_id, location_id, customer_id, billing_address, shipping_address, issue_date, due_date, 
                 subtotal, tax_total, discount_total, shipping_fee, grand_total, order_type, table_id, steward_id, notes,
                 is_international, shipping_provider_id, shipping_country,
-                applied_promotion_id, applied_promotion_name, offline_id, created_by, updated_by
+                applied_promotion_id, applied_promotion_name, offline_id, device_id, created_by, updated_by
             ) VALUES (
                 :invoice_no, :order_id, :online_order_id, :location_id, :customer_id, :billing_address, :shipping_address, :issue_date, :due_date, 
                 :subtotal, :tax_total, :discount_total, :shipping_fee, :grand_total, :order_type, :table_id, :steward_id, :notes,
                 :is_international, :shipping_provider_id, :shipping_country,
-                :applied_promo_id, :applied_promo_name, :offline_id, :created_by, :updated_by
+                :applied_promo_id, :applied_promo_name, :offline_id, :device_id, :created_by, :updated_by
             )
         ");
         $this->db->bind(':invoice_no', $data['invoice_no']);
@@ -272,6 +272,7 @@ class Invoice extends Model {
         $this->db->bind(':applied_promo_id', $data['applied_promotion_id'] ?? null);
         $this->db->bind(':applied_promo_name', $data['applied_promotion_name'] ?? null);
         $this->db->bind(':offline_id', $data['offline_id'] ?? null);
+        $this->db->bind(':device_id', $data['device_id'] ?? null);
         $this->db->bind(':created_by', $data['userId']);
         $this->db->bind(':updated_by', $data['userId']);
 

@@ -793,7 +793,15 @@ class _ProductsScreenState extends State<ProductsScreen> {
             icon: const Icon(Icons.local_offer, color: Colors.green),
             tooltip: 'View Active Promotions',
             onPressed: () async {
-              final promos = await DbService().getCachedPromotions();
+              showDialog(
+                context: context,
+                barrierDismissible: false,
+                builder: (ctx) => const Center(child: CircularProgressIndicator()),
+              );
+              final promos = await _apiService.fetchPromotions(forceRefresh: true);
+              if (!mounted) return;
+              Navigator.pop(context); // close loading
+
               final activePromos = promos.where((p) => p['is_active']?.toString() == '1').toList();
               
               if (!mounted) return;

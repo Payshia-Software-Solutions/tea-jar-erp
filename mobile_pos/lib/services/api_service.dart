@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
+import 'dart:math';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -31,9 +32,20 @@ class ApiService {
     return prefs.getString('auth_token');
   }
 
-  Future<void> setToken(String token) async {
+  Future<void> saveToken(String token) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('auth_token', token);
+  }
+
+  Future<String> getDeviceId() async {
+    final prefs = await SharedPreferences.getInstance();
+    String? deviceId = prefs.getString('device_id');
+    if (deviceId == null) {
+      final random = DateTime.now().millisecondsSinceEpoch.toString() + '-' + Random().nextInt(100000).toString();
+      deviceId = 'DEVICE-' + random;
+      await prefs.setString('device_id', deviceId);
+    }
+    return deviceId;
   }
 
   Future<void> logout() async {
@@ -53,7 +65,7 @@ class ApiService {
       final data = jsonDecode(response.body);
       if (data['status'] == 'success') {
         final token = data['data']['token'];
-        await setToken(token);
+        await saveToken(token);
         return {'success': true, 'data': data['data']};
       }
     }
@@ -375,6 +387,7 @@ class ApiService {
 
   Future<Map<String, dynamic>> createInvoice(Map<String, dynamic> payload) async {
     final token = await getToken();
+    payload['device_id'] = await getDeviceId();
     try {
       final response = await http.post(
         Uri.parse('$baseUrl/invoice/create'),
@@ -574,6 +587,7 @@ class ApiService {
 
   Future<bool> logVisit(Map<String, dynamic> payload) async {
     final token = await getToken();
+    payload['device_id'] = await getDeviceId();
     try {
       final response = await http.post(
         Uri.parse('$baseUrl/visit/log'),
@@ -959,69 +973,21 @@ class ApiService {
   }
 
   Future<bool> createCustomer(Map<String, dynamic> payload, {String? photoPath}) async {
-    final prefs = await SharedPreferences.getInstance();
-    final token = prefs.getString('auth_token') ?? '';
-    
-    if (photoPath != null && photoPath.isNotEmpty) {
-      try {
-        final request = http.MultipartRequest('POST', Uri.parse('$baseUrl/customer/create'));
-        request.headers['Authorization'] = 'Bearer $token';
-        
-        payload.forEach((key, value) {
-          if (value != null) {
-            request.fields[key] = value.toString();
-          }
-        });
-        
-        request.files.add(await http.MultipartFile.fromPath('photo', photoPath));
-        
-        final streamedResponse = await request.send().timeout(const Duration(seconds: 15));
-        final response = await http.Response.fromStream(streamedResponse);
-        
-        if (response.statusCode == 200 || response.statusCode == 201) {
-          final jsonResponse = jsonDecode(response.body);
-          bool success = jsonResponse['status'] == 'success';
-          if (success) {
-            try { await fetchCustomers(forceRefresh: true); } catch (_) {}
-          }
-          return success;
-        }
-        throw Exception('Server Error');
-      } catch (e) {
-        final tempIntId = -(DateTime.now().millisecondsSinceEpoch % 100000000);
-        payload['offline_id'] = tempIntId;
-        final tempId = 'OFFLINE-CUST-$tempIntId';
-        await DbService().saveOfflineCustomer(tempId, payload, photoPath: photoPath);
+    payload['device_id'] = await getDeviceId();
+    try {
+      final newId = await _createCustomerOnlineOnly(payload, photoPath);
+      if (newId != null) {
         return true;
       }
-    } else {
-      try {
-        final response = await http.post(
-          Uri.parse('$baseUrl/customer/create'),
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': 'Bearer $token',
-          },
-          body: jsonEncode(payload),
-        ).timeout(const Duration(seconds: 10));
-
-        if (response.statusCode == 200 || response.statusCode == 201) {
-          final jsonResponse = jsonDecode(response.body);
-          bool success = jsonResponse['status'] == 'success';
-          if (success) {
-            try { await fetchCustomers(forceRefresh: true); } catch (_) {}
-          }
-          return success;
-        }
-        throw Exception('Server Error');
-      } catch (e) {
-        final tempIntId = -(DateTime.now().millisecondsSinceEpoch % 100000000);
-        payload['offline_id'] = tempIntId;
-        final tempId = 'OFFLINE-CUST-$tempIntId';
-        await DbService().saveOfflineCustomer(tempId, payload);
-        return true;
-      }
+    } catch (e) {
+      // Fallback below
     }
+
+    // Offline fallback
+    final tempId = 'OFFLINE-CUST-${DateTime.now().millisecondsSinceEpoch}';
+    payload['offline_id'] = tempId;
+    await DbService().saveOfflineCustomer(tempId, payload, photoPath: photoPath);
+    return true;
   }
 
   Future<void> syncOfflineCustomers() async {
@@ -1077,7 +1043,7 @@ class ApiService {
         }
       });
       
-      request.files.add(await http.MultipartFile.fromPath('photo', photoPath));
+      request.files.add(await http.MultipartFile.fromPath('photo', photoPath!));
       final streamedResponse = await request.send().timeout(const Duration(seconds: 15));
       final response = await http.Response.fromStream(streamedResponse);
       

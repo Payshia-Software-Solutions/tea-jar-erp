@@ -63,6 +63,9 @@ class InvoiceSchema {
                 if (!self::hasColumn($pdo, 'invoices', 'offline_id')) {
                     $pdo->exec("ALTER TABLE invoices ADD COLUMN offline_id VARCHAR(100) NULL AFTER recurring_template_id");
                 }
+                if (!self::hasColumn($pdo, 'invoices', 'device_id')) {
+                    $pdo->exec("ALTER TABLE invoices ADD COLUMN device_id VARCHAR(100) NULL AFTER offline_id");
+                }
             }
         } catch (Exception $e) {}
 
@@ -95,6 +98,7 @@ class InvoiceSchema {
                 applied_promotion_name VARCHAR(255) NULL,
                 recurring_template_id INT NULL,
                 offline_id VARCHAR(100) NULL,
+                device_id VARCHAR(100) NULL,
                 created_by INT NULL,
                 updated_by INT NULL,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,

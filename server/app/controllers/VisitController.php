@@ -37,16 +37,29 @@ class VisitController extends Controller {
             reason VARCHAR(255) NULL, 
             latitude DECIMAL(10,8) NULL, 
             longitude DECIMAL(11,8) NULL, 
+            device_id VARCHAR(100) NULL,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )");
 
-        $db->query("INSERT INTO customer_visits (customer_id, user_id, visit_type, reason, latitude, longitude) VALUES (:customer_id, :user_id, :visit_type, :reason, :latitude, :longitude)");
+        // Ensure column exists
+        try {
+            $pdo = $db->getConnection();
+            $stmt = $pdo->query("SHOW COLUMNS FROM `customer_visits` LIKE 'device_id'");
+            if (!$stmt->fetch()) {
+                $pdo->exec("ALTER TABLE customer_visits ADD COLUMN device_id VARCHAR(100) NULL");
+            }
+        } catch (Exception $e) {}
+
+        $deviceId = $data['device_id'] ?? null;
+
+        $db->query("INSERT INTO customer_visits (customer_id, user_id, visit_type, reason, latitude, longitude, device_id) VALUES (:customer_id, :user_id, :visit_type, :reason, :latitude, :longitude, :device_id)");
         $db->bind(':customer_id', $customerId);
         $db->bind(':user_id', $userId);
         $db->bind(':visit_type', $visitType);
         $db->bind(':reason', $reason);
         $db->bind(':latitude', $latitude);
         $db->bind(':longitude', $longitude);
+        $db->bind(':device_id', $deviceId);
 
         if ($db->execute()) {
             $this->success(['id' => $db->lastInsertId()], 'Visit logged successfully');
@@ -73,6 +86,7 @@ class VisitController extends Controller {
             reason VARCHAR(255) NULL, 
             latitude DECIMAL(10,8) NULL, 
             longitude DECIMAL(11,8) NULL, 
+            device_id VARCHAR(100) NULL,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )");
 
@@ -115,6 +129,7 @@ class VisitController extends Controller {
             reason VARCHAR(255) NULL, 
             latitude DECIMAL(10,8) NULL, 
             longitude DECIMAL(11,8) NULL, 
+            device_id VARCHAR(100) NULL,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )");
 
