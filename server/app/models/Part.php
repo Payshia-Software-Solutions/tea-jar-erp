@@ -5,7 +5,7 @@
 class Part extends Model {
     private $table = 'parts';
 
-    private function ensureSchema() {
+    private function ensureSchema() { return;
         InventorySchema::ensure();
     }
 

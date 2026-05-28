@@ -3,7 +3,7 @@
  * StockAdjustment Model (batch adjustments)
  */
 class StockAdjustment extends Model {
-    private function ensureSchema() {
+    private function ensureSchema() { return;
         InventorySchema::ensure();
     }
 

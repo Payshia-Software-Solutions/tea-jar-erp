@@ -5,7 +5,7 @@
 class Unit extends Model {
     private $table = 'units';
 
-    private function ensureSchema() {
+    private function ensureSchema() { return;
         UnitSchema::ensure();
     }
 

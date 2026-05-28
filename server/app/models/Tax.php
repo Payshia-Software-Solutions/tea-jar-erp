@@ -5,7 +5,7 @@
 class Tax extends Model {
     private $table = 'taxes';
 
-    private function ensureSchema() {
+    private function ensureSchema() { return;
         TaxSchema::ensure();
     }
 

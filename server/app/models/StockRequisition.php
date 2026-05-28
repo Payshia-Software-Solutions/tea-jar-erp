@@ -4,7 +4,7 @@
  * Destination location requests stock; shipments are created separately.
  */
 class StockRequisition extends Model {
-    private function ensureSchema() {
+    private function ensureSchema() { return;
         InventorySchema::ensure();
     }
 

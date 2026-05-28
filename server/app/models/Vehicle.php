@@ -5,7 +5,7 @@
 class Vehicle extends Model {
     private $table = 'vehicles';
 
-    public function ensureSchema($force = false) {
+    public function ensureSchema($force = false) { return;
         $cols = [
             'department_id' => "INT NULL",
             'customer_id' => "INT NULL",

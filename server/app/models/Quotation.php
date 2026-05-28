@@ -10,7 +10,7 @@ class Quotation extends Model {
         // $this->ensureSchema();
     }
 
-    public function ensureSchema() {
+    public function ensureSchema() { return;
         require_once '../app/helpers/QuotationSchema.php';
         QuotationSchema::ensure();
     }

@@ -7,7 +7,7 @@ class PaymentReceipt {
     }
 
     // ── Schema Bootstrap ────────────────────────────────────────────────────
-    public function ensureSchema() {
+    public function ensureSchema() { return;
         // payment_receipts
         $this->db->query("
             CREATE TABLE IF NOT EXISTS payment_receipts (

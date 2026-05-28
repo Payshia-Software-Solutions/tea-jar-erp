@@ -11,7 +11,7 @@ class Reservation extends Model {
         // // $this->ensureSchema();
     }
 
-    public function ensureSchema() {
+    public function ensureSchema() { return;
         // Add status enum value 'Cancelled' if missing (MySQL might need ALTER)
         try {
             $this->db->query("ALTER TABLE {$this->table} MODIFY COLUMN status ENUM('Confirmed', 'CheckedIn', 'CheckedOut', 'Cancelled') DEFAULT 'Confirmed'");

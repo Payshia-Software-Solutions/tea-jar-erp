@@ -11,7 +11,7 @@ class Invoice extends Model {
         $this->db = $this->db_ref;
     }
 
-    public function ensureSchema() {
+    public function ensureSchema() { return;
         require_once __DIR__ . '/../helpers/InvoiceSchema.php';
         InvoiceSchema::ensure();
         

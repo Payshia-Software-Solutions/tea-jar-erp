@@ -5,7 +5,7 @@
 class GoodsReceiveNote extends Model {
     private $table = 'goods_receive_notes';
 
-    public function ensureSchema() {
+    public function ensureSchema() { return;
         InventorySchema::ensure();
         // Add cancellation columns if missing
         $cols = [

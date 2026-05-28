@@ -28,6 +28,8 @@ class VisitController extends Controller {
 
         $db = new Database();
         
+        // Schema checks removed for performance. The table is already deployed.
+        /*
         // Ensure table exists (fail-safe for new deployments)
         $db->exec("CREATE TABLE IF NOT EXISTS customer_visits (
             id INT AUTO_INCREMENT PRIMARY KEY, 
@@ -49,6 +51,7 @@ class VisitController extends Controller {
                 $pdo->exec("ALTER TABLE customer_visits ADD COLUMN device_id VARCHAR(100) NULL");
             }
         } catch (Exception $e) {}
+        */
 
         $deviceId = $data['device_id'] ?? null;
 

@@ -5,7 +5,7 @@
 class ServiceLocation extends Model {
     private $table = 'service_locations';
 
-    public function ensureSchema() {
+    public function ensureSchema() { return;
         try {
             $this->db->query("SHOW COLUMNS FROM {$this->table} LIKE 'location_type'");
             $exists = (bool)$this->db->single();

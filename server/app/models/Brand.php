@@ -5,7 +5,7 @@
 class Brand extends Model {
     private $table = 'brands';
 
-    private function ensureSchema() {
+    private function ensureSchema() { return;
         BrandSchema::ensure();
     }
 

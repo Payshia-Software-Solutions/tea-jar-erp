@@ -11,7 +11,7 @@ class ProductionOrder extends Model {
         // $this->ensureSchema();
     }
 
-    private function ensureSchema() {
+    private function ensureSchema() { return;
         try {
             // Production Order Table
             // Statuses: Planned, InProgress, Completed, Cancelled

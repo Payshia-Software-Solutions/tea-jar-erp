@@ -12,7 +12,7 @@ class ProductionBOM extends Model {
         // $this->ensureSchema();
     }
 
-    private function ensureSchema() {
+    private function ensureSchema() { return;
         if (self::$schemaDone) return;
         self::$schemaDone = true;
 

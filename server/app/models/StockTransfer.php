@@ -4,7 +4,7 @@
  * Handles stock transfer requests between locations.
  */
 class StockTransfer extends Model {
-    private function ensureSchema() {
+    private function ensureSchema() { return;
         InventorySchema::ensure();
     }
 

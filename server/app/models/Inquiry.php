@@ -10,7 +10,7 @@ class Inquiry extends Model {
         // $this->ensureSchema();
     }
 
-    public function ensureSchema() {
+    public function ensureSchema() { return;
         require_once '../app/helpers/CRMSchema.php';
         CRMSchema::ensure();
     }

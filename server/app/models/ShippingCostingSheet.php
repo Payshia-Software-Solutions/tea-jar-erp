@@ -7,7 +7,7 @@ class ShippingCostingSheet extends Model {
     private $itemsTable = 'shipping_costing_sheet_items';
     private $productsTable = 'shipping_costing_sheet_products';
 
-    private function ensureSchema() {
+    private function ensureSchema() { return;
         require_once '../app/helpers/ShippingSchema.php';
         ShippingSchema::ensure();
         require_once '../app/helpers/InventorySchema.php';

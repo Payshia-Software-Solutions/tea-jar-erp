@@ -1,6 +1,6 @@
 <?php
 class Bank extends Model {
-    public function ensureSchema() {
+    public function ensureSchema() { return;
         require_once __DIR__ . '/../helpers/BankSchema.php';
         BankSchema::ensure();
         return true;

@@ -10,7 +10,7 @@ class ShippingProvider extends Model {
         // $this->ensureSchema();
     }
 
-    private function ensureSchema() {
+    private function ensureSchema() { return;
         require_once '../app/helpers/ShippingSchema.php';
         ShippingSchema::ensure();
     }

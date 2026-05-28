@@ -5,7 +5,7 @@
 class Supplier extends Model {
     private $table = 'suppliers';
 
-    private function ensureSchema() {
+    private function ensureSchema() { return;
         InventorySchema::ensure();
     }
 

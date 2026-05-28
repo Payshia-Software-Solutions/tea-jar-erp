@@ -3,7 +3,7 @@
  * OrderPart Model - parts issued to a repair order.
  */
 class OrderPart extends Model {
-    private function ensureSchema() {
+    private function ensureSchema() { return;
         InventorySchema::ensure();
     }
 

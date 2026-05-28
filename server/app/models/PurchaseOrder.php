@@ -5,7 +5,7 @@
 class PurchaseOrder extends Model {
     private $table = 'purchase_orders';
 
-    private function ensureSchema() {
+    private function ensureSchema() { return;
         InventorySchema::ensure();
     }
 
