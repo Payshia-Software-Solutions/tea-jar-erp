@@ -6,6 +6,7 @@ import 'package:geolocator/geolocator.dart';
 import 'package:geolocator_android/geolocator_android.dart';
 import '../models/customer.dart';
 import '../services/api_service.dart';
+import '../services/db_service.dart';
 import '../services/printer_service.dart';
 import 'cart_screen.dart';
 import 'qr_checkin_screen.dart';
@@ -15,12 +16,14 @@ class CustomerSelectionScreen extends StatefulWidget {
   final String? orderType;
   final int? tableId;
   final int? stewardId;
+  final bool isReturnSelection;
 
   const CustomerSelectionScreen({
     super.key,
     this.orderType,
     this.tableId,
     this.stewardId,
+    this.isReturnSelection = false,
   });
 
   @override
@@ -36,54 +39,74 @@ class _CustomerSelectionScreenState extends State<CustomerSelectionScreen> {
   bool _showVisited = false;
   bool _isLoading = true;
   bool _isMapView = false;
+  bool _isLocating = false;
   final TextEditingController _searchController = TextEditingController();
   Position? _currentPosition;
+  List<LatLng> _trackingPath = [];
 
   @override
   void initState() {
     super.initState();
     _loadCustomers();
     _fetchLocationAndSort();
+    _loadTrackingPath();
     _searchController.addListener(_onSearchChanged);
   }
 
+  Future<void> _loadTrackingPath() async {
+    final logs = await DbService().getOfflineTrackingLogs();
+    if (mounted) {
+      setState(() {
+        _trackingPath = logs.map((log) => LatLng(
+          double.tryParse(log['latitude'].toString()) ?? 0.0, 
+          double.tryParse(log['longitude'].toString()) ?? 0.0
+        )).where((latLng) => latLng.latitude != 0.0).toList();
+      });
+    }
+  }
+
   Future<void> _fetchLocationAndSort() async {
+    if (mounted) setState(() => _isLocating = true);
     try {
       bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
-      if (!serviceEnabled) return;
+      if (!serviceEnabled) {
+        if (mounted) setState(() => _isLocating = false);
+        return;
+      }
 
       LocationPermission permission = await Geolocator.checkPermission();
       if (permission == LocationPermission.denied) {
         permission = await Geolocator.requestPermission();
-        if (permission == LocationPermission.denied) return;
+        if (permission == LocationPermission.denied) {
+          if (mounted) setState(() => _isLocating = false);
+          return;
+        }
       }
-      if (permission == LocationPermission.deniedForever) return;
-
-      LocationSettings locationSettings;
-      if (Platform.isAndroid) {
-        locationSettings = AndroidSettings(
-          accuracy: LocationAccuracy.high,
-          forceLocationManager: true, // Forces true GPS, ignoring VPN/Network location
-          timeLimit: const Duration(seconds: 10),
-        );
-      } else {
-        locationSettings = const LocationSettings(
-          accuracy: LocationAccuracy.high,
-          timeLimit: Duration(seconds: 10),
-        );
+      if (permission == LocationPermission.deniedForever) {
+        if (mounted) setState(() => _isLocating = false);
+        return;
       }
 
       _currentPosition = await Geolocator.getCurrentPosition(
-        locationSettings: locationSettings,
-      );
+        desiredAccuracy: LocationAccuracy.high,
+      ).timeout(const Duration(seconds: 10));
     } catch (_) {
       try {
+        // Fallback to last known position if fresh GPS lock times out
         _currentPosition = await Geolocator.getLastKnownPosition();
-      } catch (_) {}
+      } catch (_) {
+        _currentPosition = null;
+      }
     }
     
-    if (mounted && _currentPosition != null) {
-      _onSearchChanged();
+    if (mounted) {
+      setState(() => _isLocating = false);
+      if (_currentPosition != null) {
+        setState(() {
+          _trackingPath.add(LatLng(_currentPosition!.latitude, _currentPosition!.longitude));
+        });
+        _onSearchChanged();
+      }
     }
   }
 
@@ -207,7 +230,11 @@ class _CustomerSelectionScreenState extends State<CustomerSelectionScreen> {
     if (enforceVisit) {
       _showVisitDialog(customer);
     } else {
-      _proceedToCart(customer);
+      if (widget.isReturnSelection) {
+        _proceedToReturnCart(customer);
+      } else {
+        _proceedToCart(customer);
+      }
     }
   }
 
@@ -220,6 +247,22 @@ class _CustomerSelectionScreenState extends State<CustomerSelectionScreen> {
           orderType: widget.orderType,
           tableId: widget.tableId,
           stewardId: widget.stewardId,
+          isReturnMode: false,
+        ),
+      ),
+    );
+  }
+
+  void _proceedToReturnCart(Customer customer) {
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(
+        builder: (_) => CartScreen(
+          customer: customer,
+          orderType: widget.orderType,
+          tableId: widget.tableId,
+          stewardId: widget.stewardId,
+          isReturnMode: true,
         ),
       ),
     );
@@ -309,11 +352,11 @@ class _CustomerSelectionScreenState extends State<CustomerSelectionScreen> {
             ElevatedButton.icon(
               onPressed: () {
                 Navigator.pop(ctx);
-                _handleCheckIn(customer, 'SALE', 'Start Order');
+                _handleCheckIn(customer, widget.isReturnSelection ? 'RETURN' : 'SALE', widget.isReturnSelection ? 'Start Return' : 'Start Order');
               },
-              icon: const Icon(Icons.shopping_cart, color: Colors.white),
-              label: const Text('Start Order', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-              style: ElevatedButton.styleFrom(backgroundColor: Colors.green, padding: const EdgeInsets.symmetric(vertical: 12)),
+              icon: Icon(widget.isReturnSelection ? Icons.keyboard_return : Icons.shopping_cart, color: Colors.white),
+              label: Text(widget.isReturnSelection ? 'Start Return' : 'Start Order', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+              style: ElevatedButton.styleFrom(backgroundColor: widget.isReturnSelection ? Colors.redAccent : Colors.green, padding: const EdgeInsets.symmetric(vertical: 12)),
             ),
             const SizedBox(height: 8),
             ElevatedButton.icon(
@@ -326,30 +369,32 @@ class _CustomerSelectionScreenState extends State<CustomerSelectionScreen> {
               style: ElevatedButton.styleFrom(backgroundColor: Colors.blueAccent, padding: const EdgeInsets.symmetric(vertical: 12)),
             ),
             const SizedBox(height: 8),
-            OutlinedButton(
-              onPressed: () {
-                Navigator.pop(ctx);
-                _handleCheckIn(customer, 'NO_SALE', 'Shop Closed');
-              },
-              child: const Text('No Sale - Shop Closed'),
-            ),
-            const SizedBox(height: 8),
-            OutlinedButton(
-              onPressed: () {
-                Navigator.pop(ctx);
-                _handleCheckIn(customer, 'NO_SALE', 'Overstocked');
-              },
-              child: const Text('No Sale - Overstocked'),
-            ),
-            const SizedBox(height: 8),
-            OutlinedButton(
-              onPressed: () {
-                Navigator.pop(ctx);
-                _handleCheckIn(customer, 'NO_SALE', 'Owner Unavailable');
-              },
-              child: const Text('No Sale - Owner Unavailable'),
-            ),
-            const SizedBox(height: 24),
+            if (!widget.isReturnSelection) ...[
+              OutlinedButton(
+                onPressed: () {
+                  Navigator.pop(ctx);
+                  _handleCheckIn(customer, 'NO_SALE', 'Shop Closed');
+                },
+                child: const Text('No Sale - Shop Closed'),
+              ),
+              const SizedBox(height: 8),
+              OutlinedButton(
+                onPressed: () {
+                  Navigator.pop(ctx);
+                  _handleCheckIn(customer, 'NO_SALE', 'Overstocked');
+                },
+                child: const Text('No Sale - Overstocked'),
+              ),
+              const SizedBox(height: 8),
+              OutlinedButton(
+                onPressed: () {
+                  Navigator.pop(ctx);
+                  _handleCheckIn(customer, 'NO_SALE', 'Owner Unavailable');
+                },
+                child: const Text('No Sale - Owner Unavailable'),
+              ),
+              const SizedBox(height: 24),
+            ],
           ],
         ),
       ),
@@ -465,8 +510,12 @@ class _CustomerSelectionScreenState extends State<CustomerSelectionScreen> {
         });
         _onSearchChanged();
       }
-      if (type == 'SALE') {
-        _proceedToCart(customer);
+      if (type == 'SALE' || type == 'RETURN') {
+        if (widget.isReturnSelection) {
+          _proceedToReturnCart(customer);
+        } else {
+          _proceedToCart(customer);
+        }
       }
     } else {
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Failed to log visit to server.')));
@@ -499,7 +548,7 @@ class _CustomerSelectionScreenState extends State<CustomerSelectionScreen> {
       
       final success = await ApiService().logVisit({
         'customer_id': customer.id,
-        'visit_type': 'SALE',
+        'visit_type': widget.isReturnSelection ? 'RETURN' : 'SALE',
         'reason': 'QR Scan',
         'latitude': position?.latitude ?? 0.0,
         'longitude': position?.longitude ?? 0.0,
@@ -515,7 +564,11 @@ class _CustomerSelectionScreenState extends State<CustomerSelectionScreen> {
           });
           _onSearchChanged();
         }
-        _proceedToCart(customer);
+        if (widget.isReturnSelection) {
+          _proceedToReturnCart(customer);
+        } else {
+          _proceedToCart(customer);
+        }
       } else {
         if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Failed to log visit to server.')));
       }
@@ -772,6 +825,11 @@ class _CustomerSelectionScreenState extends State<CustomerSelectionScreen> {
       }
     }
 
+    Customer? nextShop;
+    try {
+      nextShop = _filteredCustomers.firstWhere((c) => !_visitedCustomerIds.contains(c.id) && c.latitude != null && c.latitude != 0);
+    } catch (_) {}
+
     return FlutterMap(
       options: MapOptions(
         initialCenter: initialCenter,
@@ -782,14 +840,24 @@ class _CustomerSelectionScreenState extends State<CustomerSelectionScreen> {
           urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
           userAgentPackageName: 'com.payshia.mobile_pos',
         ),
+        if (_trackingPath.isNotEmpty)
+          PolylineLayer(
+            polylines: [
+              Polyline(
+                points: _trackingPath,
+                color: Colors.blueAccent.withOpacity(0.7),
+                strokeWidth: 4.0,
+              ),
+            ],
+          ),
         MarkerLayer(
           markers: _filteredCustomers
               .where((c) => c.latitude != null && c.longitude != null && c.latitude != 0 && c.longitude != 0)
               .map((customer) {
             return Marker(
               point: LatLng(customer.latitude!, customer.longitude!),
-              width: 40,
-              height: 40,
+              width: 120,
+              height: 90,
               child: GestureDetector(
                 onTap: () {
                   showModalBottomSheet(
@@ -867,16 +935,35 @@ class _CustomerSelectionScreenState extends State<CustomerSelectionScreen> {
                               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                             ),
                             child: const Text('SELECT / CHECK-IN', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-                          )
+                          ),
                         ],
                       ),
                     ),
                   );
                 },
-                child: Icon(
-                  _visitedCustomerIds.contains(customer.id) ? Icons.check_circle : Icons.location_on, 
-                  color: _visitedCustomerIds.contains(customer.id) ? Colors.green : Colors.red, 
-                  size: 40
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      _visitedCustomerIds.contains(customer.id) ? Icons.check_circle : Icons.location_on, 
+                      color: customer.id == nextShop?.id ? Colors.orange : (_visitedCustomerIds.contains(customer.id) ? Colors.green : Colors.red), 
+                      size: customer.id == nextShop?.id ? 50 : 30
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: customer.id == nextShop?.id ? Colors.orange : Colors.black.withOpacity(0.6),
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: Text(
+                        customer.id == nextShop?.id ? 'NEXT: ${customer.name}' : customer.name,
+                        style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
+                  ],
                 ),
               ),
             );
@@ -1030,9 +1117,18 @@ class _CustomerSelectionScreenState extends State<CustomerSelectionScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
         title: const Text('Select Customer', style: TextStyle(fontWeight: FontWeight.bold)),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.refresh),
+            onPressed: () {
+              setState(() => _isLoading = true);
+              _fetchLocationAndSort();
+              _loadCustomers(force: true);
+            },
+          ),
           IconButton(
             icon: Icon(_isMapView ? Icons.list : Icons.map),
             onPressed: () {
@@ -1121,6 +1217,33 @@ class _CustomerSelectionScreenState extends State<CustomerSelectionScreen> {
               ),
             ),
           ),
+          if (_isLocating)
+            const Padding(
+              padding: EdgeInsets.only(bottom: 8.0),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.blueAccent)),
+                  SizedBox(width: 8),
+                  Text('Calculating distances...', style: TextStyle(color: Colors.blueAccent, fontSize: 12, fontWeight: FontWeight.bold)),
+                ],
+              ),
+            )
+          else
+            Padding(
+              padding: const EdgeInsets.only(bottom: 8.0),
+              child: InkWell(
+                onTap: _fetchLocationAndSort,
+                child: const Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.my_location, size: 14, color: Colors.blueAccent),
+                    SizedBox(width: 4),
+                    Text('Recalculate Distances', style: TextStyle(color: Colors.blueAccent, fontSize: 12, fontWeight: FontWeight.bold)),
+                  ],
+                ),
+              ),
+            ),
           Expanded(
             child: _isLoading 
               ? const Center(child: CircularProgressIndicator(color: Colors.blueAccent))
@@ -1129,15 +1252,6 @@ class _CustomerSelectionScreenState extends State<CustomerSelectionScreen> {
                   : _buildListView(),
           ),
         ],
-      ),
-      floatingActionButton: _isMapView ? null : FloatingActionButton.extended(
-        backgroundColor: Colors.blueAccent,
-        onPressed: () {
-          final walkIn = Customer(id: 0, name: 'Walk-in Customer');
-          _onCustomerSelected(walkIn);
-        },
-        icon: const Icon(Icons.person_outline, color: Colors.white),
-        label: const Text('WALK-IN', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
       ),
     );
   }

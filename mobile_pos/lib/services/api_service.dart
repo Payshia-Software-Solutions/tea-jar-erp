@@ -69,12 +69,14 @@ class ApiService {
       if (cached.isNotEmpty) {
         // 2. Silently refresh the cache in the background for next time
         _silentRefreshCustomers();
-        return cached.map((json) => Customer.fromJson(json)).toList();
+        final onlineCustomers = cached.map((json) => Customer.fromJson(json)).toList();
+        return await _mergeWithOfflineCustomers(onlineCustomers);
       }
     }
 
     // 3. Fallback to network if cache is empty or forceRefresh is true
-    return await _networkFetchCustomers();
+    final onlineCustomers = await _networkFetchCustomers();
+    return await _mergeWithOfflineCustomers(onlineCustomers);
   }
 
   Future<void> _silentRefreshCustomers() async {
@@ -398,6 +400,7 @@ class ApiService {
     } catch (e) {
       // Offline fallback (only triggered on network timeout/socket exception)
       final tempId = 'OFFLINE-${DateTime.now().millisecondsSinceEpoch}';
+      payload['offline_id'] = tempId;
       await DbService().saveOfflineInvoice(tempId, payload);
       return {
         'success': true, 
@@ -405,6 +408,35 @@ class ApiService {
         'offline': true,
         'message': 'Saved Offline. Will sync when connection is restored.'
       };
+    }
+  }
+
+  Future<Map<String, dynamic>> processReturn(Map<String, dynamic> payload) async {
+    final token = await getToken();
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/return/create'),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Accept': 'application/json',
+          'Content-Type': 'application/json',
+        },
+        body: json.encode(payload),
+      ).timeout(const Duration(seconds: 20));
+
+      _checkResponse(response);
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        final decoded = json.decode(response.body);
+        if (decoded['status'] == 'success') {
+          return {'success': true, 'data': decoded['data'] ?? decoded};
+        } else {
+          return {'success': false, 'message': decoded['message'] ?? 'Failed to process return'};
+        }
+      } else {
+        return {'success': false, 'message': 'Server error: ${response.statusCode}'};
+      }
+    } catch (e) {
+      return {'success': false, 'message': 'Network error: $e'};
     }
   }
 
@@ -425,18 +457,14 @@ class ApiService {
           },
           body: json.encode(payload),
         ).timeout(const Duration(seconds: 30));
-        
         if (response.statusCode == 200 || response.statusCode == 201) {
           final decoded = json.decode(response.body);
           if (decoded['status'] == 'success') {
             await DbService().deleteOfflineInvoice(record['id']);
           }
-        } else if (response.statusCode >= 400 && response.statusCode < 500) {
-          // If it's a 4xx error (like Bad Request or validation failure), delete it
-          // to prevent an infinite sync loop, as it will never succeed without manual intervention.
-          print('Offline sync failed with ${response.statusCode} for record ${record['id']}. Deleting from queue.');
-          await DbService().deleteOfflineInvoice(record['id']);
         }
+        // Do not auto-delete on 4xx errors to ensure data is not lost. 
+        // User must manually delete or fix failing offline records.
       } catch (e) {
         // Stop syncing if connection fails again (e.g. Timeout or SocketException)
         break;
@@ -559,11 +587,75 @@ class ApiService {
 
       return response.statusCode == 200 || response.statusCode == 201;
     } catch (_) {
-      return false;
+      // Offline fallback: save to SQLite and pretend it succeeded
+      await DbService().saveOfflineVisit(payload);
+      return true;
+    }
+  }
+
+  Future<void> syncOfflineVisits() async {
+    final offlineVisits = await DbService().getOfflineVisits();
+    if (offlineVisits.isEmpty) return;
+
+    final token = await getToken();
+    for (var record in offlineVisits) {
+      try {
+        final payload = jsonDecode(record['payload']);
+        final response = await http.post(
+          Uri.parse('$baseUrl/visit/log'),
+          headers: {
+            'Authorization': 'Bearer $token',
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+          },
+          body: jsonEncode(payload),
+        ).timeout(const Duration(seconds: 10));
+        
+        if (response.statusCode == 200 || response.statusCode == 201) {
+          await DbService().deleteOfflineVisit(record['id']);
+        }
+      } catch (_) {
+        // Stop syncing if network fails again
+        break;
+      }
     }
   }
 
   Future<List<int>> getTodayVisitedCustomerIds() async {
+    final prefs = await SharedPreferences.getInstance();
+    
+    // Attempt network fetch silently in the background
+    _fetchTodayVisitedCustomerIdsNetwork(prefs).catchError((_) => <int>[]);
+    
+    List<int> visitedIds = [];
+
+    // Return cached immediately if available
+    final cachedStr = prefs.getString('cached_visited_ids');
+    if (cachedStr != null) {
+      try {
+        final List<dynamic> decoded = jsonDecode(cachedStr);
+        visitedIds = List<int>.from(decoded);
+      } catch (_) {}
+    }
+
+    // Add offline visited customers to the list
+    try {
+      final offlineVisits = await DbService().getOfflineVisits();
+      for (var record in offlineVisits) {
+        final payload = jsonDecode(record['payload'].toString());
+        if (payload['customer_id'] != null) {
+          final cid = int.tryParse(payload['customer_id'].toString());
+          if (cid != null && !visitedIds.contains(cid)) {
+            visitedIds.add(cid);
+          }
+        }
+      }
+    } catch (_) {}
+
+    return visitedIds;
+  }
+
+  Future<List<int>> _fetchTodayVisitedCustomerIdsNetwork(SharedPreferences prefs) async {
     final token = await getToken();
     try {
       final response = await http.get(
@@ -572,16 +664,18 @@ class ApiService {
           'Authorization': 'Bearer $token',
           'Accept': 'application/json',
         },
-      ).timeout(const Duration(seconds: 10));
+      ).timeout(const Duration(seconds: 5));
 
       if (response.statusCode == 200) {
         final decoded = json.decode(response.body);
         if (decoded['status'] == 'success') {
-          return List<int>.from(decoded['data'] ?? []);
+          final list = List<int>.from(decoded['data'] ?? []);
+          await prefs.setString('cached_visited_ids', jsonEncode(list));
+          return list;
         }
       }
     } catch (_) {}
-    return [];
+    throw Exception('Network failed');
   }
 
   Future<List<int>> getVisitedCustomerIds({required String startDate, required String endDate}) async {
@@ -644,6 +738,52 @@ class ApiService {
         }
       }
     } catch (_) {}
+    return [];
+  }
+  // --- Promotions Caching ---
+  Future<List<dynamic>> fetchPromotions({bool forceRefresh = false}) async {
+    if (!forceRefresh) {
+      final cached = await DbService().getCachedPromotions();
+      if (cached.isNotEmpty) {
+        _silentRefreshPromotions();
+        return cached;
+      }
+    }
+    return await _networkFetchPromotions();
+  }
+
+  Future<void> _silentRefreshPromotions() async {
+    try {
+      await _networkFetchPromotions();
+    } catch (e) {
+      // Ignore background errors
+    }
+  }
+
+  Future<List<dynamic>> _networkFetchPromotions() async {
+    final token = await getToken();
+    final activeLocation = await getActiveLocation();
+    final locId = activeLocation != null ? activeLocation['id'].toString() : '';
+    
+    try {
+      final response = await http.get(
+        Uri.parse('$baseUrl/promotion/active${locId.isNotEmpty ? "?location_id=$locId" : ""}'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+      ).timeout(const Duration(seconds: 15));
+      
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        final List<dynamic> promosJson = data['data'] ?? data;
+        await DbService().cachePromotions(promosJson);
+        return promosJson;
+      }
+    } catch (e) {
+      // Return offline cache if network fails
+      return await DbService().getCachedPromotions();
+    }
     return [];
   }
 
@@ -727,43 +867,95 @@ class ApiService {
     final prefs = await SharedPreferences.getInstance();
     final token = prefs.getString('auth_token');
     
-    final response = await http.get(
-      Uri.parse('$baseUrl/invoice/list?customer_id=$customerId'),
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer $token',
-      },
-    );
+    try {
+      final response = await http.get(
+        Uri.parse('$baseUrl/invoice/list?customer_id=$customerId'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+      ).timeout(const Duration(seconds: 10));
 
-    if (response.statusCode == 200) {
-      final jsonResponse = jsonDecode(response.body);
-      if (jsonResponse['status'] == 'success') {
-        return jsonResponse['data'] as List<dynamic>;
+      if (response.statusCode == 200) {
+        final jsonResponse = jsonDecode(response.body);
+        if (jsonResponse['status'] == 'success') {
+          final data = jsonResponse['data'] as List<dynamic>;
+          await DbService().cacheCustomerInvoices(customerId, data);
+          return data;
+        }
       }
+    } catch (_) {
+      // Fallback to offline cache
+      return await DbService().getCachedCustomerInvoices(customerId);
     }
-    throw Exception('Failed to load customer invoices');
+    
+    // Return cache if API failed (e.g. 500 error)
+    return await DbService().getCachedCustomerInvoices(customerId);
   }
 
   Future<String?> addPayment(int invoiceId, Map<String, dynamic> data) async {
     final prefs = await SharedPreferences.getInstance();
     final token = prefs.getString('auth_token');
     
-    final response = await http.post(
-      Uri.parse('$baseUrl/invoice/addPayment/$invoiceId'),
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer $token',
-      },
-      body: jsonEncode(data),
-    );
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/invoice/addPayment/$invoiceId'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+        body: jsonEncode(data),
+      ).timeout(const Duration(seconds: 15));
 
-    if (response.statusCode == 200) {
-      final jsonResponse = jsonDecode(response.body);
-      if (jsonResponse['status'] == 'success') {
-        return jsonResponse['receipt_id']?.toString();
+      if (response.statusCode == 200) {
+        final jsonResponse = jsonDecode(response.body);
+        if (jsonResponse['status'] == 'success') {
+          return jsonResponse['receipt_id']?.toString();
+        }
       }
+    } catch (_) {
+      // Offline fallback
+      final tempId = 'OFFLINE-PAY-${DateTime.now().millisecondsSinceEpoch}';
+      await DbService().saveOfflinePayment(tempId, invoiceId, data);
+      return tempId; // Return temp ID so app proceeds as normal
     }
     return null;
+  }
+
+  Future<void> syncOfflinePayments() async {
+    final offlinePayments = await DbService().getOfflinePayments();
+    if (offlinePayments.isEmpty) return;
+
+    for (var record in offlinePayments) {
+      try {
+        final payload = jsonDecode(record['payload']);
+        final invoiceId = record['invoice_id'] as int;
+        
+        final prefs = await SharedPreferences.getInstance();
+        final token = prefs.getString('auth_token');
+
+        final response = await http.post(
+          Uri.parse('$baseUrl/invoice/addPayment/$invoiceId'),
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer $token',
+          },
+          body: jsonEncode(payload),
+        ).timeout(const Duration(seconds: 20));
+
+        if (response.statusCode == 200) {
+          final jsonResponse = jsonDecode(response.body);
+          if (jsonResponse['status'] == 'success') {
+            await DbService().deleteOfflinePayment(record['id']);
+          }
+        } else if (response.statusCode >= 400 && response.statusCode < 500) {
+          // Bad request, delete to avoid infinite loop
+          await DbService().deleteOfflinePayment(record['id']);
+        }
+      } catch (_) {
+        break; // Stop syncing on network failure
+      }
+    }
   }
 
   Future<bool> createCustomer(Map<String, dynamic> payload, {String? photoPath}) async {
@@ -771,6 +963,111 @@ class ApiService {
     final token = prefs.getString('auth_token') ?? '';
     
     if (photoPath != null && photoPath.isNotEmpty) {
+      try {
+        final request = http.MultipartRequest('POST', Uri.parse('$baseUrl/customer/create'));
+        request.headers['Authorization'] = 'Bearer $token';
+        
+        payload.forEach((key, value) {
+          if (value != null) {
+            request.fields[key] = value.toString();
+          }
+        });
+        
+        request.files.add(await http.MultipartFile.fromPath('photo', photoPath));
+        
+        final streamedResponse = await request.send().timeout(const Duration(seconds: 15));
+        final response = await http.Response.fromStream(streamedResponse);
+        
+        if (response.statusCode == 200 || response.statusCode == 201) {
+          final jsonResponse = jsonDecode(response.body);
+          bool success = jsonResponse['status'] == 'success';
+          if (success) {
+            try { await fetchCustomers(forceRefresh: true); } catch (_) {}
+          }
+          return success;
+        }
+        throw Exception('Server Error');
+      } catch (e) {
+        final tempIntId = -(DateTime.now().millisecondsSinceEpoch % 100000000);
+        payload['offline_id'] = tempIntId;
+        final tempId = 'OFFLINE-CUST-$tempIntId';
+        await DbService().saveOfflineCustomer(tempId, payload, photoPath: photoPath);
+        return true;
+      }
+    } else {
+      try {
+        final response = await http.post(
+          Uri.parse('$baseUrl/customer/create'),
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer $token',
+          },
+          body: jsonEncode(payload),
+        ).timeout(const Duration(seconds: 10));
+
+        if (response.statusCode == 200 || response.statusCode == 201) {
+          final jsonResponse = jsonDecode(response.body);
+          bool success = jsonResponse['status'] == 'success';
+          if (success) {
+            try { await fetchCustomers(forceRefresh: true); } catch (_) {}
+          }
+          return success;
+        }
+        throw Exception('Server Error');
+      } catch (e) {
+        final tempIntId = -(DateTime.now().millisecondsSinceEpoch % 100000000);
+        payload['offline_id'] = tempIntId;
+        final tempId = 'OFFLINE-CUST-$tempIntId';
+        await DbService().saveOfflineCustomer(tempId, payload);
+        return true;
+      }
+    }
+  }
+
+  Future<void> syncOfflineCustomers() async {
+    final offlineCustomers = await DbService().getOfflineCustomers();
+    if (offlineCustomers.isEmpty) return;
+
+    for (var record in offlineCustomers) {
+      try {
+        final payload = jsonDecode(record['payload']);
+        final photoPath = record['photo_path'];
+        
+        // Use the existing logic to re-create the customer online
+        int? newRealId = await _createCustomerOnlineOnly(payload, photoPath);
+        
+        if (newRealId != null) {
+          if (payload['offline_id'] != null) {
+            await DbService().updateOfflineCustomerIds(payload['offline_id'], newRealId);
+          }
+          await DbService().deleteOfflineCustomer(record['temp_id']);
+        }
+      } catch (_) {
+        break; // Stop syncing on first network failure
+      }
+    }
+    
+    // Refresh the customer list after sync to get the true server IDs
+    try {
+      await fetchCustomers(forceRefresh: true);
+    } catch (_) {}
+  }
+
+  // A helper method for syncing without triggering another offline fallback
+  Future<int?> _createCustomerOnlineOnly(Map<String, dynamic> payload, String? photoPath) async {
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString('auth_token') ?? '';
+    
+    bool hasPhoto = false;
+    if (photoPath != null && photoPath.isNotEmpty) {
+      try {
+        if (File(photoPath).existsSync()) {
+          hasPhoto = true;
+        }
+      } catch (_) {}
+    }
+    
+    if (hasPhoto) {
       final request = http.MultipartRequest('POST', Uri.parse('$baseUrl/customer/create'));
       request.headers['Authorization'] = 'Bearer $token';
       
@@ -781,21 +1078,17 @@ class ApiService {
       });
       
       request.files.add(await http.MultipartFile.fromPath('photo', photoPath));
-      
-      final streamedResponse = await request.send();
+      final streamedResponse = await request.send().timeout(const Duration(seconds: 15));
       final response = await http.Response.fromStream(streamedResponse);
       
       if (response.statusCode == 200 || response.statusCode == 201) {
         final jsonResponse = jsonDecode(response.body);
-        bool success = jsonResponse['status'] == 'success';
-        if (success) {
-          try {
-            await fetchCustomers(forceRefresh: true);
-          } catch (_) {}
+        if (jsonResponse['status'] == 'success') {
+          return int.tryParse(jsonResponse['data']?['id']?.toString() ?? '') ?? 
+                 (await _fetchNewlyCreatedCustomerId(payload['phone']?.toString(), payload['name']?.toString()));
         }
-        return success;
       }
-      return false;
+      return null;
     } else {
       final response = await http.post(
         Uri.parse('$baseUrl/customer/create'),
@@ -804,25 +1097,35 @@ class ApiService {
           'Authorization': 'Bearer $token',
         },
         body: jsonEncode(payload),
-      );
+      ).timeout(const Duration(seconds: 10));
 
       if (response.statusCode == 200 || response.statusCode == 201) {
         final jsonResponse = jsonDecode(response.body);
-        bool success = jsonResponse['status'] == 'success';
-        if (success) {
-          try {
-            await fetchCustomers(forceRefresh: true);
-          } catch (_) {}
+        if (jsonResponse['status'] == 'success') {
+          return int.tryParse(jsonResponse['data']?['id']?.toString() ?? '') ?? 
+                 (await _fetchNewlyCreatedCustomerId(payload['phone']?.toString(), payload['name']?.toString()));
         }
-        return success;
       }
-      return false;
+      return null;
     }
   }
 
+  Future<int?> _fetchNewlyCreatedCustomerId(String? phone, String? name) async {
+    try {
+      await fetchCustomers(forceRefresh: true);
+      final customers = await DbService().getCachedCustomers();
+      for (var c in customers) {
+        if ((phone != null && phone.isNotEmpty && c['phone'] == phone) || 
+            (name != null && name.isNotEmpty && c['name'] == name)) {
+          return int.tryParse(c['id'].toString());
+        }
+      }
+    } catch (_) {}
+    return null;
+  }
+
   Future<List<DeliveryRoute>> fetchRoutes({int? locationId}) async {
-    final token = await getToken();
-    String url = '$baseUrl/route/index';
+    final prefs = await SharedPreferences.getInstance();
     
     if (locationId == null) {
       final activeLocation = await getActiveLocation();
@@ -831,6 +1134,19 @@ class ApiService {
       }
     }
 
+    // Attempt to load from cache first
+    final cachedStr = prefs.getString('cached_routes_$locationId');
+    List<DeliveryRoute> cachedRoutes = [];
+    if (cachedStr != null) {
+      try {
+        final List<dynamic> jsonList = jsonDecode(cachedStr);
+        cachedRoutes = jsonList.map((x) => DeliveryRoute.fromJson(x)).toList();
+      } catch (_) {}
+    }
+
+    final token = await getToken();
+    String url = '$baseUrl/route/index';
+    
     if (locationId != null) {
       url += '?location_id=$locationId';
     }
@@ -846,35 +1162,95 @@ class ApiService {
 
       if (response.statusCode == 200) {
         final decoded = json.decode(response.body);
-        if (decoded['status'] == 'success') {
-          final List data = decoded['data'] ?? [];
-          return data.map((json) => DeliveryRoute.fromJson(json)).toList();
+        List<dynamic> dataList = [];
+        
+        if (decoded is List) {
+          dataList = decoded;
+        } else if (decoded is Map && decoded['data'] is List) {
+          dataList = decoded['data'];
+        }
+
+        if (dataList.isNotEmpty) {
+          await prefs.setString('cached_routes_$locationId', jsonEncode(dataList));
+          return dataList.map((json) => DeliveryRoute.fromJson(json)).toList();
         }
       }
     } catch (_) {}
-    return [];
+    
+    return cachedRoutes;
+  }
+
+
+
+  Future<List<Customer>> _mergeWithOfflineCustomers(List<Customer> onlineList) async {
+    final offlineRecords = await DbService().getOfflineCustomers();
+    final List<Customer> merged = List.from(onlineList);
+    
+    for (var record in offlineRecords) {
+      try {
+        final payload = jsonDecode(record['payload']);
+        // Parse the offline payload into a Customer object
+        merged.insert(0, Customer(
+          id: payload['offline_id'] ?? -1, // Use unique negative ID
+          name: payload['name'] ?? 'Offline Customer',
+          phone: payload['phone'],
+          email: payload['email'],
+          latitude: payload['latitude'] != null ? double.tryParse(payload['latitude'].toString()) : null,
+          longitude: payload['longitude'] != null ? double.tryParse(payload['longitude'].toString()) : null,
+          routeId: payload['route_id'] != null ? int.tryParse(payload['route_id'].toString()) : null,
+        ));
+      } catch (_) {}
+    }
+    return merged;
   }
 
   Future<List<City>> fetchCities() async {
-    final token = await getToken();
-    try {
-      final response = await http.get(
-        Uri.parse('$baseUrl/city/index'),
-        headers: {
-          'Authorization': 'Bearer $token',
-          'Accept': 'application/json',
-        },
-      ).timeout(const Duration(seconds: 10));
+    final prefs = await SharedPreferences.getInstance();
+    
+    // Attempt to load from cache first
+    final cachedStr = prefs.getString('cached_cities');
+    List<City> cachedCities = [];
+    if (cachedStr != null) {
+      try {
+        final List<dynamic> jsonList = jsonDecode(cachedStr);
+        cachedCities = jsonList.map((x) => City.fromJson(x)).toList();
+      } catch (_) {}
+    }
 
-      if (response.statusCode == 200) {
-        final decoded = json.decode(response.body);
-        if (decoded['status'] == 'success') {
-          final List data = decoded['data'] ?? [];
-          return data.map((json) => City.fromJson(json)).toList();
+    final token = await getToken();
+    
+    // Try both endpoints if needed
+    List<String> endpointsToTry = ['$baseUrl/city/index', '$baseUrl/city/list'];
+    
+    for (String endpoint in endpointsToTry) {
+      try {
+        final response = await http.get(
+          Uri.parse(endpoint),
+          headers: {
+            'Authorization': 'Bearer $token',
+            'Accept': 'application/json',
+          },
+        ).timeout(const Duration(seconds: 5));
+
+        if (response.statusCode == 200) {
+          final decoded = json.decode(response.body);
+          List<dynamic> dataList = [];
+          
+          if (decoded is List) {
+            dataList = decoded;
+          } else if (decoded is Map && decoded['data'] is List) {
+            dataList = decoded['data'];
+          }
+
+          if (dataList.isNotEmpty) {
+            await prefs.setString('cached_cities', jsonEncode(dataList));
+            return dataList.map((json) => City.fromJson(json)).toList();
+          }
         }
-      }
-    } catch (_) {}
-    return [];
+      } catch (_) {}
+    }
+    
+    return cachedCities;
   }
 
   Future<Map<String, dynamic>> fetchDayEndSummary(String locationId, String date) async {

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../services/api_service.dart';
 import '../models/customer.dart';
 import '../components/payment_dialog.dart';
+import 'package:geolocator/geolocator.dart';
 
 class PaymentScreen extends StatefulWidget {
   const PaymentScreen({Key? key}) : super(key: key);
@@ -25,13 +26,57 @@ class _PaymentScreenState extends State<PaymentScreen> {
   List<dynamic> _invoices = [];
   bool _isLoadingCustomers = true;
   bool _isLoadingInvoices = false;
+  bool _isLocating = false;
+  Position? _currentPosition;
   final TextEditingController _searchController = TextEditingController();
 
   @override
   void initState() {
     super.initState();
     _fetchCustomers();
+    _fetchLocationAndSort();
     _searchController.addListener(_onSearchChanged);
+  }
+
+  Future<void> _fetchLocationAndSort() async {
+    if (mounted) setState(() => _isLocating = true);
+    try {
+      bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      if (!serviceEnabled) {
+        if (mounted) setState(() => _isLocating = false);
+        return;
+      }
+
+      LocationPermission permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+        if (permission == LocationPermission.denied) {
+          if (mounted) setState(() => _isLocating = false);
+          return;
+        }
+      }
+      if (permission == LocationPermission.deniedForever) {
+        if (mounted) setState(() => _isLocating = false);
+        return;
+      }
+
+      _currentPosition = await Geolocator.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.high,
+      ).timeout(const Duration(seconds: 10));
+    } catch (_) {
+      try {
+        _currentPosition = await Geolocator.getLastKnownPosition();
+      } catch (_) {
+        _currentPosition = null;
+      }
+    }
+    
+    if (mounted) {
+      setState(() => _isLocating = false);
+      if (_currentPosition != null) {
+        _onSearchChanged();
+      }
+    }
   }
 
   @override
@@ -48,6 +93,27 @@ class _PaymentScreenState extends State<PaymentScreen> {
         c.name.toLowerCase().contains(query) || 
         (c.phone != null && c.phone!.contains(query))
       ).toList();
+
+      if (_currentPosition != null) {
+        _filteredCustomers.sort((a, b) {
+          final hasLocA = a.latitude != null && a.longitude != null && a.latitude != 0 && a.longitude != 0;
+          final hasLocB = b.latitude != null && b.longitude != null && b.latitude != 0 && b.longitude != 0;
+          
+          if (!hasLocA && !hasLocB) return 0;
+          if (!hasLocA) return 1;
+          if (!hasLocB) return -1;
+
+          final distA = Geolocator.distanceBetween(
+            _currentPosition!.latitude, _currentPosition!.longitude,
+            a.latitude!, a.longitude!
+          );
+          final distB = Geolocator.distanceBetween(
+            _currentPosition!.latitude, _currentPosition!.longitude,
+            b.latitude!, b.longitude!
+          );
+          return distA.compareTo(distB);
+        });
+      }
     });
   }
 
@@ -101,6 +167,21 @@ class _PaymentScreenState extends State<PaymentScreen> {
     }
   }
 
+  String _getDistanceString(Customer customer) {
+    if (_currentPosition == null || customer.latitude == null || customer.longitude == null || customer.latitude == 0 || customer.longitude == 0) {
+      return '';
+    }
+    final dist = Geolocator.distanceBetween(
+      _currentPosition!.latitude, _currentPosition!.longitude,
+      customer.latitude!, customer.longitude!
+    );
+    if (dist < 1000) {
+      return '${dist.toStringAsFixed(0)} m';
+    } else {
+      return '${(dist / 1000).toStringAsFixed(1)} km';
+    }
+  }
+
   Widget _buildCustomerAvatar(Customer customer) {
     String initials = "C";
     if (customer.name.isNotEmpty) {
@@ -133,6 +214,17 @@ class _PaymentScreenState extends State<PaymentScreen> {
             });
           },
         ) : null,
+        actions: [
+          if (_selectedCustomer == null)
+            IconButton(
+              icon: const Icon(Icons.refresh),
+              onPressed: () {
+                setState(() => _isLoadingCustomers = true);
+                _fetchLocationAndSort();
+                _fetchCustomers();
+              },
+            ),
+        ],
       ),
       body: _selectedCustomer == null 
         ? _buildCustomerSelection() 
@@ -168,6 +260,33 @@ class _PaymentScreenState extends State<PaymentScreen> {
             ),
           ),
         ),
+        if (_isLocating)
+          const Padding(
+            padding: EdgeInsets.only(bottom: 8.0),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.blueAccent)),
+                SizedBox(width: 8),
+                Text('Calculating distances...', style: TextStyle(color: Colors.blueAccent, fontSize: 12, fontWeight: FontWeight.bold)),
+              ],
+            ),
+          )
+        else
+          Padding(
+            padding: const EdgeInsets.only(bottom: 8.0),
+            child: InkWell(
+              onTap: _fetchLocationAndSort,
+              child: const Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.my_location, size: 14, color: Colors.blueAccent),
+                  SizedBox(width: 4),
+                  Text('Recalculate Distances', style: TextStyle(color: Colors.blueAccent, fontSize: 12, fontWeight: FontWeight.bold)),
+                ],
+              ),
+            ),
+          ),
         Expanded(
           child: _isLoadingCustomers 
             ? const Center(child: CircularProgressIndicator(color: Colors.blueAccent))
@@ -237,6 +356,14 @@ class _PaymentScreenState extends State<PaymentScreen> {
                                 ],
                               ),
                             ),
+                            if (_getDistanceString(customer).isNotEmpty)
+                              Padding(
+                                padding: const EdgeInsets.only(right: 8.0),
+                                child: Text(
+                                  _getDistanceString(customer),
+                                  style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.blueAccent),
+                                ),
+                              ),
                             const Icon(Icons.chevron_right, color: Colors.blueAccent),
                           ],
                         ),
@@ -327,6 +454,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
                                         barrierDismissible: false,
                                         builder: (ctx) => PaymentDialog(
                                           invoice: inv,
+                                          customerId: _selectedCustomer!.id,
                                           onPaymentSuccess: () {
                                             _fetchInvoices(_selectedCustomer!.id);
                                           },

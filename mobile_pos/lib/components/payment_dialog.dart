@@ -1,12 +1,14 @@
 import 'package:flutter/material.dart';
 import '../services/api_service.dart';
 import '../services/printer_service.dart';
+import 'package:geolocator/geolocator.dart';
 
 class PaymentDialog extends StatefulWidget {
   final Map<String, dynamic> invoice;
+  final int customerId;
   final VoidCallback onPaymentSuccess;
 
-  const PaymentDialog({Key? key, required this.invoice, required this.onPaymentSuccess}) : super(key: key);
+  const PaymentDialog({Key? key, required this.invoice, required this.customerId, required this.onPaymentSuccess}) : super(key: key);
 
   @override
   State<PaymentDialog> createState() => _PaymentDialogState();
@@ -131,6 +133,26 @@ class _PaymentDialogState extends State<PaymentDialog> {
             'payment_date': DateTime.now().toIso8601String().split('T').first,
             'pending_balance': _pendingBalance - amount,
           };
+          
+          if (widget.customerId != 0) {
+            double lat = 0.0;
+            double lng = 0.0;
+            try {
+              Position? pos = await Geolocator.getLastKnownPosition();
+              pos ??= await Geolocator.getCurrentPosition(desiredAccuracy: LocationAccuracy.medium, timeLimit: const Duration(seconds: 3));
+              lat = pos.latitude;
+              lng = pos.longitude;
+            } catch (_) {}
+
+            await ApiService().logVisit({
+              'customer_id': widget.customerId,
+              'visit_type': 'SALE',
+              'reason': 'Payment Received',
+              'latitude': lat,
+              'longitude': lng,
+            });
+          }
+
           _showPrintDialog(paymentData);
         }
       } else {

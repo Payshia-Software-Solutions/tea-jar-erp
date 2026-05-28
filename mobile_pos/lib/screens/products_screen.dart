@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'dart:convert';
 import '../models/item.dart';
 import '../models/cart_item.dart';
 import '../services/api_service.dart';
@@ -6,6 +7,7 @@ import '../models/customer.dart';
 import 'cart_screen.dart';
 import 'held_bills_screen.dart';
 import '../services/printer_service.dart';
+import '../services/db_service.dart';
 import '../components/guest_receipt_dialog.dart';
 import '../components/kot_receipt_dialog.dart';
 
@@ -128,6 +130,13 @@ class _ProductsScreenState extends State<ProductsScreen> {
     bool isLoadingBatches = true;
     int? selectedBatchId;
     String? selectedBatchNumber;
+    
+    // Fetch promotions
+    List<Map<String, dynamic>> itemPromotions = [];
+    bool isLoadingPromotions = true;
+    
+    final TextEditingController qtyController = TextEditingController(text: '1');
+    final TextEditingController discountController = TextEditingController();
 
     if (mounted) {
       showModalBottomSheet(
@@ -152,12 +161,37 @@ class _ProductsScreenState extends State<ProductsScreen> {
                 });
               }
 
+              if (isLoadingPromotions) {
+                 DbService().getCachedPromotions().then((promos) {
+                   if (mounted) {
+                     setSheetState(() {
+                       itemPromotions = promos.where((p) {
+                         if (p['is_active']?.toString() != '1') return false;
+                         if (p['benefits'] != null) {
+                            try {
+                              final benefits = p['benefits'] as List;
+                              for (var b in benefits) {
+                                if (b['trigger_items'] != null) {
+                                   final tIds = (jsonDecode(b['trigger_items'].toString()) as List).map((e) => int.parse(e.toString())).toList();
+                                   if (tIds.isEmpty || tIds.contains(item.id)) return true;
+                                }
+                              }
+                            } catch (_) {}
+                         }
+                         return false;
+                       }).toList().cast<Map<String, dynamic>>();
+                       isLoadingPromotions = false;
+                     });
+                   }
+                 });
+              }
+
               bool isService = item.itemType?.toLowerCase() == 'service';
               bool isOutOfStock = !isService && item.stockLevel <= 0;
 
               return Container(
                 decoration: BoxDecoration(
-                  color: Theme.of(context).scaffoldBackgroundColor,
+                  color: Theme.of(context).colorScheme.surface,
                   borderRadius: const BorderRadius.only(
                     topLeft: Radius.circular(24),
                     topRight: Radius.circular(24),
@@ -295,6 +329,71 @@ class _ProductsScreenState extends State<ProductsScreen> {
                                 },
                               ),
                             const SizedBox(height: 16),
+                            if (itemPromotions.isNotEmpty) ...[
+                              Container(
+                                padding: const EdgeInsets.all(12),
+                                margin: const EdgeInsets.only(bottom: 16),
+                                decoration: BoxDecoration(
+                                  color: Colors.green.withOpacity(0.1),
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(color: Colors.green.withOpacity(0.3)),
+                                ),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    const Row(
+                                      children: [
+                                        Icon(Icons.local_offer, color: Colors.green, size: 20),
+                                        SizedBox(width: 8),
+                                        Text('Available Promotions', style: TextStyle(color: Colors.green, fontWeight: FontWeight.bold)),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 8),
+                                    ...itemPromotions.map((p) {
+                                       String? triggerQtyStr;
+                                       if (p['benefits'] != null) {
+                                          try {
+                                            for (var b in p['benefits'] as List) {
+                                              if (b['trigger_items'] != null) {
+                                                 final tList = (jsonDecode(b['trigger_items'].toString()) as List).map((e) => e.toString()).toList();
+                                                 if (tList.contains(item.id.toString())) {
+                                                    triggerQtyStr = b['trigger_qty']?.toString();
+                                                    break;
+                                                 }
+                                              }
+                                            }
+                                          } catch (_) {}
+                                       }
+                                       return Padding(
+                                         padding: const EdgeInsets.only(top: 4.0),
+                                         child: Row(
+                                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                           children: [
+                                             Expanded(child: Text('• ${p['name'] ?? ''}', style: TextStyle(color: Colors.green.shade700, fontSize: 13))),
+                                             if (triggerQtyStr != null)
+                                               TextButton(
+                                                 onPressed: () {
+                                                   setSheetState(() {
+                                                     qty = double.tryParse(triggerQtyStr!) ?? 1.0;
+                                                     qtyController.text = qty.toInt().toString();
+                                                   });
+                                                 },
+                                                 style: TextButton.styleFrom(
+                                                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                                                   minimumSize: Size.zero,
+                                                   tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                                   backgroundColor: Colors.green.withOpacity(0.2),
+                                                 ),
+                                                 child: Text('Set Qty: $triggerQtyStr', style: const TextStyle(color: Colors.green, fontSize: 12, fontWeight: FontWeight.bold)),
+                                               ),
+                                           ],
+                                         ),
+                                       );
+                                    }).toList(),
+                                  ],
+                                ),
+                              ),
+                            ],
                             TextField(
                               keyboardType: const TextInputType.numberWithOptions(decimal: true),
                               style: TextStyle(color: Theme.of(context).textTheme.bodyLarge?.color),
@@ -307,7 +406,7 @@ class _ProductsScreenState extends State<ProductsScreen> {
                               onChanged: (val) {
                                 qty = double.tryParse(val) ?? 1.0;
                               },
-                              controller: TextEditingController(text: '1'),
+                              controller: qtyController,
                             ),
                             const SizedBox(height: 16),
                             TextField(
@@ -324,6 +423,7 @@ class _ProductsScreenState extends State<ProductsScreen> {
                               onChanged: (val) {
                                 discount = double.tryParse(val) ?? 0.0;
                               },
+                              controller: discountController,
                             ),
                             const SizedBox(height: 32),
                             ElevatedButton(
@@ -689,6 +789,82 @@ class _ProductsScreenState extends State<ProductsScreen> {
             label: Text('HELD ($_heldOrdersCount)', style: const TextStyle(fontWeight: FontWeight.bold)),
           ),
           const SizedBox(width: 8),
+          IconButton(
+            icon: const Icon(Icons.local_offer, color: Colors.green),
+            tooltip: 'View Active Promotions',
+            onPressed: () async {
+              final promos = await DbService().getCachedPromotions();
+              final activePromos = promos.where((p) => p['is_active']?.toString() == '1').toList();
+              
+              if (!mounted) return;
+              showDialog(
+                context: context,
+                builder: (ctx) => AlertDialog(
+                  title: const Row(
+                    children: [
+                      Icon(Icons.local_offer, color: Colors.green),
+                      SizedBox(width: 8),
+                      Text('Active Promotions'),
+                    ],
+                  ),
+                  content: activePromos.isEmpty 
+                      ? const Text('No active promotions available at the moment.')
+                      : SizedBox(
+                          width: double.maxFinite,
+                          child: ListView.separated(
+                            shrinkWrap: true,
+                            itemCount: activePromos.length,
+                            separatorBuilder: (c, i) => const Divider(),
+                            itemBuilder: (c, i) {
+                              final p = activePromos[i];
+                              
+                              String subtitleText = p['description'] ?? 'Special offer';
+                              if (p['benefits'] != null) {
+                                try {
+                                  final benefits = p['benefits'] as List;
+                                  for (var b in benefits) {
+                                    if (b['benefit_type'] == 'BuyXGetY') {
+                                      final tNames = b['trigger_item_names'] != null ? (b['trigger_item_names'] as Map).values.join(', ') : '';
+                                      final rNames = b['reward_item_names'] != null ? (b['reward_item_names'] as Map).values.join(', ') : '';
+                                      if (tNames.isNotEmpty && rNames.isNotEmpty) {
+                                        subtitleText += '\n\n• Buy: $tNames\n• Get Free: $rNames';
+                                      } else if (tNames.isNotEmpty) {
+                                        subtitleText += '\n\n• Eligible Items: $tNames';
+                                      }
+                                    }
+                                  }
+                                } catch (_) {}
+                              }
+
+                              return ListTile(
+                                isThreeLine: subtitleText.contains('\n'),
+                                title: Text(p['name'] ?? 'Promo', style: const TextStyle(fontWeight: FontWeight.bold)),
+                                subtitle: Text(subtitleText),
+                                trailing: Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                  decoration: BoxDecoration(
+                                    color: Colors.green.withOpacity(0.1),
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: Text(
+                                    p['type'] ?? 'Offer', 
+                                    style: const TextStyle(color: Colors.green, fontSize: 10, fontWeight: FontWeight.bold)
+                                  ),
+                                ),
+                              );
+                            },
+                          ),
+                        ),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(ctx),
+                      child: const Text('Close'),
+                    )
+                  ],
+                ),
+              );
+            },
+          ),
           IconButton(
             icon: Icon(_isGridView ? Icons.view_list_rounded : Icons.grid_view_rounded),
             onPressed: () {

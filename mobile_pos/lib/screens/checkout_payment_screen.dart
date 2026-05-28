@@ -24,6 +24,9 @@ class CheckoutPaymentScreen extends StatefulWidget {
   final int? tableId;
   final int? stewardId;
   final int? heldOrderId;
+  final int? appliedPromotionId;
+  final String? appliedPromotionName;
+  final bool isReturnMode;
 
   const CheckoutPaymentScreen({
     super.key,
@@ -40,6 +43,9 @@ class CheckoutPaymentScreen extends StatefulWidget {
     this.tableId,
     this.stewardId,
     this.heldOrderId,
+    this.appliedPromotionId,
+    this.appliedPromotionName,
+    this.isReturnMode = false,
   });
 
   @override
@@ -155,51 +161,72 @@ class _CheckoutPaymentScreenState extends State<CheckoutPaymentScreen> {
           'item_type': cartItem.item.itemType ?? 'Part',
           'quantity': cartItem.quantity,
           'unit_price': cartItem.item.price,
-          'discount': cartItem.discount,
+          'discount': cartItem.discount + cartItem.promoDiscount,
           'tax_amount': 0,
           'line_total': cartItem.subtotal,
         };
       }).toList();
 
-      final payload = {
-        'location_id': activeLocation['id'],
-        'customer_id': widget.customer.id,
-        'billing_address': '',
-        'shipping_address': '',
-        'issue_date': DateTime.now().toIso8601String().split('T')[0],
-        'due_date': DateTime.now().toIso8601String().split('T')[0],
-        'subtotal': widget.subtotal,
-        'tax_total': widget.taxTotal,
-        'applied_taxes': widget.appliedTaxes,
-        'discount_total': widget.discountTotal,
-        'grand_total': widget.grandTotal,
-        'order_type': widget.orderType ?? 'retail',
-        'table_id': widget.tableId,
-        'steward_id': widget.stewardId,
-        'held_order_id': widget.heldOrderId,
-        'discount_type': widget.discountType,
-        'discount_value': widget.discountValue,
-        'notes': 'POS Mobile App Sale',
-        'items': items,
-        'payments': [
-          {
-            'method': _paymentMethod,
+      Map<String, dynamic> payload;
+      
+      if (widget.isReturnMode) {
+        payload = {
+          'location_id': activeLocation['id'],
+          'customer_id': widget.customer.id,
+          'invoice_id': null, // Blind return
+          'total_amount': widget.grandTotal,
+          'reason': 'Mobile App Blind Return',
+          'items': items,
+          'refund': {
+            'payment_method': _paymentMethod,
             'amount': _paymentMethod == 'Credit' ? 0 : widget.grandTotal,
-            'cardLast4': _cardLast4,
-            'cardType': _cardType,
-            'cardAuthCode': _cardAuthCode,
-            'bankId': _cardBankId,
-            'cardCategory': _cardCategory,
-            'chequeNo': _chequeNo,
-            'chequeBankName': _chequeBankName,
-            'chequeBranchName': _chequeBranchName,
-            'chequeDate': _chequeDate,
-            'chequePayee': '',
           }
-        ]
-      };
+        };
+      } else {
+        payload = {
+          'location_id': activeLocation['id'],
+          'customer_id': widget.customer.id,
+          'billing_address': '',
+          'shipping_address': '',
+          'issue_date': DateTime.now().toIso8601String().split('T')[0],
+          'due_date': DateTime.now().toIso8601String().split('T')[0],
+          'subtotal': widget.subtotal,
+          'tax_total': widget.taxTotal,
+          'applied_taxes': widget.appliedTaxes,
+          'discount_total': widget.discountTotal,
+          'grand_total': widget.grandTotal,
+          'order_type': widget.orderType ?? 'retail',
+          'table_id': widget.tableId,
+          'steward_id': widget.stewardId,
+          'held_order_id': widget.heldOrderId,
+          'applied_promotion_id': widget.appliedPromotionId,
+          'applied_promotion_name': widget.appliedPromotionName,
+          'discount_type': widget.discountType,
+          'discount_value': widget.discountValue,
+          'notes': 'POS Mobile App Sale',
+          'items': items,
+          'payments': [
+            {
+              'method': _paymentMethod,
+              'amount': _paymentMethod == 'Credit' ? 0 : widget.grandTotal,
+              'cardLast4': _cardLast4,
+              'cardType': _cardType,
+              'cardAuthCode': _cardAuthCode,
+              'bankId': _cardBankId,
+              'cardCategory': _cardCategory,
+              'chequeNo': _chequeNo,
+              'chequeBankName': _chequeBankName,
+              'chequeBranchName': _chequeBranchName,
+              'chequeDate': _chequeDate,
+              'chequePayee': '',
+            }
+          ]
+        };
+      }
 
-      final response = await _apiService.createInvoice(payload);
+      final response = widget.isReturnMode 
+          ? await _apiService.processReturn(payload)
+          : await _apiService.createInvoice(payload);
 
       if (response['success']) {
         // Auto log a visit so the shop is removed from the To Visit list 
@@ -224,7 +251,9 @@ class _CheckoutPaymentScreenState extends State<CheckoutPaymentScreen> {
         }
 
         final orderData = {
-          'id': response['data']['invoice_no']?.toString() ?? response['data']['id']?.toString() ?? 'N/A',
+          'id': widget.isReturnMode 
+              ? (response['data']['return_no']?.toString() ?? response['data']['id']?.toString() ?? 'N/A')
+              : (response['data']['invoice_no']?.toString() ?? response['data']['id']?.toString() ?? 'N/A'),
           'customer': widget.customer.name,
           'total': widget.grandTotal.toStringAsFixed(2),
           'paymentMethod': _paymentMethod,
@@ -333,10 +362,12 @@ class _CheckoutPaymentScreenState extends State<CheckoutPaymentScreen> {
                 children: [
                   const Icon(Icons.check_circle, color: Colors.green, size: 60),
                   const SizedBox(height: 16),
-                  Text('CHECKOUT SUCCESSFUL!', style: TextStyle(color: Theme.of(context).textTheme.bodyLarge?.color, fontSize: 20, fontWeight: FontWeight.bold)),
+                  Text(widget.isReturnMode ? 'RETURN SUCCESSFUL!' : 'CHECKOUT SUCCESSFUL!', style: TextStyle(color: Theme.of(context).textTheme.bodyLarge?.color, fontSize: 20, fontWeight: FontWeight.bold)),
                   const SizedBox(height: 8),
                   Text(
-                    'Invoice #${orderData['id']} has been processed.\nSelect your preferred receipt format to print.',
+                    widget.isReturnMode
+                      ? 'Return #${orderData['id']} has been processed.\nSelect your preferred receipt format to print.'
+                      : 'Invoice #${orderData['id']} has been processed.\nSelect your preferred receipt format to print.',
                     textAlign: TextAlign.center,
                     style: TextStyle(color: Theme.of(context).textTheme.bodyMedium?.color),
                   ),
@@ -662,7 +693,7 @@ class _CheckoutPaymentScreenState extends State<CheckoutPaymentScreen> {
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
-        title: const Text('POS CHECKOUT', style: TextStyle(fontWeight: FontWeight.w900)),
+        title: Text(widget.isReturnMode ? 'RETURN REFUND' : 'POS CHECKOUT', style: const TextStyle(fontWeight: FontWeight.w900)),
         centerTitle: true,
         elevation: 0,
       ),

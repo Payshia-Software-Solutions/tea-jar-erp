@@ -24,6 +24,13 @@ void callbackDispatcher() {
         }
       }
 
+      // Automatically sync customers, visits and invoices in the background
+      try {
+        await ApiService().syncOfflineCustomers();
+        await ApiService().syncOfflineVisits();
+        await ApiService().syncOfflineInvoices();
+      } catch (_) {}
+
       // Log current
       final success = await ApiService().sendTrackingLog(position.latitude, position.longitude);
       if (!success) {
@@ -100,6 +107,13 @@ class TrackingService {
           await DbService().deleteOfflineTrackingLogs(syncedIds);
         }
       }
+
+      // Automatically sync customers, visits and invoices in the foreground
+      try {
+        await ApiService().syncOfflineCustomers();
+        await ApiService().syncOfflineVisits();
+        await ApiService().syncOfflineInvoices();
+      } catch (_) {}
 
       // 3. Try to upload current location
       final logSuccess = await ApiService().sendTrackingLog(position.latitude, position.longitude);
