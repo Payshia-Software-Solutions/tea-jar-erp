@@ -14,7 +14,7 @@ class StockRequisition extends Model {
     }
 
     public function listOpen() {
-        // $this->ensureSchema();
+        // // $this->ensureSchema();
         $sql = "
             SELECT r.*,
                    lf.name AS from_location_name,
@@ -51,7 +51,7 @@ class StockRequisition extends Model {
     }
 
     public function listByLocations($locationIds = []) {
-        // $this->ensureSchema();
+        // // $this->ensureSchema();
         $ids = array_values(array_filter(array_map('intval', (array)$locationIds), function($x) { return $x > 0; }));
         if (count($ids) === 0) return [];
         $in = implode(',', array_fill(0, count($ids), '?'));
@@ -82,7 +82,7 @@ class StockRequisition extends Model {
     }
 
     public function getById($id) {
-        // $this->ensureSchema();
+        // // $this->ensureSchema();
         $this->db->query("
             SELECT r.*, lf.name AS from_location_name, sl.name AS to_location_name
             FROM stock_transfer_requisitions r
@@ -112,7 +112,7 @@ class StockRequisition extends Model {
     }
 
     public function create($data, $userId = null) {
-        // $this->ensureSchema();
+        // // $this->ensureSchema();
         $fromId = (int)($data['from_location_id'] ?? $data['fromLocationId'] ?? 0);
         $toId = (int)($data['to_location_id'] ?? $data['toLocationId'] ?? 0);
         if ($toId <= 0) return false;
@@ -180,7 +180,7 @@ class StockRequisition extends Model {
     }
 
     public function approve($id, $userId = null) {
-        // $this->ensureSchema();
+        // // $this->ensureSchema();
         $rid = (int)$id;
         if ($rid <= 0) return false;
         $this->db->query("UPDATE stock_transfer_requisitions SET status = 'Approved', approved_by = :u, approved_at = NOW() WHERE id = :id AND status = 'Requested'");
@@ -190,7 +190,7 @@ class StockRequisition extends Model {
     }
 
     public function markFulfilledIfComplete($id) {
-        // $this->ensureSchema();
+        // // $this->ensureSchema();
         $rid = (int)$id;
         if ($rid <= 0) return false;
         $this->db->query("
@@ -208,7 +208,7 @@ class StockRequisition extends Model {
     }
 
     public function addFulfilledQty($id, $partId, $qty) {
-        // $this->ensureSchema();
+        // // $this->ensureSchema();
         $rid = (int)$id;
         $pid = (int)$partId;
         $qty = (float)$qty;

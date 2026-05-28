@@ -10,7 +10,7 @@ class Tax extends Model {
     }
 
     public function list($q = '', $activeOnly = true) {
-        // $this->ensureSchema();
+        // // $this->ensureSchema();
         $q = is_string($q) ? trim($q) : '';
         $activeOnly = (bool)$activeOnly;
 
@@ -26,7 +26,7 @@ class Tax extends Model {
     }
 
     public function create($data, $userId = null) {
-        // $this->ensureSchema();
+        // // $this->ensureSchema();
         $code = strtoupper(trim((string)($data['code'] ?? '')));
         $name = trim((string)($data['name'] ?? ''));
         $rate = (float)($data['rate_percent'] ?? $data['rate'] ?? 0);
@@ -54,7 +54,7 @@ class Tax extends Model {
     }
 
     public function update($id, $data, $userId = null) {
-        // $this->ensureSchema();
+        // // $this->ensureSchema();
         $tid = (int)$id;
         if ($tid <= 0) return false;
 
@@ -91,7 +91,7 @@ class Tax extends Model {
     }
 
     public function getByIds($ids) {
-        // $this->ensureSchema();
+        // // $this->ensureSchema();
         if (empty($ids)) return [];
         $ids = array_map('intval', $ids);
         $placeholders = implode(',', array_fill(0, count($ids), '?'));
@@ -103,7 +103,7 @@ class Tax extends Model {
     }
 
     public function delete($id) {
-        // $this->ensureSchema();
+        // // $this->ensureSchema();
         $this->db->query("DELETE FROM {$this->table} WHERE id = :id");
         $this->db->bind(':id', (int)$id);
         return $this->db->execute();

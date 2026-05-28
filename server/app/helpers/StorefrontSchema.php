@@ -9,7 +9,8 @@ class StorefrontSchema {
         return new PDO($dsn, DB_USER, DB_PASS, [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
     }
 
-    public static function ensure() {
+    public static function ensure($force = false) {
+        if (!$force && !defined('FORCE_MIGRATIONS')) return;
         try {
             $pdo = self::pdo();
             $pdo->exec("

@@ -12,7 +12,8 @@ class CityPostalSchema {
         return $pdo;
     }
 
-    public static function ensure() {
+    public static function ensure($force = false) {
+        if (!$force && !defined('FORCE_MIGRATIONS')) return;
         $pdo = self::pdo();
 
         // 1. Add postal_code column if missing

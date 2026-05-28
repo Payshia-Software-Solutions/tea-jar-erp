@@ -3,7 +3,8 @@
  * SalesReturnSchema Helper
  */
 class SalesReturnSchema {
-    public static function ensure() {
+    public static function ensure($force = false) {
+        if (!$force && !defined('FORCE_MIGRATIONS')) return;
         $db = new Database();
 
         // 1. sales_returns table

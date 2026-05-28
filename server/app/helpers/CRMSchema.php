@@ -5,7 +5,8 @@
 class CRMSchema {
     private static $done = false;
 
-    public static function ensure() {
+    public static function ensure($force = false) {
+        if (!$force && !defined('FORCE_MIGRATIONS')) return;
         if (self::$done) return;
         self::$done = true;
 

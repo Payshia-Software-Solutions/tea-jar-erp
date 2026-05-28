@@ -4,7 +4,8 @@
  * Manages database schema for logging payment gateway notifications.
  */
 class PaymentLogSchema {
-    public static function ensure() {
+    public static function ensure($force = false) {
+        if (!$force && !defined('FORCE_MIGRATIONS')) return;
         $db = new Database();
 
         $db->query("

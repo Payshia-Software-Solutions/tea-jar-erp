@@ -14,6 +14,7 @@ class PosHeldOrderSchema {
     }
 
     public static function ensure($force = false) {
+        if (!$force && !defined('FORCE_MIGRATIONS')) return;
         if (self::$done && !$force) return;
         self::$done = true;
 

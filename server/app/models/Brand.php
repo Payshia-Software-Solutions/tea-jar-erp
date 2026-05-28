@@ -10,7 +10,7 @@ class Brand extends Model {
     }
 
     public function list($q = '') {
-        // $this->ensureSchema();
+        // // $this->ensureSchema();
         $q = is_string($q) ? trim($q) : '';
         if ($q !== '') {
             $this->db->query("SELECT * FROM {$this->table} WHERE name LIKE :q ORDER BY name ASC");
@@ -22,7 +22,7 @@ class Brand extends Model {
     }
 
     public function create($name, $userId = null) {
-        // $this->ensureSchema();
+        // // $this->ensureSchema();
         $this->db->query("INSERT INTO {$this->table} (name, created_by, updated_by) VALUES (:name, :c, :u)");
         $this->db->bind(':name', $name);
         $this->db->bind(':c', $userId);
@@ -31,7 +31,7 @@ class Brand extends Model {
     }
 
     public function update($id, $name, $userId = null) {
-        // $this->ensureSchema();
+        // // $this->ensureSchema();
         $this->db->query("UPDATE {$this->table} SET name = :name, updated_by = :u WHERE id = :id");
         $this->db->bind(':name', $name);
         $this->db->bind(':u', $userId);
@@ -40,7 +40,7 @@ class Brand extends Model {
     }
 
     public function delete($id) {
-        // $this->ensureSchema();
+        // // $this->ensureSchema();
         $this->db->query("DELETE FROM {$this->table} WHERE id = :id");
         $this->db->bind(':id', (int)$id);
         return $this->db->execute();
