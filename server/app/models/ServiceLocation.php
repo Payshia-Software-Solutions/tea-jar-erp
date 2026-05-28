@@ -38,20 +38,20 @@ class ServiceLocation extends Model {
     }
 
     public function getAll() {
-        $this->ensureSchema();
+        // $this->ensureSchema();
         $this->db->query("SELECT * FROM {$this->table} ORDER BY name ASC");
         return $this->db->resultSet();
     }
 
     public function getById($id) {
-        $this->ensureSchema();
+        // $this->ensureSchema();
         $this->db->query("SELECT * FROM {$this->table} WHERE id = :id LIMIT 1");
         $this->db->bind(':id', (int)$id);
         return $this->db->single();
     }
 
     public function create($data, $userId = null) {
-        $this->ensureSchema();
+        // $this->ensureSchema();
         $this->db->query("
             INSERT INTO {$this->table} (
                 name, location_type, address, phone, tax_no, tax_label, 
@@ -95,7 +95,7 @@ class ServiceLocation extends Model {
     }
 
     public function update($id, $data, $userId = null) {
-        $this->ensureSchema();
+        // $this->ensureSchema();
         $this->db->query("
             UPDATE {$this->table}
             SET name = :name, location_type = :location_type, address = :address, phone = :phone, 

@@ -7,7 +7,7 @@ class Inquiry extends Model {
 
     public function __construct() {
         parent::__construct();
-        $this->ensureSchema();
+        // $this->ensureSchema();
     }
 
     public function ensureSchema() {

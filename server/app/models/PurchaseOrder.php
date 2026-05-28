@@ -15,7 +15,7 @@ class PurchaseOrder extends Model {
     }
 
     public function list($q = '', $locationId = 1) {
-        $this->ensureSchema();
+        // $this->ensureSchema();
         $locId = (int)$locationId;
         if ($locId <= 0) $locId = 1;
         $q = is_string($q) ? trim($q) : '';
@@ -50,7 +50,7 @@ class PurchaseOrder extends Model {
     }
 
     public function getById($id, $locationId = 1) {
-        $this->ensureSchema();
+        // $this->ensureSchema();
         $locId = (int)$locationId;
         if ($locId <= 0) $locId = 1;
         $this->db->query("
@@ -93,7 +93,7 @@ class PurchaseOrder extends Model {
     }
 
     public function create($data, $userId = null, $locationId = 1) {
-        $this->ensureSchema();
+        // $this->ensureSchema();
         $locId = (int)$locationId;
         if ($locId <= 0) $locId = 1;
         $supplierId = (int)($data['supplier_id'] ?? 0);
@@ -177,7 +177,7 @@ class PurchaseOrder extends Model {
     }
 
     public function update($id, $data, $userId = null) {
-        $this->ensureSchema();
+        // $this->ensureSchema();
         $poId = (int)$id;
         if ($poId <= 0) return false;
 
@@ -271,7 +271,7 @@ class PurchaseOrder extends Model {
     }
 
     public function setStatus($id, $status, $userId = null) {
-        $this->ensureSchema();
+        // $this->ensureSchema();
         $poId = (int)$id;
         // "Cancelled" status marking is intentionally disabled in the UI and API.
         $allowed = ['Draft', 'Approved', 'Sent', 'Partially Received', 'Received'];
@@ -286,7 +286,7 @@ class PurchaseOrder extends Model {
 
     public function applyReceipt($poId) {
         // Recompute PO status based on received_qty vs qty_ordered.
-        $this->ensureSchema();
+        // $this->ensureSchema();
         $id = (int)$poId;
         if ($id <= 0) return false;
         $this->db->query("

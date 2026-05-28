@@ -8,7 +8,7 @@ class OrderPart extends Model {
     }
 
     public function listByOrder($orderId) {
-        $this->ensureSchema();
+        // $this->ensureSchema();
         $oid = (int)$orderId;
         $this->db->query("
             SELECT op.*, p.part_name, p.sku, p.unit
@@ -22,7 +22,7 @@ class OrderPart extends Model {
     }
 
     public function addLine($orderId, $partId, $qty, $userId = null) {
-        $this->ensureSchema();
+        // $this->ensureSchema();
         $oid = (int)$orderId;
         $pid = (int)$partId;
         $qty = (float)$qty;
@@ -237,7 +237,7 @@ class OrderPart extends Model {
     }
 
     public function updateQty($lineId, $newQty, $userId = null) {
-        $this->ensureSchema();
+        // $this->ensureSchema();
         $lid = (int)$lineId;
         $newQty = (float)$newQty;
         if ($lid <= 0 || $newQty <= 0) return false;
@@ -336,7 +336,7 @@ class OrderPart extends Model {
     }
 
     public function deleteLine($lineId, $userId = null) {
-        $this->ensureSchema();
+        // $this->ensureSchema();
         $lid = (int)$lineId;
         if ($lid <= 0) return false;
 
