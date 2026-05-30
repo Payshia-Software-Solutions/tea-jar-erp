@@ -15375,6 +15375,99 @@ class SchemaDefinition {
       ),
     ),
   ),
+  'sales_targets' => 
+  array (
+    'name' => 'sales_targets',
+    'columns' => 
+    array (
+      'id' => 
+      array (
+        'Field' => 'id',
+        'Type' => 'int(11)',
+        'Null' => 'NO',
+        'Key' => 'PRI',
+        'Default' => NULL,
+        'Extra' => 'auto_increment',
+      ),
+      'location_id' => 
+      array (
+        'Field' => 'location_id',
+        'Type' => 'int(11)',
+        'Null' => 'NO',
+        'Key' => 'MUL',
+        'Default' => NULL,
+        'Extra' => '',
+      ),
+      'collection_id' => 
+      array (
+        'Field' => 'collection_id',
+        'Type' => 'int(11)',
+        'Null' => 'YES',
+        'Key' => '',
+        'Default' => NULL,
+        'Extra' => '',
+      ),
+      'target_month' => 
+      array (
+        'Field' => 'target_month',
+        'Type' => 'varchar(7)',
+        'Null' => 'NO',
+        'Key' => '',
+        'Default' => NULL,
+        'Extra' => '',
+      ),
+      'target_value' => 
+      array (
+        'Field' => 'target_value',
+        'Type' => 'decimal(15,2)',
+        'Null' => 'NO',
+        'Key' => '',
+        'Default' => '0.00',
+        'Extra' => '',
+      ),
+      'created_at' => 
+      array (
+        'Field' => 'created_at',
+        'Type' => 'timestamp',
+        'Null' => 'NO',
+        'Key' => '',
+        'Default' => 'current_timestamp()',
+        'Extra' => '',
+      ),
+      'updated_at' => 
+      array (
+        'Field' => 'updated_at',
+        'Type' => 'timestamp',
+        'Null' => 'NO',
+        'Key' => '',
+        'Default' => 'current_timestamp()',
+        'Extra' => 'on update current_timestamp()',
+      ),
+    ),
+    'indexes' => 
+    array (
+      'PRIMARY' => 
+      array (
+        'Key_name' => 'PRIMARY',
+        'Non_unique' => 0,
+        'Columns' => 
+        array (
+          0 => 'id',
+        ),
+      ),
+      'loc_col_month' => 
+      array (
+        'Key_name' => 'loc_col_month',
+        'Non_unique' => 0,
+        'Columns' => 
+        array (
+          0 => 'location_id',
+          1 => 'collection_id',
+          2 => 'target_month',
+        ),
+      ),
+    ),
+  ),
   'segment_contacts' => 
   array (
     'name' => 'segment_contacts',
