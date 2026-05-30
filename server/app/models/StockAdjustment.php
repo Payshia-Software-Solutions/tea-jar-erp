@@ -1,12 +1,8 @@
 <?php
 /**
- * StockAdjustment Model (batch adjustments)
+ * StockAdjustment Model (batch adjustments - direct committed transaction ledger)
  */
 class StockAdjustment extends Model {
-    private function ensureSchema() { return;
-        InventorySchema::ensure();
-    }
-
     private function genNumber() {
         $dt = new DateTime('now');
         $stamp = $dt->format('Ymd-His');
@@ -15,10 +11,10 @@ class StockAdjustment extends Model {
     }
 
     public function list($q = '', $locationId = 1) {
-        // // // // // // $this->ensureSchema();
         $locId = (int)$locationId;
         if ($locId <= 0) $locId = 1;
         $q = is_string($q) ? trim($q) : '';
+
         if ($q !== '') {
             $this->db->query("
                 SELECT sa.*,
@@ -58,7 +54,6 @@ class StockAdjustment extends Model {
     }
 
     public function getById($id, $locationId = 1) {
-        // // // // // // $this->ensureSchema();
         $aid = (int)$id;
         $locId = (int)$locationId;
         if ($locId <= 0) $locId = 1;
@@ -93,22 +88,7 @@ class StockAdjustment extends Model {
         ];
     }
 
-    /**
-     * Create an adjustment batch.
-     *
-     * $data:
-     * - adjusted_at, reason, notes
-     * - items[{part_id, physical_stock, notes?, include_when_zero?}]
-     *
-     * Behavior:
-     * - System stock is taken from the DB under row lock at the moment of saving.
-     * - Variance (qty_change) = physical_stock - system_stock.
-     * - If variance = 0, the line is normally ignored unless include_when_zero is true.
-     * - For variance != 0, stock_quantity is updated to physical_stock and a stock_movements row is written.
-     * - For variance = 0 (included for audit), stock is not changed and stock_movements is not written.
-     */
     public function create($data, $userId = null, $locationId = 1) {
-        // // // // // // $this->ensureSchema();
         $locId = (int)$locationId;
         if ($locId <= 0) $locId = 1;
         $items = isset($data['items']) && is_array($data['items']) ? $data['items'] : [];
@@ -119,7 +99,6 @@ class StockAdjustment extends Model {
             $adjustedAt = (new DateTime('now'))->format('Y-m-d H:i:s');
         }
 
-        // Normalize and merge duplicate part_ids (so we lock/update once)
         $merged = [];
         foreach ($items as $it) {
             $pid = (int)($it['part_id'] ?? $it['partId'] ?? 0);
@@ -127,15 +106,17 @@ class StockAdjustment extends Model {
             $physical = ($physical === '' || $physical === null) ? null : (float)$physical;
             $note = isset($it['notes']) ? trim((string)$it['notes']) : null;
             $includeWhenZero = (bool)($it['include_when_zero'] ?? $it['includeWhenZero'] ?? false);
+            $bid = (int)($it['batch_id'] ?? $it['batchId'] ?? 0);
             if ($pid <= 0) continue;
             if ($physical === null) continue;
-            if (!isset($merged[$pid])) {
-                $merged[$pid] = ['part_id' => $pid, 'physical_stock' => $physical, 'notes' => [], 'include_when_zero' => false];
+            
+            $key = $pid . '-' . $bid;
+            if (!isset($merged[$key])) {
+                $merged[$key] = ['part_id' => $pid, 'batch_id' => $bid, 'physical_stock' => $physical, 'notes' => [], 'include_when_zero' => false];
             }
-            // If duplicates somehow exist, last physical stock wins (UI also prevents duplicates).
-            $merged[$pid]['physical_stock'] = $physical;
-            if ($includeWhenZero) $merged[$pid]['include_when_zero'] = true;
-            if ($note) $merged[$pid]['notes'][] = $note;
+            $merged[$key]['physical_stock'] = $physical;
+            if ($includeWhenZero) $merged[$key]['include_when_zero'] = true;
+            if ($note) $merged[$key]['notes'][] = $note;
         }
         $lines = array_values($merged);
         if (count($lines) === 0) return false;
@@ -144,12 +125,9 @@ class StockAdjustment extends Model {
         if ($adjNumber === '') $adjNumber = $this->genNumber();
 
         try {
-            require_once __DIR__ . '/InventoryBatch.php';
-            $batchModel = new InventoryBatch();
-
             $this->db->exec("START TRANSACTION");
 
-            // Create header
+            // Insert header
             $this->db->query("
                 INSERT INTO stock_adjustments (location_id, adjustment_number, adjusted_at, reason, notes, created_by)
                 VALUES (:loc, :num, :dt, :reason, :notes, :u)
@@ -167,7 +145,6 @@ class StockAdjustment extends Model {
             }
             $adjId = (int)$this->db->lastInsertId();
 
-            // Apply each line with row lock
             foreach ($lines as $ln) {
                 $pid = (int)$ln['part_id'];
                 $physical = (float)($ln['physical_stock'] ?? 0);
@@ -187,7 +164,6 @@ class StockAdjustment extends Model {
                 $bid = (int)($ln['batch_id'] ?? 0);
 
                 if ($bid > 0) {
-                    // Lock and read batch stock (Batches are inherently location-specific)
                     $this->db->query("SELECT quantity_on_hand FROM inventory_batches WHERE id = :id AND location_id = :loc FOR UPDATE");
                     $this->db->bind(':id', $bid);
                     $this->db->bind(':loc', $locId);
@@ -198,16 +174,14 @@ class StockAdjustment extends Model {
                     }
                     $system = round((float)($btch->quantity_on_hand ?? 0), 3);
                 } else {
-                    // 1. Lock part row for global stock consistency
                     $this->db->query("SELECT id FROM parts WHERE id = :id FOR UPDATE");
                     $this->db->bind(':id', $pid);
                     $this->db->execute();
 
-                    // 2. Calculate local system stock from movements ledger
                     $this->db->query("
                         SELECT COALESCE(SUM(qty_change), 0) AS local_qty 
                         FROM stock_movements 
-                        WHERE part_id = :id AND location_id = :loc
+                        WHERE part_id = :id AND location_id = :loc AND batch_id IS NULL
                     ");
                     $this->db->bind(':id', $pid);
                     $this->db->bind(':loc', $locId);
@@ -215,29 +189,40 @@ class StockAdjustment extends Model {
                     $system = round((float)($res->local_qty ?? 0), 3);
                 }
 
-                $qty = round($physical - $system, 3); // variance
+                $qty = round($physical - $system, 3);
                 if (abs($qty) < 0.0005) $qty = 0.000;
 
                 if ($qty == 0.0 && !$includeWhenZero) {
-                    // Skip completely when no variance and not required for audit.
                     continue;
                 }
 
                 if ($qty != 0.0) {
-                    // Update global total cached stock by applying the LOCAL variance (incremental update)
                     $this->db->query("UPDATE parts SET stock_quantity = stock_quantity + :q, updated_by = :u WHERE id = :id");
                     $this->db->bind(':q', $qty);
                     $this->db->bind(':u', $userId);
                     $this->db->bind(':id', $pid);
                     $this->db->execute();
 
-                    // Update batch-specific record to physical count if applying to a batch
                     if ($bid > 0) {
                         $this->db->query("UPDATE inventory_batches SET quantity_on_hand = :q WHERE id = :id");
                         $this->db->bind(':q', $physical);
                         $this->db->bind(':id', $bid);
                         $this->db->execute();
                     }
+
+                    // Stock movement ledger entry (created immediately during direct commit)
+                    $this->db->query("
+                        INSERT INTO stock_movements (location_id, part_id, batch_id, qty_change, movement_type, ref_table, ref_id, notes, created_by)
+                        VALUES (:loc, :pid, :bid, :qty, 'ADJUSTMENT', 'stock_adjustments', :ref_id, :notes, :u)
+                    ");
+                    $this->db->bind(':loc', $locId);
+                    $this->db->bind(':pid', $pid);
+                    $this->db->bind(':bid', $bid > 0 ? $bid : null);
+                    $this->db->bind(':qty', $qty);
+                    $this->db->bind(':ref_id', $adjId);
+                    $this->db->bind(':notes', $adjNumber);
+                    $this->db->bind(':u', $userId);
+                    $this->db->execute();
                 }
 
                 // Insert adjustment item
@@ -253,28 +238,10 @@ class StockAdjustment extends Model {
                 $this->db->bind(':qty', $qty);
                 $this->db->bind(':notes', $note);
                 $this->db->execute();
-
-                // Stock movement ledger (only when stock actually changes)
-                if ($qty != 0.0) {
-                    $this->db->query("
-                        INSERT INTO stock_movements (location_id, part_id, batch_id, qty_change, movement_type, ref_table, ref_id, notes, created_by)
-                        VALUES (:loc, :pid, :bid, :qty, 'ADJUSTMENT', 'stock_adjustments', :ref_id, :notes, :u)
-                    ");
-                    $this->db->bind(':loc', $locId);
-                    $this->db->bind(':pid', $pid);
-                    $this->db->bind(':bid', $bid > 0 ? $bid : null);
-                    $this->db->bind(':qty', $qty);
-                    $this->db->bind(':ref_id', $adjId);
-                    $this->db->bind(':notes', $adjNumber);
-                    $this->db->bind(':u', $userId);
-                    $this->db->execute();
-                } else if ($includeWhenZero) {
-                    // Included for audit only; no stock_movements row.
-                }
             }
 
             // Automated Accounting
-            require_once '../app/helpers/AccountingHelper.php';
+            require_once __DIR__ . '/../helpers/AccountingHelper.php';
             AccountingHelper::postStockAdjustment($adjId);
 
             $this->db->exec("COMMIT");

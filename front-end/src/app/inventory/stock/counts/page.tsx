@@ -2,7 +2,6 @@
 
 import React, { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { DashboardLayout } from "@/components/dashboard-layout";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -11,11 +10,11 @@ import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { fetchLocations, fetchStockAdjustmentBatchesForLocation, type StockAdjustmentBatchRow } from "@/lib/api";
-import { ArrowLeftRight, Loader2, MapPin, Plus, Search } from "lucide-react";
+import { fetchLocations, fetchStockCounts, type StockAdjustmentBatchRow } from "@/lib/api";
+import { ClipboardList, Loader2, MapPin, Plus, Search } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-const LS_SIZE_KEY = "stock_adj_batches_page_size";
+const LS_SIZE_KEY = "stock_counts_page_size";
 const LS_LOC_KEY = "stock_adj_location_id";
 
 type AllowedLocation = { id: number; name: string };
@@ -29,13 +28,13 @@ function decodeJwtPayload(token: string): any | null {
   }
 }
 
-export default function StockAdjustmentsListPage() {
-  const router = useRouter();
+export default function StockCountsListPage() {
   const { toast } = useToast();
 
   const [loading, setLoading] = useState(true);
   const [rows, setRows] = useState<StockAdjustmentBatchRow[]>([]);
   const [query, setQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState("All");
 
   const [locations, setLocations] = useState<AllowedLocation[]>([]);
   const [locationId, setLocationId] = useState<number | null>(null);
@@ -46,10 +45,11 @@ export default function StockAdjustmentsListPage() {
   const load = async () => {
     setLoading(true);
     try {
-      const data = await fetchStockAdjustmentBatchesForLocation(query.trim(), locationId ?? undefined, "Approved");
+      const statusParam = statusFilter === "All" ? undefined : statusFilter;
+      const data = await fetchStockCounts(query.trim(), locationId ?? undefined, statusParam);
       setRows(Array.isArray(data) ? data : []);
     } catch (e: any) {
-      toast({ title: "Error", description: e?.message || "Failed to load adjustments", variant: "destructive" });
+      toast({ title: "Error", description: e?.message || "Failed to load count sheets", variant: "destructive" });
     } finally {
       setLoading(false);
     }
@@ -61,7 +61,7 @@ export default function StockAdjustmentsListPage() {
       if (Number.isFinite(s) && s > 0) setPageSize(s);
     } catch {}
 
-    // Load allowed locations (admin: all locations; non-admin: allowed_locations from JWT)
+    // Load allowed locations
     void (async () => {
       try {
         const token = window.localStorage.getItem("auth_token") ?? "";
@@ -111,14 +111,12 @@ export default function StockAdjustmentsListPage() {
   }, [pageSize]);
 
   useEffect(() => {
-    // Reload when searching
     setPage(1);
     const t = setTimeout(() => void load(), 250);
     return () => clearTimeout(t);
-  }, [query]);
+  }, [query, statusFilter]);
 
   useEffect(() => {
-    // Reload when location changes
     if (!locationId) return;
     try {
       window.localStorage.setItem(LS_LOC_KEY, String(locationId));
@@ -148,31 +146,43 @@ export default function StockAdjustmentsListPage() {
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
           <div>
             <h1 className="text-2xl sm:text-3xl font-bold tracking-tight flex items-center gap-2">
-              <ArrowLeftRight className="w-6 h-6 text-primary" />
-              Stock Adjustments
+              <ClipboardList className="w-6 h-6 text-primary" />
+              Stock Counts (Stock Take)
             </h1>
-            <p className="text-muted-foreground mt-1">Officially committed stock adjustments history logs</p>
+            <p className="text-muted-foreground mt-1">Manage physical inventory count sessions and review variances</p>
           </div>
-          <div className="flex shrink-0">
-            <Button onClick={() => router.push('/inventory/stock/adjustments/new')} className="gap-2">
+          <Button asChild className="gap-2 bg-primary hover:bg-primary/95 text-white shadow-sm">
+            <Link href="/inventory/stock/counts/new">
               <Plus className="w-4 h-4" />
-              New Direct Adjustment
-            </Button>
-          </div>
+              New Stock Count
+            </Link>
+          </Button>
         </div>
 
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div className="relative w-full sm:w-[380px]">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <Input
-              placeholder="Search adjustment number or reason..."
+              placeholder="Search count sheet or reason..."
               className="pl-9 h-11"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
             />
           </div>
-          <div className="flex items-center gap-2">
-            <div className="inline-flex items-center gap-2 text-sm text-muted-foreground">
+          <div className="flex flex-wrap items-center gap-2">
+            <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <SelectTrigger className="w-[140px] h-11">
+                <SelectValue placeholder="Status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="All">All Statuses</SelectItem>
+                <SelectItem value="Pending">Pending</SelectItem>
+                <SelectItem value="Approved">Approved</SelectItem>
+                <SelectItem value="Rejected">Rejected</SelectItem>
+              </SelectContent>
+            </Select>
+
+            <div className="inline-flex items-center gap-2 text-sm text-muted-foreground ml-1">
               <MapPin className="w-4 h-4" />
               <span className="hidden sm:inline">Location</span>
             </div>
@@ -196,7 +206,7 @@ export default function StockAdjustmentsListPage() {
               </SelectContent>
             </Select>
             <Badge variant="outline" className="bg-muted/40">
-              {rows.length} adjustments
+              {rows.length} sessions
             </Badge>
           </div>
         </div>
@@ -209,7 +219,7 @@ export default function StockAdjustmentsListPage() {
                 Loading...
               </div>
             ) : rows.length === 0 ? (
-              <div className="text-sm text-muted-foreground py-16 text-center">No adjustments found</div>
+              <div className="text-sm text-muted-foreground py-16 text-center">No count sessions found. Start a new one using the button above.</div>
             ) : (
               <div className="space-y-4">
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
@@ -260,32 +270,32 @@ export default function StockAdjustmentsListPage() {
                   <Table>
                     <TableHeader className="bg-muted/30">
                       <TableRow>
-                        <TableHead>Adjustment</TableHead>
+                        <TableHead>Sheet Number</TableHead>
                         <TableHead>Date</TableHead>
                         <TableHead className="hidden md:table-cell">Reason</TableHead>
-                        <TableHead className="w-[120px]">Lines</TableHead>
-                        <TableHead className="w-[120px]">Total Qty</TableHead>
+                        <TableHead className="w-[120px]">Items Counted</TableHead>
+                        <TableHead className="w-[120px]">Variance Qty</TableHead>
                         <TableHead className="w-[120px]">Status</TableHead>
-                        <TableHead className="hidden lg:table-cell">By</TableHead>
+                        <TableHead className="hidden lg:table-cell">Operator</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {paged.map((r) => (
                         <TableRow key={r.id} className="hover:bg-muted/10">
                           <TableCell>
-                            <Link href={`/inventory/stock/adjustments/${r.id}`} className="font-semibold hover:underline">
-                              {r.adjustment_number}
+                            <Link href={`/inventory/stock/counts/${r.id}`} className="font-semibold hover:underline text-primary">
+                              {(r as any).count_number}
                             </Link>
                             <div className="text-[10px] text-muted-foreground uppercase tracking-widest font-bold">
                               ID: #{r.id}
                             </div>
                           </TableCell>
                           <TableCell className="text-sm text-muted-foreground">
-                            {r.adjusted_at ? new Date(String(r.adjusted_at).replace(" ", "T")).toLocaleString() : "-"}
+                            {(r as any).counted_at ? new Date(String((r as any).counted_at).replace(" ", "T")).toLocaleString() : "-"}
                           </TableCell>
                           <TableCell className="hidden md:table-cell text-sm text-muted-foreground">{r.reason ?? "-"}</TableCell>
-                          <TableCell className="font-semibold">{Number(r.line_count ?? 0).toLocaleString()}</TableCell>
-                          <TableCell className={`font-bold ${Number(r.total_qty_change ?? 0) < 0 ? "text-destructive" : Number(r.total_qty_change ?? 0) > 0 ? "text-green-700" : "text-muted-foreground"}`}>
+                          <TableCell className="font-semibold text-center">{Number(r.line_count ?? 0).toLocaleString()}</TableCell>
+                          <TableCell className={`font-bold ${Number(r.total_qty_change ?? 0) < 0 ? "text-destructive" : Number(r.total_qty_change ?? 0) > 0 ? "text-emerald-700" : "text-muted-foreground"}`}>
                             {Number(r.total_qty_change ?? 0).toLocaleString(undefined, { minimumFractionDigits: 3, maximumFractionDigits: 3 })}
                           </TableCell>
                           <TableCell>

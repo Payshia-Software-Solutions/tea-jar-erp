@@ -220,7 +220,7 @@ class ReportController extends Controller {
                       AND sm.location_id IN ($inLoc)
                       " . ($asOfEnd ? "AND sm.created_at <= :asOfEnd" : "") . "
                     GROUP BY sm.part_id, sm.batch_id
-                    HAVING quantity_on_hand > 0.0001
+                    HAVING ABS(quantity_on_hand) > 0.0001
                     ORDER BY sm.part_id ASC, ib.mfg_date ASC, sm.batch_id ASC
                 ";
                 $this->db->query($batchSql);

@@ -4,6 +4,7 @@ import 'package:connectivity_plus/connectivity_plus.dart';
 import 'dart:io';
 import 'dart:async';
 import 'dart:convert';
+import 'package:geolocator/geolocator.dart';
 import '../services/api_service.dart';
 import '../services/db_service.dart';
 import 'customer_selection_screen.dart';
@@ -146,6 +147,22 @@ class _DashboardScreenState extends State<DashboardScreen> {
         _isLoadingSales = false;
       });
     }
+  }
+
+  Future<bool> _checkLocationBeforeProceeding() async {
+    bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+    if (!serviceEnabled) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Location services are disabled. Please turn on GPS.'),
+            backgroundColor: Colors.redAccent,
+          ),
+        );
+      }
+      return false;
+    }
+    return true;
   }
 
   // ── Drawer Helpers ──────────────────────────────────────────────────────────
@@ -587,6 +604,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       iconColor: const Color(0xFF42A5F5),
                       onTap: () async {
                         Navigator.pop(context);
+                        if (!await _checkLocationBeforeProceeding()) return;
                         if (_activeLocationId != 0) {
                           final loc = ServiceLocation(id: _activeLocationId, name: _activeLocationName, locationType: 'service');
                           final result = await OrderTypeSelector.show(context, loc);
@@ -613,6 +631,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       iconColor: const Color(0xFFAB47BC),
                       onTap: () async {
                         Navigator.pop(context);
+                        if (!await _checkLocationBeforeProceeding()) return;
                         await _openHeldBills(context);
                         _fetchSalesData();
                       },
@@ -941,6 +960,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       icon: Icons.add_circle_outline,
                       color: Colors.blueAccent,
                       onTap: () async {
+                        if (!await _checkLocationBeforeProceeding()) return;
                         if (_activeLocationId != 0) {
                           final loc = ServiceLocation(id: _activeLocationId, name: _activeLocationName, locationType: 'service');
                           final result = await OrderTypeSelector.show(context, loc);
@@ -968,6 +988,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       icon: Icons.restore_page_outlined,
                       color: Colors.orangeAccent,
                       onTap: () async {
+                        if (!await _checkLocationBeforeProceeding()) return;
                         await _openHeldBills(context);
                         _fetchSalesData();
                       },

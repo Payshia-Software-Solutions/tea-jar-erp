@@ -2,7 +2,7 @@
 
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
-import { fetchStockAdjustmentBatchForLocation } from "@/lib/api";
+import { fetchStockAdjustmentBatch } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Loader2, Printer, ArrowLeft } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -29,7 +29,7 @@ export default function StockAdjustmentPrintPage() {
     const run = async () => {
       setLoading(true);
       try {
-        const data: any = await fetchStockAdjustmentBatchForLocation(String(id), locId && locId > 0 ? locId : undefined);
+        const data: any = await fetchStockAdjustmentBatch(String(id));
         setHdr(data?.adjustment ?? null);
         setItems(Array.isArray(data?.items) ? data.items : []);
       } finally {

@@ -735,6 +735,48 @@ class InventorySchema {
                 }
                 try { $pdo->exec("ALTER TABLE stock_adjustments ADD INDEX idx_stock_adjustments_location (location_id)"); } catch (Exception $e2) {}
             }
+        } catch (Exception $e) {}
+
+        // Dedicated Stock Counts (Stock Take Session)
+        try {
+            $pdo->exec("
+                CREATE TABLE IF NOT EXISTS stock_counts (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    location_id INT NOT NULL DEFAULT 1,
+                    count_number VARCHAR(50) NOT NULL,
+                    counted_at DATETIME NOT NULL,
+                    reason VARCHAR(255) NULL,
+                    notes TEXT NULL,
+                    status ENUM('Pending', 'Approved', 'Rejected') NOT NULL DEFAULT 'Pending',
+                    created_by INT NULL,
+                    approved_by INT NULL,
+                    approved_at DATETIME NULL,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    UNIQUE KEY uq_stock_counts_number (count_number),
+                    INDEX idx_stock_counts_location (location_id),
+                    INDEX idx_stock_counts_date (counted_at),
+                    INDEX idx_stock_counts_status (status)
+                )
+            ");
+
+            $pdo->exec("
+                CREATE TABLE IF NOT EXISTS stock_count_items (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    stock_count_id INT NOT NULL,
+                    part_id INT NOT NULL,
+                    batch_id INT NULL,
+                    system_stock DECIMAL(12,3) NOT NULL DEFAULT 0.000,
+                    physical_stock DECIMAL(12,3) NOT NULL DEFAULT 0.000,
+                    variance DECIMAL(12,3) NOT NULL,
+                    notes VARCHAR(255) NULL,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    INDEX idx_sci_count (stock_count_id),
+                    INDEX idx_sci_part (part_id),
+                    INDEX idx_sci_batch (batch_id),
+                    FOREIGN KEY (stock_count_id) REFERENCES stock_counts(id) ON DELETE CASCADE,
+                    FOREIGN KEY (part_id) REFERENCES parts(id)
+                )
+            ");
         } catch (Exception $e) {
             // ignore
         }

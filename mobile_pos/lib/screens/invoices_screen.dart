@@ -82,6 +82,8 @@ class _InvoicesScreenState extends State<InvoicesScreen> {
         final orderData = {
           'id': details['invoice_no']?.toString() ?? details['id']?.toString() ?? id,
           'customer': details['customer_name'] ?? (details['customer'] is Map ? details['customer']['name'] : details['customer']) ?? 'Walk-in Customer',
+          'createdBy': details['created_by_name']?.toString() ?? details['created_by']?.toString() ?? 'System',
+          'location': details['location_name']?.toString() ?? 'N/A',
           'total': double.tryParse(details['grand_total']?.toString() ?? '0')?.toStringAsFixed(2) ?? '0.00',
           'paymentMethod': details['payment_method'] ?? 'Cash',
           'amountTendered': double.tryParse(details['amount_tendered']?.toString() ?? '0') ?? 0.0,

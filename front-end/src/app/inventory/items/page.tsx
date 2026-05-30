@@ -11,7 +11,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { contentUrl, fetchParts, type PartRow, fetchItemSections, fetchItemDepartments, fetchItemCategories, type ItemSection, type ItemDepartment, type ItemCategory } from "@/lib/api";
-import { Boxes, Grid3X3, LayoutList, Loader2, Plus, Search, Image as ImageIcon, Filter, X } from "lucide-react";
+import { Boxes, Grid3X3, LayoutList, Loader2, Plus, Search, Image as ImageIcon, Filter, X, UploadCloud } from "lucide-react";
+import { ImportItemsDialog } from "@/components/inventory/ImportItemsDialog";
 
 type ViewMode = "table" | "grid";
 
@@ -26,6 +27,7 @@ export default function InventoryItemsListPage() {
   const [view, setView] = useState<ViewMode>("table");
   const [pageSize, setPageSize] = useState<number>(12);
   const [page, setPage] = useState<number>(1);
+  const [showImport, setShowImport] = useState(false);
   
   // Filter options
   const [sections, setSections] = useState<ItemSection[]>([]);
@@ -210,6 +212,10 @@ export default function InventoryItemsListPage() {
                 Grid
               </Button>
             </div>
+            <Button variant="outline" className="gap-2" onClick={() => setShowImport(true)}>
+              <UploadCloud className="w-4 h-4" />
+              Import
+            </Button>
             <Button asChild className="gap-2">
               <Link href="/inventory/items/new">
                 <Plus className="w-4 h-4" />
@@ -338,7 +344,7 @@ export default function InventoryItemsListPage() {
                               </TableCell>
                               <TableCell className="space-y-1">
                                 <Badge variant="outline" className={p.item_type === 'Service' ? 'bg-amber-50 text-amber-700 border-amber-200' : 'bg-slate-50 text-slate-700 border-slate-200'}>
-                                  {p.item_type || 'Part'}
+                                  {p.item_type === 'Part' ? 'Product' : (p.item_type || 'Product')}
                                 </Badge>
                                 {p.recipe_type && p.recipe_type !== 'Standard' && (
                                   <div className="block">
@@ -389,7 +395,7 @@ export default function InventoryItemsListPage() {
                                     <div className="flex items-center gap-2">
                                       <div className="text-xs text-muted-foreground truncate">{p.sku ? p.sku : `#${p.id}`}</div>
                                       <Badge variant="outline" className={`text-[9px] py-0 h-4 ${p.item_type === 'Service' ? 'bg-amber-50 text-amber-700 border-amber-200' : 'bg-slate-50 text-slate-700 border-slate-200'}`}>
-                                        {p.item_type || 'Part'}
+                                        {p.item_type === 'Part' ? 'Product' : (p.item_type || 'Product')}
                                       </Badge>
                                       {p.recipe_type && p.recipe_type !== 'Standard' && (
                                         <Badge variant="outline" className={`text-[9px] py-0 h-4 ${p.recipe_type === 'Recipe' ? 'bg-blue-50 text-blue-700 border-blue-200' : 'bg-indigo-50 text-indigo-700 border-indigo-200'}`}>
@@ -420,6 +426,12 @@ export default function InventoryItemsListPage() {
           </CardContent>
         </Card>
       </div>
+
+      <ImportItemsDialog 
+        open={showImport} 
+        onOpenChange={setShowImport} 
+        onSuccess={() => void load()} 
+      />
     </DashboardLayout>
   );
 }

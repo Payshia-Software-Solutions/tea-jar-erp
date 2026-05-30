@@ -4538,6 +4538,115 @@ class SchemaDefinition {
       ),
     ),
   ),
+  'customer_visits' => 
+  array (
+    'name' => 'customer_visits',
+    'columns' => 
+    array (
+      'id' => 
+      array (
+        'Field' => 'id',
+        'Type' => 'int(11)',
+        'Null' => 'NO',
+        'Key' => 'PRI',
+        'Default' => NULL,
+        'Extra' => 'auto_increment',
+      ),
+      'customer_id' => 
+      array (
+        'Field' => 'customer_id',
+        'Type' => 'int(11)',
+        'Null' => 'NO',
+        'Key' => 'MUL',
+        'Default' => NULL,
+        'Extra' => '',
+      ),
+      'user_id' => 
+      array (
+        'Field' => 'user_id',
+        'Type' => 'int(11)',
+        'Null' => 'NO',
+        'Key' => 'MUL',
+        'Default' => NULL,
+        'Extra' => '',
+      ),
+      'visit_type' => 
+      array (
+        'Field' => 'visit_type',
+        'Type' => 'varchar(50)',
+        'Null' => 'NO',
+        'Key' => '',
+        'Default' => NULL,
+        'Extra' => '',
+      ),
+      'reason' => 
+      array (
+        'Field' => 'reason',
+        'Type' => 'varchar(255)',
+        'Null' => 'YES',
+        'Key' => '',
+        'Default' => NULL,
+        'Extra' => '',
+      ),
+      'latitude' => 
+      array (
+        'Field' => 'latitude',
+        'Type' => 'decimal(10,8)',
+        'Null' => 'YES',
+        'Key' => '',
+        'Default' => NULL,
+        'Extra' => '',
+      ),
+      'longitude' => 
+      array (
+        'Field' => 'longitude',
+        'Type' => 'decimal(11,8)',
+        'Null' => 'YES',
+        'Key' => '',
+        'Default' => NULL,
+        'Extra' => '',
+      ),
+      'created_at' => 
+      array (
+        'Field' => 'created_at',
+        'Type' => 'timestamp',
+        'Null' => 'NO',
+        'Key' => '',
+        'Default' => 'current_timestamp()',
+        'Extra' => '',
+      ),
+    ),
+    'indexes' => 
+    array (
+      'PRIMARY' => 
+      array (
+        'Key_name' => 'PRIMARY',
+        'Non_unique' => 0,
+        'Columns' => 
+        array (
+          0 => 'id',
+        ),
+      ),
+      'idx_cv_customer' => 
+      array (
+        'Key_name' => 'idx_cv_customer',
+        'Non_unique' => 1,
+        'Columns' => 
+        array (
+          0 => 'customer_id',
+        ),
+      ),
+      'idx_cv_user' => 
+      array (
+        'Key_name' => 'idx_cv_user',
+        'Non_unique' => 1,
+        'Columns' => 
+        array (
+          0 => 'user_id',
+        ),
+      ),
+    ),
+  ),
   'customers' => 
   array (
     'name' => 'customers',
@@ -4979,15 +5088,6 @@ class SchemaDefinition {
         'Default' => NULL,
         'Extra' => '',
       ),
-      'app_time' => 
-      array (
-        'Field' => 'app_time',
-        'Type' => 'datetime',
-        'Null' => 'YES',
-        'Key' => '',
-        'Default' => NULL,
-        'Extra' => '',
-      ),
       'created_at' => 
       array (
         'Field' => 'created_at',
@@ -4995,6 +5095,15 @@ class SchemaDefinition {
         'Null' => 'NO',
         'Key' => '',
         'Default' => 'current_timestamp()',
+        'Extra' => '',
+      ),
+      'app_time' => 
+      array (
+        'Field' => 'app_time',
+        'Type' => 'datetime',
+        'Null' => 'YES',
+        'Key' => '',
+        'Default' => NULL,
         'Extra' => '',
       ),
     ),
@@ -17067,6 +17176,33 @@ class SchemaDefinition {
         'Default' => NULL,
         'Extra' => '',
       ),
+      'status' => 
+      array (
+        'Field' => 'status',
+        'Type' => 'enum(\'Pending\',\'Approved\',\'Rejected\')',
+        'Null' => 'NO',
+        'Key' => '',
+        'Default' => 'Pending',
+        'Extra' => '',
+      ),
+      'approved_by' => 
+      array (
+        'Field' => 'approved_by',
+        'Type' => 'int(11)',
+        'Null' => 'YES',
+        'Key' => '',
+        'Default' => NULL,
+        'Extra' => '',
+      ),
+      'approved_at' => 
+      array (
+        'Field' => 'approved_at',
+        'Type' => 'datetime',
+        'Null' => 'YES',
+        'Key' => '',
+        'Default' => NULL,
+        'Extra' => '',
+      ),
     ),
     'indexes' => 
     array (
@@ -17104,6 +17240,287 @@ class SchemaDefinition {
         'Columns' => 
         array (
           0 => 'location_id',
+        ),
+      ),
+    ),
+  ),
+  'stock_count_items' => 
+  array (
+    'name' => 'stock_count_items',
+    'columns' => 
+    array (
+      'id' => 
+      array (
+        'Field' => 'id',
+        'Type' => 'int(11)',
+        'Null' => 'NO',
+        'Key' => 'PRI',
+        'Default' => NULL,
+        'Extra' => 'auto_increment',
+      ),
+      'stock_count_id' => 
+      array (
+        'Field' => 'stock_count_id',
+        'Type' => 'int(11)',
+        'Null' => 'NO',
+        'Key' => 'MUL',
+        'Default' => NULL,
+        'Extra' => '',
+      ),
+      'part_id' => 
+      array (
+        'Field' => 'part_id',
+        'Type' => 'int(11)',
+        'Null' => 'NO',
+        'Key' => 'MUL',
+        'Default' => NULL,
+        'Extra' => '',
+      ),
+      'batch_id' => 
+      array (
+        'Field' => 'batch_id',
+        'Type' => 'int(11)',
+        'Null' => 'YES',
+        'Key' => 'MUL',
+        'Default' => NULL,
+        'Extra' => '',
+      ),
+      'system_stock' => 
+      array (
+        'Field' => 'system_stock',
+        'Type' => 'decimal(12,3)',
+        'Null' => 'NO',
+        'Key' => '',
+        'Default' => '0.000',
+        'Extra' => '',
+      ),
+      'physical_stock' => 
+      array (
+        'Field' => 'physical_stock',
+        'Type' => 'decimal(12,3)',
+        'Null' => 'NO',
+        'Key' => '',
+        'Default' => '0.000',
+        'Extra' => '',
+      ),
+      'variance' => 
+      array (
+        'Field' => 'variance',
+        'Type' => 'decimal(12,3)',
+        'Null' => 'NO',
+        'Key' => '',
+        'Default' => NULL,
+        'Extra' => '',
+      ),
+      'notes' => 
+      array (
+        'Field' => 'notes',
+        'Type' => 'varchar(255)',
+        'Null' => 'YES',
+        'Key' => '',
+        'Default' => NULL,
+        'Extra' => '',
+      ),
+      'created_at' => 
+      array (
+        'Field' => 'created_at',
+        'Type' => 'timestamp',
+        'Null' => 'NO',
+        'Key' => '',
+        'Default' => 'current_timestamp()',
+        'Extra' => '',
+      ),
+    ),
+    'indexes' => 
+    array (
+      'PRIMARY' => 
+      array (
+        'Key_name' => 'PRIMARY',
+        'Non_unique' => 0,
+        'Columns' => 
+        array (
+          0 => 'id',
+        ),
+      ),
+      'idx_sci_count' => 
+      array (
+        'Key_name' => 'idx_sci_count',
+        'Non_unique' => 1,
+        'Columns' => 
+        array (
+          0 => 'stock_count_id',
+        ),
+      ),
+      'idx_sci_part' => 
+      array (
+        'Key_name' => 'idx_sci_part',
+        'Non_unique' => 1,
+        'Columns' => 
+        array (
+          0 => 'part_id',
+        ),
+      ),
+      'idx_sci_batch' => 
+      array (
+        'Key_name' => 'idx_sci_batch',
+        'Non_unique' => 1,
+        'Columns' => 
+        array (
+          0 => 'batch_id',
+        ),
+      ),
+    ),
+  ),
+  'stock_counts' => 
+  array (
+    'name' => 'stock_counts',
+    'columns' => 
+    array (
+      'id' => 
+      array (
+        'Field' => 'id',
+        'Type' => 'int(11)',
+        'Null' => 'NO',
+        'Key' => 'PRI',
+        'Default' => NULL,
+        'Extra' => 'auto_increment',
+      ),
+      'location_id' => 
+      array (
+        'Field' => 'location_id',
+        'Type' => 'int(11)',
+        'Null' => 'NO',
+        'Key' => 'MUL',
+        'Default' => '1',
+        'Extra' => '',
+      ),
+      'count_number' => 
+      array (
+        'Field' => 'count_number',
+        'Type' => 'varchar(50)',
+        'Null' => 'NO',
+        'Key' => 'UNI',
+        'Default' => NULL,
+        'Extra' => '',
+      ),
+      'counted_at' => 
+      array (
+        'Field' => 'counted_at',
+        'Type' => 'datetime',
+        'Null' => 'NO',
+        'Key' => 'MUL',
+        'Default' => NULL,
+        'Extra' => '',
+      ),
+      'reason' => 
+      array (
+        'Field' => 'reason',
+        'Type' => 'varchar(255)',
+        'Null' => 'YES',
+        'Key' => '',
+        'Default' => NULL,
+        'Extra' => '',
+      ),
+      'notes' => 
+      array (
+        'Field' => 'notes',
+        'Type' => 'text',
+        'Null' => 'YES',
+        'Key' => '',
+        'Default' => NULL,
+        'Extra' => '',
+      ),
+      'status' => 
+      array (
+        'Field' => 'status',
+        'Type' => 'enum(\'Pending\',\'Approved\',\'Rejected\')',
+        'Null' => 'NO',
+        'Key' => 'MUL',
+        'Default' => 'Pending',
+        'Extra' => '',
+      ),
+      'created_by' => 
+      array (
+        'Field' => 'created_by',
+        'Type' => 'int(11)',
+        'Null' => 'YES',
+        'Key' => '',
+        'Default' => NULL,
+        'Extra' => '',
+      ),
+      'approved_by' => 
+      array (
+        'Field' => 'approved_by',
+        'Type' => 'int(11)',
+        'Null' => 'YES',
+        'Key' => '',
+        'Default' => NULL,
+        'Extra' => '',
+      ),
+      'approved_at' => 
+      array (
+        'Field' => 'approved_at',
+        'Type' => 'datetime',
+        'Null' => 'YES',
+        'Key' => '',
+        'Default' => NULL,
+        'Extra' => '',
+      ),
+      'created_at' => 
+      array (
+        'Field' => 'created_at',
+        'Type' => 'timestamp',
+        'Null' => 'NO',
+        'Key' => '',
+        'Default' => 'current_timestamp()',
+        'Extra' => '',
+      ),
+    ),
+    'indexes' => 
+    array (
+      'PRIMARY' => 
+      array (
+        'Key_name' => 'PRIMARY',
+        'Non_unique' => 0,
+        'Columns' => 
+        array (
+          0 => 'id',
+        ),
+      ),
+      'uq_stock_counts_number' => 
+      array (
+        'Key_name' => 'uq_stock_counts_number',
+        'Non_unique' => 0,
+        'Columns' => 
+        array (
+          0 => 'count_number',
+        ),
+      ),
+      'idx_stock_counts_location' => 
+      array (
+        'Key_name' => 'idx_stock_counts_location',
+        'Non_unique' => 1,
+        'Columns' => 
+        array (
+          0 => 'location_id',
+        ),
+      ),
+      'idx_stock_counts_date' => 
+      array (
+        'Key_name' => 'idx_stock_counts_date',
+        'Non_unique' => 1,
+        'Columns' => 
+        array (
+          0 => 'counted_at',
+        ),
+      ),
+      'idx_stock_counts_status' => 
+      array (
+        'Key_name' => 'idx_stock_counts_status',
+        'Non_unique' => 1,
+        'Columns' => 
+        array (
+          0 => 'status',
         ),
       ),
     ),
@@ -19405,115 +19822,6 @@ class SchemaDefinition {
         'Columns' => 
         array (
           0 => 'customer_id',
-        ),
-      ),
-    ),
-  ),
-  'customer_visits' => 
-  array (
-    'name' => 'customer_visits',
-    'columns' => 
-    array (
-      'id' => 
-      array (
-        'Field' => 'id',
-        'Type' => 'int(11)',
-        'Null' => 'NO',
-        'Key' => 'PRI',
-        'Default' => NULL,
-        'Extra' => 'auto_increment',
-      ),
-      'customer_id' => 
-      array (
-        'Field' => 'customer_id',
-        'Type' => 'int(11)',
-        'Null' => 'NO',
-        'Key' => 'MUL',
-        'Default' => NULL,
-        'Extra' => '',
-      ),
-      'user_id' => 
-      array (
-        'Field' => 'user_id',
-        'Type' => 'int(11)',
-        'Null' => 'NO',
-        'Key' => 'MUL',
-        'Default' => NULL,
-        'Extra' => '',
-      ),
-      'visit_type' => 
-      array (
-        'Field' => 'visit_type',
-        'Type' => 'varchar(50)',
-        'Null' => 'NO',
-        'Key' => '',
-        'Default' => NULL,
-        'Extra' => '',
-      ),
-      'reason' => 
-      array (
-        'Field' => 'reason',
-        'Type' => 'varchar(255)',
-        'Null' => 'YES',
-        'Key' => '',
-        'Default' => NULL,
-        'Extra' => '',
-      ),
-      'latitude' => 
-      array (
-        'Field' => 'latitude',
-        'Type' => 'decimal(10,8)',
-        'Null' => 'YES',
-        'Key' => '',
-        'Default' => NULL,
-        'Extra' => '',
-      ),
-      'longitude' => 
-      array (
-        'Field' => 'longitude',
-        'Type' => 'decimal(11,8)',
-        'Null' => 'YES',
-        'Key' => '',
-        'Default' => NULL,
-        'Extra' => '',
-      ),
-      'created_at' => 
-      array (
-        'Field' => 'created_at',
-        'Type' => 'timestamp',
-        'Null' => 'NO',
-        'Key' => '',
-        'Default' => 'current_timestamp()',
-        'Extra' => '',
-      ),
-    ),
-    'indexes' => 
-    array (
-      'PRIMARY' => 
-      array (
-        'Key_name' => 'PRIMARY',
-        'Non_unique' => 0,
-        'Columns' => 
-        array (
-          0 => 'id',
-        ),
-      ),
-      'idx_cv_customer' => 
-      array (
-        'Key_name' => 'idx_cv_customer',
-        'Non_unique' => 1,
-        'Columns' => 
-        array (
-          0 => 'customer_id',
-        ),
-      ),
-      'idx_cv_user' => 
-      array (
-        'Key_name' => 'idx_cv_user',
-        'Non_unique' => 1,
-        'Columns' => 
-        array (
-          0 => 'user_id',
         ),
       ),
     ),

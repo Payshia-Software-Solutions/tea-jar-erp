@@ -87,12 +87,25 @@ class _CustomerSelectionScreenState extends State<CustomerSelectionScreen> {
         return;
       }
 
+      LocationSettings locationSettings;
+      if (Platform.isAndroid) {
+        locationSettings = AndroidSettings(
+          accuracy: LocationAccuracy.high,
+          forceLocationManager: true,
+          timeLimit: const Duration(seconds: 10),
+        );
+      } else {
+        locationSettings = const LocationSettings(
+          accuracy: LocationAccuracy.high,
+          timeLimit: Duration(seconds: 10),
+        );
+      }
+
       _currentPosition = await Geolocator.getCurrentPosition(
-        desiredAccuracy: LocationAccuracy.high,
-      ).timeout(const Duration(seconds: 10));
+        locationSettings: locationSettings,
+      );
     } catch (_) {
       try {
-        // Fallback to last known position if fresh GPS lock times out
         _currentPosition = await Geolocator.getLastKnownPosition();
       } catch (_) {
         _currentPosition = null;
@@ -355,7 +368,7 @@ class _CustomerSelectionScreenState extends State<CustomerSelectionScreen> {
                 _handleCheckIn(customer, widget.isReturnSelection ? 'RETURN' : 'SALE', widget.isReturnSelection ? 'Start Return' : 'Start Order');
               },
               icon: Icon(widget.isReturnSelection ? Icons.keyboard_return : Icons.shopping_cart, color: Colors.white),
-              label: Text(widget.isReturnSelection ? 'Start Return' : 'Start Order', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+              label: Text(widget.isReturnSelection ? 'Start Return (50m)' : 'Start Order (50m)', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
               style: ElevatedButton.styleFrom(backgroundColor: widget.isReturnSelection ? Colors.redAccent : Colors.green, padding: const EdgeInsets.symmetric(vertical: 12)),
             ),
             const SizedBox(height: 8),
@@ -365,7 +378,7 @@ class _CustomerSelectionScreenState extends State<CustomerSelectionScreen> {
                 _handleQRCheckIn(customer);
               },
               icon: const Icon(Icons.qr_code_scanner, color: Colors.white),
-              label: const Text('Scan Shop QR to Check In', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+              label: const Text('Scan Shop QR to Check In (1000m)', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
               style: ElevatedButton.styleFrom(backgroundColor: Colors.blueAccent, padding: const EdgeInsets.symmetric(vertical: 12)),
             ),
             const SizedBox(height: 8),
@@ -547,6 +560,29 @@ class _CustomerSelectionScreenState extends State<CustomerSelectionScreen> {
   }
 
   Future<void> _handleQRCheckIn(Customer customer) async {
+    if (customer.latitude != null && customer.longitude != null && customer.latitude != 0 && _currentPosition != null) {
+      double distanceInMeters = Geolocator.distanceBetween(
+        _currentPosition!.latitude, _currentPosition!.longitude,
+        customer.latitude!, customer.longitude!
+      );
+
+      if (distanceInMeters > 1000) {
+        if (mounted) {
+          showDialog(
+            context: context,
+            builder: (ctx) => AlertDialog(
+              title: const Text('Location Error'),
+              content: Text('You are too far from the shop (${distanceInMeters.toStringAsFixed(0)}m).\n\nMust be within 1000m to use QR check-in.'),
+              actions: [
+                TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('OK')),
+              ],
+            ),
+          );
+        }
+        return;
+      }
+    }
+
     final expectedQrCode = 'CUSTOMER:${customer.id}';
     final result = await Navigator.push(
       context,

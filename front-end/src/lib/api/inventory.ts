@@ -346,7 +346,7 @@ export const fetchLocationStockBalances = async (locationId: number, q: string =
 
 // Batch & Stock Adjustment Sub-module
 export const fetchInventoryBatches = async (partId: string | number, locationId: string | number) => {
-  const res = await api(`/api/part/batches/${partId}?location_id=${locationId}`);
+  const res = await api(`/api/part/batches/${partId}?location_id=${locationId}&all=1`);
   if (!res.ok) throw new Error('Failed to load inventory batches');
   const data = await res.json();
   return data.status === 'success' ? data.data : [];
@@ -388,19 +388,7 @@ export interface StockAdjustmentBatchRow {
 }
 
 
-export const fetchStockAdjustmentBatchForLocation = async (id: number | string) => {
 
-  const res = await api(`/api/inventory/adjustment_batch/${id}`);
-  if (!res.ok) throw new Error('Failed to load adjustment batch');
-  const data = await res.json();
-  return data.status === 'success' ? data.data : data;
-};
-
-export const createStockAdjustmentBatchForLocation = async (payload: any) => {
-  const res = await api('/api/inventory/adjustment_batch/create', { method: 'POST', body: JSON.stringify(payload) });
-  if (!res.ok) throw new Error('Failed to create adjustment batch');
-  return res.json();
-};
 
 
 export interface StockAdjustmentBatchItem {
@@ -423,9 +411,10 @@ export const fetchStockAdjustmentBatches = async (q: string = '') => {
   return data.status === 'success' ? data.data : data;
 };
 
-export const fetchStockAdjustmentBatchesForLocation = async (q: string = '', locationId?: number | string) => {
+export const fetchStockAdjustmentBatchesForLocation = async (q: string = '', locationId?: number | string, status?: string) => {
   const qs = new URLSearchParams();
   if (q) qs.set('q', q);
+  if (status) qs.set('status', status);
   
   const headers: Record<string, string> = {};
   if (locationId) headers['X-Location-Id'] = String(locationId);
@@ -445,13 +434,32 @@ export const fetchStockAdjustmentBatch = async (id: string | number) => {
   return data.status === 'success' ? data.data : data;
 };
 
-export const createStockAdjustmentBatch = async (payload: any) => {
-  const res = await api('/api/stockadjustment/create', { method: 'POST', body: JSON.stringify(payload) });
+export const createStockAdjustmentBatch = async (payload: any, locationId?: number) => {
+  const url = locationId ? `/api/stockadjustment/create?location_id=${locationId}` : '/api/stockadjustment/create';
+  const res = await api(url, { method: 'POST', body: JSON.stringify(payload) });
   if (!res.ok) {
     const j = await res.json().catch(() => null);
     throw new Error(j?.message || 'Failed to create stock adjustment');
   }
   return res.json() as Promise<ApiSuccess<{ id: number }>>;
+};
+
+export const approveStockAdjustment = async (id: string | number) => {
+  const res = await api(`/api/stockadjustment/approve/${id}`, { method: 'POST' });
+  if (!res.ok) {
+    const j = await res.json().catch(() => null);
+    throw new Error(j?.message || 'Failed to approve stock adjustment');
+  }
+  return res.json() as Promise<ApiSuccess<null>>;
+};
+
+export const rejectStockAdjustment = async (id: string | number) => {
+  const res = await api(`/api/stockadjustment/reject/${id}`, { method: 'POST' });
+  if (!res.ok) {
+    const j = await res.json().catch(() => null);
+    throw new Error(j?.message || 'Failed to reject stock adjustment');
+  }
+  return res.json() as Promise<ApiSuccess<null>>;
 };
 
 // Suppliers
@@ -789,3 +797,67 @@ export const setPartImage = async (id: string | number, filename: string) => {
   if (!res.ok) throw new Error('Failed to set part image');
   return res.json() as Promise<ApiSuccess<null>>;
 };
+
+// Physical Stock Counts (Stock Take / Session Sheets)
+export const fetchStockCounts = async (q: string = '', locationId?: number | string, status?: string) => {
+  const qs = new URLSearchParams();
+  if (q) qs.set('q', q);
+  if (status) qs.set('status', status);
+
+  const headers: Record<string, string> = {};
+  if (locationId) headers['X-Location-Id'] = String(locationId);
+
+  const res = await api(`/api/stockcount/list?${qs.toString()}`, {
+    headers: Object.keys(headers).length ? headers : undefined,
+  });
+  if (!res.ok) throw new Error('Failed to load stock counts');
+  const data = await res.json();
+  return data.status === 'success' ? data.data : data;
+};
+
+export const fetchStockCount = async (id: string | number, locationId?: number | string) => {
+  const headers: Record<string, string> = {};
+  if (locationId) headers['X-Location-Id'] = String(locationId);
+
+  const res = await api(`/api/stockcount/get/${id}`, {
+    headers: Object.keys(headers).length ? headers : undefined,
+  });
+  if (!res.ok) throw new Error('Failed to load stock count');
+  const data = await res.json();
+  return data.status === 'success' ? data.data : data;
+};
+
+export const createStockCount = async (payload: any, locationId?: number | string) => {
+  const headers: Record<string, string> = {};
+  if (locationId) headers['X-Location-Id'] = String(locationId);
+
+  const res = await api('/api/stockcount/create', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+    headers: Object.keys(headers).length ? headers : undefined,
+  });
+  if (!res.ok) {
+    const j = await res.json().catch(() => null);
+    throw new Error(j?.message || 'Failed to create stock count');
+  }
+  return res.json() as Promise<ApiSuccess<{ id: number }>>;
+};
+
+export const approveStockCount = async (id: string | number) => {
+  const res = await api(`/api/stockcount/approve/${id}`, { method: 'POST' });
+  if (!res.ok) {
+    const j = await res.json().catch(() => null);
+    throw new Error(j?.message || 'Failed to approve stock count');
+  }
+  return res.json() as Promise<ApiSuccess<null>>;
+};
+
+export const rejectStockCount = async (id: string | number) => {
+  const res = await api(`/api/stockcount/reject/${id}`, { method: 'POST' });
+  if (!res.ok) {
+    const j = await res.json().catch(() => null);
+    throw new Error(j?.message || 'Failed to reject stock count');
+  }
+  return res.json() as Promise<ApiSuccess<null>>;
+};
+

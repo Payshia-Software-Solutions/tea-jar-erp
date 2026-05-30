@@ -51,6 +51,13 @@ class InvoiceController extends Controller {
         $invoice['applied_taxes'] = $this->invoiceModel->getAppliedTaxes($id);
         $invoice['batch_movements'] = $this->invoiceModel->getBatchMovements($id);
 
+        if (!empty($invoice['created_by'])) {
+            $userRow = $this->db->query("SELECT name FROM users WHERE id = :id", [':id' => $invoice['created_by']])->fetch();
+            if ($userRow) {
+                $invoice['created_by_name'] = $userRow['name'];
+            }
+        }
+
         $this->success($invoice);
     }
 
@@ -223,7 +230,16 @@ class InvoiceController extends Controller {
             }
 
             $db->commit();
-            $this->success(['id' => $invoiceId, 'message' => 'Invoice created successfully']);
+            
+            $userRow = $this->db->query("SELECT name FROM users WHERE id = :id", [':id' => $u['sub']])->fetch();
+            $createdBy = $userRow ? $userRow['name'] : 'System';
+
+            $this->success([
+                'id' => $invoiceId, 
+                'invoice_no' => $invoiceNo, 
+                'created_by' => $createdBy,
+                'message' => 'Invoice created successfully'
+            ]);
         } catch (Exception $e) {
             try {
                 $db->rollBack();

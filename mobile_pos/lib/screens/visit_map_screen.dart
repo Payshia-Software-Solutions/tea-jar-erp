@@ -41,6 +41,7 @@ class _VisitMapScreenState extends State<VisitMapScreen> {
   bool _isLoading = false;
   List<LatLng> _rawTrackingPoints = [];
   List<LatLng> _trackingRoute = [];
+  List<List<LatLng>> _trackingRouteSegments = [];
   List<Marker> _customerMarkers = [];
   List<TimelineEvent> _timelineEvents = [];
   
@@ -131,8 +132,35 @@ class _VisitMapScreenState extends State<VisitMapScreen> {
           
       _rawTrackingPoints = rawRoute;
           
-      // Snap to road
-      _trackingRoute = await _getRoadSnappedRoute(rawRoute);
+      // Split into segments to avoid connecting distant jumps
+      final Distance distance = const Distance();
+      List<List<LatLng>> segments = [];
+      List<LatLng> currentSegment = [];
+      for (var point in rawRoute) {
+        if (currentSegment.isEmpty) {
+          currentSegment.add(point);
+        } else {
+          final lastPoint = currentSegment.last;
+          final dist = distance.as(LengthUnit.Meter, lastPoint, point);
+          if (dist > 1000) { // Break if > 1km gap
+            segments.add(currentSegment);
+            currentSegment = [point];
+          } else {
+            currentSegment.add(point);
+          }
+        }
+      }
+      if (currentSegment.isNotEmpty) {
+        segments.add(currentSegment);
+      }
+
+      _trackingRouteSegments = [];
+      _trackingRoute = [];
+      for (var seg in segments) {
+         final snapped = await _getRoadSnappedRoute(seg);
+         _trackingRouteSegments.add(snapped);
+         _trackingRoute.addAll(snapped); // Flat list for bounds fitting
+      }
 
       // 2. Fetch Visited Customers
       final visitedIds = await _apiService.getVisitedCustomerIds(startDate: startStr, endDate: endStr);
@@ -343,14 +371,11 @@ class _VisitMapScreenState extends State<VisitMapScreen> {
                 },
               ),
               PolylineLayer(
-                polylines: [
-                  if (_trackingRoute.isNotEmpty)
-                    Polyline(
-                      points: _trackingRoute,
-                      strokeWidth: 4.0,
-                      color: Colors.blueAccent.withOpacity(0.8),
-                    ),
-                ],
+                polylines: _trackingRouteSegments.map((segment) => Polyline(
+                  points: segment,
+                  strokeWidth: 4.0,
+                  color: Colors.blueAccent.withOpacity(0.8),
+                )).toList(),
               ),
               CircleLayer(
                 circles: _rawTrackingPoints.map((point) => CircleMarker(

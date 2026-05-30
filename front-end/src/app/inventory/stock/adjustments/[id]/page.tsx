@@ -10,8 +10,19 @@ import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { fetchLocations, fetchStockAdjustmentBatchForLocation, type StockAdjustmentBatchItem } from "@/lib/api";
-import { ArrowLeft, ArrowLeftRight, Loader2, MapPin } from "lucide-react";
+import {
+  fetchLocations,
+  fetchStockAdjustmentBatch,
+  type StockAdjustmentBatchItem,
+} from "@/lib/api";
+import {
+  ArrowLeft,
+  ArrowLeftRight,
+  Loader2,
+  MapPin,
+  User,
+} from "lucide-react";
+import { cn } from "@/lib/utils";
 
 const LS_LOC_KEY = "stock_adj_location_id";
 type AllowedLocation = { id: number; name: string };
@@ -43,7 +54,7 @@ export default function StockAdjustmentDetailPage({ params }: { params: Promise<
   const load = async () => {
     setLoading(true);
     try {
-      const data: any = await fetchStockAdjustmentBatchForLocation(String(id), locationId ?? undefined);
+      const data: any = await fetchStockAdjustmentBatch(String(id));
       setHdr(data?.adjustment ?? null);
       setItems(Array.isArray(data?.items) ? (data.items as any) : []);
     } catch (e: any) {
@@ -56,7 +67,6 @@ export default function StockAdjustmentDetailPage({ params }: { params: Promise<
   };
 
   useEffect(() => {
-    // Load allowed locations for selector
     void (async () => {
       try {
         const token = window.localStorage.getItem("auth_token") ?? "";
@@ -111,21 +121,29 @@ export default function StockAdjustmentDetailPage({ params }: { params: Promise<
   return (
     <DashboardLayout>
       <div className="flex flex-col gap-6 w-full">
-        <div className="flex items-center justify-between gap-3">
-          <div className="flex items-center gap-3">
-            <Button variant="outline" className="gap-2" onClick={() => router.back()}>
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+          <div className="flex items-start gap-3">
+            <Button variant="outline" className="gap-2 shrink-0 mt-1" onClick={() => router.back()}>
               <ArrowLeft className="w-4 h-4" />
               Back
             </Button>
             <div>
-              <h1 className="text-2xl sm:text-3xl font-bold tracking-tight flex items-center gap-2">
-                <ArrowLeftRight className="w-6 h-6 text-primary" />
-                {hdr?.adjustment_number ? hdr.adjustment_number : `Adjustment #${id}`}
-              </h1>
+              <div className="flex items-center gap-3 flex-wrap">
+                <h1 className="text-2xl sm:text-3xl font-bold tracking-tight flex items-center gap-2">
+                  <ArrowLeftRight className="w-6 h-6 text-primary" />
+                  {hdr?.adjustment_number ? hdr.adjustment_number : `Adjustment #${id}`}
+                </h1>
+                <Badge
+                  variant="outline"
+                  className="font-semibold capitalize px-2.5 py-1 text-xs rounded-full bg-emerald-500/10 text-emerald-600 border-emerald-500/20"
+                >
+                  Committed
+                </Badge>
+              </div>
               <p className="text-muted-foreground mt-1">{hdr?.reason ?? "Stock adjustment batch"}</p>
             </div>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             <div className="hidden md:flex items-center gap-2 mr-2">
               <MapPin className="w-4 h-4 text-muted-foreground" />
               <Select
@@ -151,8 +169,8 @@ export default function StockAdjustmentDetailPage({ params }: { params: Promise<
             <Button asChild variant="outline">
               <Link href="/inventory/stock/adjustments">All Adjustments</Link>
             </Button>
-            <Button asChild>
-              <Link href="/inventory/stock/adjustments/new">New</Link>
+            <Button asChild variant="outline" className="border-primary/20 bg-primary/5 hover:bg-primary/10 text-primary">
+              <Link href={`/inventory/stock/adjustments/print/${id}`} target="_blank">Print Report</Link>
             </Button>
           </div>
         </div>
@@ -196,13 +214,16 @@ export default function StockAdjustmentDetailPage({ params }: { params: Promise<
                   <div className="font-semibold mt-1">{hdr.notes ?? "-"}</div>
                 </div>
                 <div className="rounded-lg border bg-muted/10 p-4">
-                  <div className="text-xs text-muted-foreground">Created By</div>
+                  <div className="text-xs text-muted-foreground flex items-center gap-1">
+                    <User className="w-3 h-3" /> Created By
+                  </div>
                   <div className="font-semibold mt-1">{hdr.created_by_name ?? "-"}</div>
                 </div>
                 <div className="rounded-lg border bg-muted/10 p-4">
-                  <div className="text-xs text-muted-foreground">Total Qty</div>
-                  <div className={`font-bold mt-1 ${totalQty < 0 ? "text-destructive" : "text-green-700"}`}>
-                    {Number(totalQty).toLocaleString()}
+                  <div className="text-xs text-muted-foreground">Total Variance Qty</div>
+                  <div className={`font-bold mt-1 ${totalQty < 0 ? "text-destructive" : totalQty > 0 ? "text-emerald-700" : "text-muted-foreground"}`}>
+                    {totalQty > 0 ? "+" : ""}
+                    {fmt3(totalQty)}
                   </div>
                 </div>
               </div>
@@ -213,7 +234,9 @@ export default function StockAdjustmentDetailPage({ params }: { params: Promise<
         <Card className="border-none shadow-md overflow-hidden">
           <CardHeader>
             <CardTitle>Lines</CardTitle>
-            <CardDescription>All items adjusted in this batch</CardDescription>
+            <CardDescription>
+              Official adjustments committed to inventory
+            </CardDescription>
           </CardHeader>
           <CardContent>
             {loading ? (
@@ -227,7 +250,7 @@ export default function StockAdjustmentDetailPage({ params }: { params: Promise<
               <div className="rounded-md border overflow-hidden">
                 <Table>
                   <TableHeader className="bg-muted/30">
-                    <TableRow>
+                     <TableRow>
                       <TableHead>Item</TableHead>
                       <TableHead>Batch</TableHead>
                       <TableHead className="w-[140px]">System</TableHead>
@@ -250,12 +273,11 @@ export default function StockAdjustmentDetailPage({ params }: { params: Promise<
                         <TableCell>
                           <div className="flex flex-col">
                             <span className="font-mono text-[11px] font-bold">{it.batch_number ?? "Total/Unbatched"}</span>
-                            {it.batch_number && <span className="text-[9px] text-muted-foreground uppercase tracking-tight font-black">Manual Batch Adjustment</span>}
                           </div>
                         </TableCell>
                         <TableCell className="font-semibold">{fmt3(Number(it.system_stock ?? 0))}</TableCell>
                         <TableCell className="font-semibold">{fmt3(Number(it.physical_stock ?? (Number(it.system_stock ?? 0) + Number(it.qty_change ?? 0))))}</TableCell>
-                        <TableCell className={`font-bold ${Number(it.qty_change) < 0 ? "text-destructive" : Number(it.qty_change) > 0 ? "text-green-700" : "text-muted-foreground"}`}>
+                        <TableCell className={`font-bold ${Number(it.qty_change) < 0 ? "text-destructive" : Number(it.qty_change) > 0 ? "text-emerald-700" : "text-muted-foreground"}`}>
                           {Number(it.qty_change) > 0 ? "+" : ""}
                           {fmt3(Number(it.qty_change))}
                         </TableCell>
@@ -263,10 +285,11 @@ export default function StockAdjustmentDetailPage({ params }: { params: Promise<
                       </TableRow>
                     ))}
                     <TableRow className="bg-muted/5 font-bold">
-                      <TableCell className="text-right">Total Adjustment</TableCell>
+                      <TableCell className="text-right">Total Variance</TableCell>
                       <TableCell />
                       <TableCell />
-                      <TableCell className={`font-bold ${totalQty < 0 ? "text-destructive" : totalQty > 0 ? "text-green-700" : "text-muted-foreground"}`}>
+                      <TableCell />
+                      <TableCell className={`font-bold ${totalQty < 0 ? "text-destructive" : totalQty > 0 ? "text-emerald-700" : "text-muted-foreground"}`}>
                         {Number(totalQty) > 0 ? "+" : ""}
                         {fmt3(Number(totalQty))}
                       </TableCell>

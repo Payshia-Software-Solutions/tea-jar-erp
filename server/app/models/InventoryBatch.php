@@ -10,7 +10,8 @@ class InventoryBatch extends Model {
      * Retrieves batches with positive balance derived from stock_movements.
      * Includes unbatched stock (batch_id IS NULL) to ensure agreement with total ledger.
      */
-    public function getAvailableBatches($partId, $locationId = 1) {
+    public function getAvailableBatches($partId, $locationId = 1, $includeNegative = false) {
+        $having = $includeNegative ? "HAVING ABS(quantity_on_hand) > 0.0001" : "HAVING quantity_on_hand > 0.0001";
         $this->db->query("
             SELECT 
                 COALESCE(b.id, 0) as id,
@@ -22,7 +23,7 @@ class InventoryBatch extends Model {
             LEFT JOIN {$this->table} b ON b.id = sm.batch_id
             WHERE sm.part_id = :part_id AND sm.location_id = :loc
             GROUP BY sm.batch_id
-            HAVING quantity_on_hand > 0.0001
+            {$having}
             ORDER BY 
                 CASE WHEN b.mfg_date IS NULL THEN 1 ELSE 0 END, 
                 b.mfg_date ASC, 

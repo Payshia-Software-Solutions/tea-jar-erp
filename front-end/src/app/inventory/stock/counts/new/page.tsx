@@ -14,7 +14,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
-import { createStockAdjustmentBatch, fetchLocations, fetchParts, fetchPartBatches, fetchLocationStockBalances, type PartRow } from "@/lib/api";
+import { createStockCount, fetchLocations, fetchParts, fetchPartBatches, fetchLocationStockBalances, type PartRow } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import {
   ArrowLeft,
@@ -74,7 +74,7 @@ function playBeep() {
   }
 }
 
-export default function NewStockAdjustmentPage() {
+export default function NewStockCountPage() {
   const router = useRouter();
   const sp = useSearchParams();
   const { toast } = useToast();
@@ -415,7 +415,7 @@ export default function NewStockAdjustmentPage() {
 
     setSaving(true);
     try {
-      const res = await createStockAdjustmentBatch(
+      const res = await createStockCount(
         {
           adjusted_at: adjustedAt ? adjustedAt : undefined,
           reason: reason.trim() || undefined,
@@ -424,9 +424,9 @@ export default function NewStockAdjustmentPage() {
         },
         locationId ?? undefined
       );
-      const id = (res as any)?.data?.id ?? (res as any)?.id;
-      toast({ title: "Adjustment Created", description: "Stock adjustment was directly committed to ledger." });
-      router.push(`/inventory/stock/adjustments/${encodeURIComponent(String(id))}`);
+      const id = (res as any)?.data?.id;
+      toast({ title: "Count Session Created", description: "Counts saved as pending manager approval." });
+      router.push(`/inventory/stock/counts/${encodeURIComponent(String(id))}`);
     } catch (e: any) {
       toast({ title: "Error", description: e?.message || "Submit failed", variant: "destructive" });
     } finally {
@@ -446,13 +446,13 @@ export default function NewStockAdjustmentPage() {
             <div>
               <h1 className="text-2xl sm:text-3xl font-bold tracking-tight flex items-center gap-2">
                 <ClipboardList className="w-6 h-6 text-primary" />
-                New Direct Stock Adjustment
+                New Stock Count (Stock Take)
               </h1>
-              <p className="text-muted-foreground mt-1">Make a direct manual stock adjustment</p>
+              <p className="text-muted-foreground mt-1">Conduct physical stock auditing session</p>
             </div>
           </div>
           <Button asChild variant="outline">
-            <Link href="/inventory/stock/adjustments">All Adjustments</Link>
+            <Link href="/inventory/stock/counts">All Count Sheets</Link>
           </Button>
         </div>
 
@@ -509,6 +509,15 @@ export default function NewStockAdjustmentPage() {
               <CardDescription>Scan barcodes or select items to enter physical counts.</CardDescription>
             </div>
             <div className="flex items-center gap-2 flex-wrap">
+              <Button
+                type="button"
+                variant="outline"
+                className="gap-2"
+                onClick={() => setOtherItemsToZero(null)}
+                disabled={saving || loading || parts.length === 0 || lines.length === 0}
+              >
+                Set Other Items to 0
+              </Button>
               <Popover open={addOpen} onOpenChange={setAddOpen}>
                 <PopoverTrigger asChild>
                   <Button variant="outline" onClick={openAddItem} className="gap-2">
@@ -553,6 +562,35 @@ export default function NewStockAdjustmentPage() {
                       )}
                     </div>
                   </ScrollArea>
+                </PopoverContent>
+              </Popover>
+
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" className="gap-2 border-primary/20 bg-primary/5 hover:bg-primary/10 text-primary" disabled={!locationId}>
+                    <Printer className="w-4 h-4" />
+                    Print Count Sheet
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent align="end" className="w-[200px] p-2 space-y-1">
+                  <button 
+                    type="button"
+                    className="w-full text-left px-2.5 py-2 hover:bg-muted rounded-md text-xs font-semibold"
+                    onClick={() => {
+                      window.open(`/inventory/stock/adjustments/print-sheet?loc=${locationId}&blind=1&autoprint=1`, "_blank");
+                    }}
+                  >
+                    🚫 Blind Count Sheet
+                  </button>
+                  <button 
+                    type="button"
+                    className="w-full text-left px-2.5 py-2 hover:bg-muted rounded-md text-xs font-semibold"
+                    onClick={() => {
+                      window.open(`/inventory/stock/adjustments/print-sheet?loc=${locationId}&blind=0&autoprint=1`, "_blank");
+                    }}
+                  >
+                    📋 Standard Count Sheet
+                  </button>
                 </PopoverContent>
               </Popover>
             </div>
@@ -757,7 +795,7 @@ export default function NewStockAdjustmentPage() {
                   </Button>
                   <Button type="button" onClick={submit} className="bg-primary hover:bg-primary/95 text-white" disabled={saving || lines.length === 0}>
                     {saving && <Loader2 className="w-4 h-4 animate-spin mr-2" />}
-                    Commit Adjustment
+                    Save Count Session
                   </Button>
                 </div>
               </>

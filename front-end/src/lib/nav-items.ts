@@ -46,7 +46,8 @@ import {
   FolderTree,
   Ticket,
   Printer,
-  AlertCircle
+  AlertCircle,
+  Target
 } from "lucide-react";
 
 export type NavItem = {
@@ -93,7 +94,9 @@ export const vendorItems: NavItem[] = [
 
 export const inventoryItems: NavItem[] = [
   { icon: Boxes, label: "Items", href: "/inventory/items", perm: "parts.read" },
+  { icon: Printer, label: "Barcode Printer", href: "/inventory/barcode-printer", perm: "parts.read" },
   { icon: History, label: "Stock Balance", href: "/inventory/stock", perm: "stock.read" },
+  { icon: ClipboardListIcon, label: "Stock Counts", href: "/inventory/stock/counts", perm: "stock.read" },
   { icon: ArrowLeftRight, label: "Stock Adjustments", href: "/inventory/stock/adjustments", perm: "stock.read" },
   { icon: ArrowLeftRight, label: "Stock Transfers", href: "/inventory/transfers", perm: "transfer.read" },
   { icon: FileText, label: "Purchase Orders", href: "/inventory/purchase-orders", perm: "purchase.read" },
@@ -116,6 +119,7 @@ export const marketingItems: NavItem[] = [
 ];
 
 export const salesItems: NavItem[] = [
+  { icon: Target, label: "Sales Targets", href: "/sales/targets", perm: "sales.read" },
   { icon: FileText, label: "Quotations", href: "/sales/quotations", perm: "sales.read" },
   { icon: FileText, label: "Invoices", href: "/cms/invoices", perm: "invoices.read" },
   { icon: History, label: "Recurring Invoices", href: "/cms/invoices/recurring", perm: "invoices.read" },

@@ -123,6 +123,7 @@ class Part extends Model {
                    p.id AS part_id,
                    p.part_name,
                    p.sku,
+                   p.barcode_number,
                    p.unit,
                    p.brand_id,
                    b.name AS brand_name,

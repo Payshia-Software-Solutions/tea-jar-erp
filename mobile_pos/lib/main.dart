@@ -9,6 +9,8 @@ import 'screens/splash_screen.dart';
 import 'services/api_service.dart';
 import 'services/tracking_service.dart';
 
+import 'components/location_enforcer.dart';
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   
@@ -97,7 +99,7 @@ class MobilePOSApp extends StatelessWidget {
                       : [const Color(0xFFE0E7FF), const Color(0xFFF8FAFC)], // Premium light gradient
                 ),
               ),
-              child: child,
+              child: LocationEnforcer(child: child!),
             );
           },
         );

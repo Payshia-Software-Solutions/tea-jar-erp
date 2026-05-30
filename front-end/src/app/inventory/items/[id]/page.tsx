@@ -410,12 +410,9 @@ export default function ItemDetailPage() {
       <div className="flex flex-col gap-6 w-full">
         <div className="flex items-center justify-between gap-3">
           <div className="flex items-center gap-3">
-            <Button variant="outline" className="gap-2" onClick={() => router.back()}>
-              <ArrowLeft className="w-4 h-4" />
-              Back
-            </Button>
+            <Button variant="ghost" size="icon" onClick={() => router.push('/inventory/items')}><ArrowLeft className="w-5 h-5" /></Button>
             <div>
-              <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Product #{id}</h1>
+              <h1 className="text-2xl font-bold tracking-tight">Edit Product</h1>
               <p className="text-muted-foreground mt-1">{part?.part_name ? part.part_name : "Product"}</p>
             </div>
           </div>
@@ -525,6 +522,10 @@ export default function ItemDetailPage() {
                       </div>
                     </div>
                     <div className="space-y-2">
+                      <Label>Part Number</Label>
+                      <Input value={form.part_number} onChange={(e) => setForm((p) => ({ ...p, part_number: e.target.value }))} placeholder="Optional part number..." />
+                    </div>
+                    <div className="space-y-2">
                       <Label>Brand</Label>
                       <Select value={form.brand_id} onValueChange={(v) => setForm((p) => ({ ...p, brand_id: v }))}>
                         <SelectTrigger><SelectValue placeholder="Select brand..." /></SelectTrigger>
@@ -532,6 +533,10 @@ export default function ItemDetailPage() {
                           {brands.map((b) => <SelectItem key={b.id} value={String(b.id)}>{b.name}</SelectItem>)}
                         </SelectContent>
                       </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Barcode</Label>
+                      <Input value={form.barcode_number} onChange={(e) => setForm((p) => ({ ...p, barcode_number: e.target.value }))} placeholder="Optional barcode number..." />
                     </div>
 
                     <div className="space-y-2">
@@ -591,8 +596,8 @@ export default function ItemDetailPage() {
                       <Select value={form.item_type} onValueChange={(v: any) => setForm((p) => ({ ...p, item_type: v }))}>
                         <SelectTrigger><SelectValue /></SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="Part">Part (Physical)</SelectItem>
-                          <SelectItem value="Service">Service (Labor)</SelectItem>
+                          <SelectItem value="Part">Product (Physical)</SelectItem>
+                          <SelectItem value="Service">Service</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
@@ -817,6 +822,10 @@ export default function ItemDetailPage() {
                       <Input type="number" step="0.001" value={form.gross_weight_kg} onChange={(e) => setForm(p => ({ ...p, gross_weight_kg: e.target.value }))} />
                    </div>
                    <div className="space-y-2">
+                      <Label>Units / Carton</Label>
+                      <Input type="number" step="1" value={form.units_per_carton} onChange={(e) => setForm(p => ({ ...p, units_per_carton: e.target.value }))} />
+                   </div>
+                   <div className="space-y-2">
                       <Label>Packing Type</Label>
                       <Select value={form.packing_type} onValueChange={(v) => setForm(p => ({ ...p, packing_type: v }))}>
                         <SelectTrigger><SelectValue placeholder="Select Packing" /></SelectTrigger>
@@ -833,6 +842,10 @@ export default function ItemDetailPage() {
                    <div className="space-y-2">
                       <Label>HS Code</Label>
                       <Input value={form.hs_code} onChange={(e) => setForm(p => ({ ...p, hs_code: e.target.value }))} />
+                   </div>
+                   <div className="space-y-2">
+                      <Label>Carton Tare Wt (kg)</Label>
+                      <Input type="number" step="0.001" value={form.carton_tare_weight_kg} onChange={(e) => setForm(p => ({ ...p, carton_tare_weight_kg: e.target.value }))} />
                    </div>
                     <div className="space-y-2">
                       <Label>Length (cm)</Label>
