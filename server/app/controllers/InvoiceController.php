@@ -52,9 +52,12 @@ class InvoiceController extends Controller {
         $invoice['batch_movements'] = $this->invoiceModel->getBatchMovements($id);
 
         if (!empty($invoice['created_by'])) {
-            $userRow = $this->db->query("SELECT name FROM users WHERE id = :id", [':id' => $invoice['created_by']])->fetch();
-            if ($userRow) {
-                $invoice['created_by_name'] = $userRow['name'];
+            $db = new Database();
+            $db->query("SELECT name FROM users WHERE id = :id");
+            $db->bind(':id', $invoice['created_by']);
+            $userRow = $db->single();
+            if ($userRow && isset($userRow->name)) {
+                $invoice['created_by_name'] = $userRow->name;
             }
         }
 
@@ -231,8 +234,10 @@ class InvoiceController extends Controller {
 
             $db->commit();
             
-            $userRow = $this->db->query("SELECT name FROM users WHERE id = :id", [':id' => $u['sub']])->fetch();
-            $createdBy = $userRow ? $userRow['name'] : 'System';
+            $db->query("SELECT name FROM users WHERE id = :id");
+            $db->bind(':id', $u['sub']);
+            $userRow = $db->single();
+            $createdBy = $userRow && isset($userRow->name) ? $userRow->name : 'System';
 
             $this->success([
                 'id' => $invoiceId, 
