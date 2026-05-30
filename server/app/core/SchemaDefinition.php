@@ -4606,6 +4606,15 @@ class SchemaDefinition {
         'Default' => NULL,
         'Extra' => '',
       ),
+      'device_id' => 
+      array (
+        'Field' => 'device_id',
+        'Type' => 'varchar(100)',
+        'Null' => 'YES',
+        'Key' => '',
+        'Default' => NULL,
+        'Extra' => '',
+      ),
       'created_at' => 
       array (
         'Field' => 'created_at',
@@ -8554,6 +8563,24 @@ class SchemaDefinition {
         'Null' => 'YES',
         'Key' => '',
         'Default' => 'retail',
+        'Extra' => '',
+      ),
+      'offline_id' => 
+      array (
+        'Field' => 'offline_id',
+        'Type' => 'varchar(100)',
+        'Null' => 'YES',
+        'Key' => '',
+        'Default' => NULL,
+        'Extra' => '',
+      ),
+      'device_id' => 
+      array (
+        'Field' => 'device_id',
+        'Type' => 'varchar(100)',
+        'Null' => 'YES',
+        'Key' => '',
+        'Default' => NULL,
         'Extra' => '',
       ),
       'table_id' => 

@@ -11,6 +11,7 @@ $db->exec('CREATE TABLE IF NOT EXISTS customer_visits (
     reason VARCHAR(255) NULL, 
     latitude DECIMAL(10,8) NULL, 
     longitude DECIMAL(11,8) NULL, 
+    device_id VARCHAR(100) NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );');
 echo "Table created successfully\n";
