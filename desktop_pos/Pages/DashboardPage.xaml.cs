@@ -201,6 +201,18 @@ namespace DesktopPOS.Pages
             dialog.ShowDialog();
         }
 
+        private void Refund_Click(object sender, MouseButtonEventArgs e)
+        {
+            OpenRefund();
+        }
+
+        private void OpenRefund()
+        {
+            var dialog = new RefundDialog();
+            dialog.Owner = Window.GetWindow(this);
+            dialog.ShowDialog();
+        }
+
         private void Page_KeyDown(object sender, KeyEventArgs e)
         {
             if (e.Key == Key.F1)
@@ -217,6 +229,11 @@ namespace DesktopPOS.Pages
             else if (e.Key == Key.F3)
             {
                 OpenProcessReturn();
+                e.Handled = true;
+            }
+            else if (e.Key == Key.F6)
+            {
+                OpenRefund();
                 e.Handled = true;
             }
             else if (e.Key == Key.F4)

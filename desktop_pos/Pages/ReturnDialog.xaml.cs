@@ -71,7 +71,7 @@ namespace DesktopPOS.Pages
             else
             {
                 StatusMessage.Text = res?.message ?? "Invoice not found or network error.";
-                StatusMessage.Foreground = (System.Windows.Media.Brush)FindResource("TextDanger");
+                StatusMessage.Foreground = (System.Windows.Media.Brush)FindResource("AccentDanger");
             }
         }
 
@@ -143,18 +143,57 @@ namespace DesktopPOS.Pages
                     unit_price = i.unit_price,
                     line_total = i.refund_amount
                 }).ToList(),
-                refund = totalRefund > 0 ? new RefundPayload
-                {
-                    amount = totalRefund,
-                    payment_method = "Cash"
-                } : null
+                refund = null
             };
 
             var res = await _api.ProcessReturnAsync(payload);
 
             if (res != null && res.status == "success")
             {
-                MessageBox.Show("Return processed successfully!", "Success", MessageBoxButton.OK, MessageBoxImage.Information);
+                MessageBox.Show("Return processed successfully!\n\nStock has been restored. Please proceed to the Financial Refund dialog to release the payment.", "Success", MessageBoxButton.OK, MessageBoxImage.Information);
+                
+                try
+                {
+                    string returnNo = "SR-TEMP";
+                    if (res.data != null)
+                    {
+                        var dataObj = Newtonsoft.Json.Linq.JObject.FromObject(res.data);
+                        returnNo = dataObj["return_no"]?.ToString() ?? "SR-TEMP";
+                    }
+                    
+                    var locName = GlobalState.Instance.CurrentUser?.location_name ?? "Main Branch";
+                    var custName = _currentInvoice.customer_name ?? "Walk-in Customer";
+                    
+                    var panel = PrintService.BuildReturnReceiptPanel(
+                        locName,
+                        returnNo,
+                        _currentInvoice.invoice_no ?? "",
+                        custName,
+                        itemsToReturn,
+                        totalRefund,
+                        payload.reason
+                    );
+                    
+                    PrintService.ShowReceiptPreview(
+                        $"Return Note - {returnNo}",
+                        panel,
+                        () => PrintService.PrintReturnReceipt(
+                            locName,
+                            returnNo,
+                            _currentInvoice.invoice_no ?? "",
+                            custName,
+                            itemsToReturn,
+                            totalRefund,
+                            payload.reason
+                        ),
+                        this
+                    );
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show($"Failed to print return note: {ex.Message}", "Print Error", MessageBoxButton.OK, MessageBoxImage.Warning);
+                }
+
                 this.DialogResult = true;
                 this.Close();
             }

@@ -38,7 +38,7 @@ namespace DesktopPOS.Pages
             else
             {
                 LoadingText.Text = "Failed to load summary data.";
-                LoadingText.Foreground = (System.Windows.Media.Brush)FindResource("TextDanger");
+                LoadingText.Foreground = (System.Windows.Media.Brush)FindResource("AccentDanger");
             }
         }
 

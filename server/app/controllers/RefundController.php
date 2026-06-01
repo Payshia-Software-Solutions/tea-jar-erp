@@ -56,6 +56,33 @@ class RefundController extends Controller {
         }
     }
 
+    public function unrefunded() {
+        $this->requirePermission('pos.read');
+        $locationId = $_GET['location_id'] ?? null;
+        
+        $db = new Database();
+        $sql = "
+            SELECT sr.id, sr.return_no, sr.return_date, sr.total_amount, i.invoice_no, 
+                   COALESCE(c_i.name, c_sr.name) as customer_name, sr.reason
+            FROM sales_returns sr
+            LEFT JOIN invoices i ON sr.invoice_id = i.id
+            LEFT JOIN customers c_i ON i.customer_id = c_i.id
+            LEFT JOIN customers c_sr ON sr.customer_id = c_sr.id
+            WHERE (SELECT COUNT(*) FROM refunds WHERE return_id = sr.id) = 0
+        ";
+        if ($locationId) {
+            $sql .= " AND sr.location_id = :location_id";
+        }
+        $sql .= " ORDER BY sr.created_at DESC LIMIT 50";
+        
+        $db->query($sql);
+        if ($locationId) {
+            $db->bind(':location_id', (int)$locationId);
+        }
+        $list = $db->resultSet();
+        $this->success($list);
+    }
+
     public function index() {
         $this->requirePermission('pos.read');
         $filters = [

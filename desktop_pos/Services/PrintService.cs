@@ -396,5 +396,115 @@ namespace DesktopPOS.Services
                 Margin = new Thickness(0, 5, 0, 5)
             };
         }
+
+        public static StackPanel BuildReturnReceiptPanel(string locationName, string returnNo, string invoiceNo, string customerName, List<ReturnInvoiceItem> items, double totalAmount, string reason, double previewWidth = 280)
+        {
+            double w = previewWidth - 24; // usable width (padding 12 each side)
+
+            var root = new StackPanel
+            {
+                Background = Brushes.White,
+                Width      = previewWidth,
+                Orientation = Orientation.Vertical
+            };
+
+            var inner = new StackPanel { Margin = new Thickness(12, 10, 12, 10) };
+            root.Children.Add(inner);
+
+            // ── Header ──────────────────────────────────────────────────────────────────
+            inner.Children.Add(MakeTB("KDU Group", 15, FontWeights.Bold, TextAlignment.Center, new Thickness(0,0,0,2)));
+            inner.Children.Add(MakeTB(locationName, 10, FontWeights.Normal, TextAlignment.Center, new Thickness(0,0,0,1), new SolidColorBrush(Color.FromRgb(220, 120, 0))));
+            
+            var phone = GlobalState.Instance.LocationPhone ?? "";
+            var addr  = GlobalState.Instance.LocationAddress ?? "";
+            if (!string.IsNullOrEmpty(phone))
+                inner.Children.Add(MakeTB($"Tel: {phone}", 10, FontWeights.Normal, TextAlignment.Center, new Thickness(0,0,0,1), new SolidColorBrush(Color.FromRgb(220, 120, 0))));
+            if (!string.IsNullOrEmpty(addr))
+                inner.Children.Add(MakeTB(addr, 10, FontWeights.Normal, TextAlignment.Center, new Thickness(0,0,0,4), new SolidColorBrush(Color.FromRgb(220, 120, 0))));
+
+            // ── Solid line ──────────────────────────────────────────────────────────────
+            inner.Children.Add(SolidLine(w));
+
+            inner.Children.Add(MakeTB("SALES RETURN NOTE", 13, FontWeights.Bold, TextAlignment.Center, new Thickness(0,2,0,4)));
+
+            // ── Solid line ──────────────────────────────────────────────────────────────
+            inner.Children.Add(SolidLine(w));
+
+            // ── Meta rows ───────────────────────────────────────────────────────────────
+            inner.Children.Add(LRRow("Return#", returnNo, w, rightBold:true));
+            inner.Children.Add(LRRow("Date", DateTime.Now.ToString("dd/MM/yyyy, hh:mm tt"), w));
+            inner.Children.Add(LRRow("Invoice#", invoiceNo, w));
+            if (!string.IsNullOrEmpty(customerName))
+                inner.Children.Add(LRRow("Customer", customerName, w));
+
+            // ── Dashed line ─────────────────────────────────────────────────────────────
+            inner.Children.Add(DashedLine(w));
+
+            // ── Items ───────────────────────────────────────────────────────────────────
+            inner.Children.Add(MakeTB("RETURNED ITEMS", 10, FontWeights.Bold, TextAlignment.Left, new Thickness(0,4,0,4)));
+
+            foreach (var item in items)
+            {
+                // Item name (bold)
+                inner.Children.Add(MakeTB(item.description ?? "Item", 11, FontWeights.Bold, TextAlignment.Left, new Thickness(0,3,0,1)));
+
+                // Qty Unit(s)  |  lineTotal
+                string qtyLabel = $"{Math.Floor(item.return_qty)} Unit(s)";
+                string totLabel = $"LKR {item.refund_amount:N2}";
+                inner.Children.Add(LRRow(qtyLabel, totLabel, w, leftSize:10, rightSize:10, rightBold:true));
+            }
+
+            // ── Solid line ──────────────────────────────────────────────────────────────
+            inner.Children.Add(SolidLine(w));
+
+            // ── TOTAL ───────────────────────────────────────────────────────────────────
+            inner.Children.Add(LRRow("RETURN TOTAL", $"LKR {totalAmount:N2}", w, leftBold:true, rightBold:true, leftSize:14, rightSize:14));
+
+            if (!string.IsNullOrEmpty(reason))
+            {
+                inner.Children.Add(new TextBlock
+                {
+                    Margin = new Thickness(0, 8, 0, 0),
+                    FontSize = 10,
+                    TextWrapping = TextWrapping.Wrap,
+                    FontFamily = new FontFamily("Consolas"),
+                    Inlines = {
+                        new System.Windows.Documents.Run("Reason: ") { FontWeight = FontWeights.Bold },
+                        new System.Windows.Documents.Run(reason)
+                    }
+                });
+            }
+
+            // ── Dashed line ─────────────────────────────────────────────────────────────
+            inner.Children.Add(DashedLine(w));
+
+            // ── Footer ──────────────────────────────────────────────────────────────────
+            inner.Children.Add(MakeTB("Thank you!", 10, FontWeights.Bold, TextAlignment.Center, new Thickness(0,4,0,2), new SolidColorBrush(Color.FromRgb(220, 120, 0))));
+            inner.Children.Add(MakeTB("* * * * * * * * * *", 9, FontWeights.Normal, TextAlignment.Center, new Thickness(0,0,0,4), new SolidColorBrush(Color.FromRgb(100, 100, 100))));
+
+            return root;
+        }
+
+        public static void PrintReturnReceipt(string locationName, string returnNo, string invoiceNo, string customerName, List<ReturnInvoiceItem> items, double totalAmount, string reason)
+        {
+            try
+            {
+                var dlg = new PrintDialog();
+                dlg.PrintQueue = LocalPrintServer.GetDefaultPrintQueue();
+                double w = dlg.PrintableAreaWidth > 10 ? dlg.PrintableAreaWidth : 280;
+                
+                var root = BuildReturnReceiptPanel(locationName, returnNo, invoiceNo, customerName, items, totalAmount, reason, w);
+
+                root.Measure(new Size(w, double.PositiveInfinity));
+                root.Arrange(new Rect(new Size(w, root.DesiredSize.Height)));
+                root.UpdateLayout();
+
+                dlg.PrintVisual(root, $"Return {returnNo}");
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Print failed: {ex.Message}", "Print Error", MessageBoxButton.OK, MessageBoxImage.Warning);
+            }
+        }
     }
 }

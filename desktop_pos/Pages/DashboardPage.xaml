@@ -329,7 +329,7 @@
 
                         <!-- Refund -->
                         <Border CornerRadius="14" Margin="0,0,10,0" Padding="16,14" Cursor="Hand"
-                                Background="{DynamicResource BgCard}">
+                                Background="{DynamicResource BgCard}" MouseLeftButtonUp="Refund_Click">
                             <Border.Style>
                                 <Style TargetType="Border">
                                     <Style.Triggers>
@@ -341,7 +341,7 @@
                             </Border.Style>
                             <StackPanel HorizontalAlignment="Center">
                                 <Border Width="44" Height="44" CornerRadius="12" Background="{DynamicResource IconBgRed}" HorizontalAlignment="Center" Margin="0,0,0,10">
-                                    <TextBlock Text="↩" Foreground="{DynamicResource IconFgPurple}" FontSize="22" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                    <TextBlock Text="₨" Foreground="{DynamicResource AccentDanger}" FontSize="20" FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                                 </Border>
                                 <TextBlock Text="Refund" Foreground="{DynamicResource TextPrimary}" FontSize="12" FontWeight="SemiBold" HorizontalAlignment="Center"/>
                             </StackPanel>

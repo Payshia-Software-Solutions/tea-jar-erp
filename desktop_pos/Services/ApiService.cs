@@ -240,6 +240,38 @@ namespace DesktopPOS.Services
             return await PostAsync<ApiResponse<object>>("return/create", payload);
         }
 
+        public async Task<ApiResponse<ReturnLookupResponse>?> LookupReturnForRefundAsync(string returnNo)
+        {
+            try
+            {
+                var url = $"{_baseUrl}/refund/return_lookup?return_no={Uri.EscapeDataString(returnNo)}";
+                SetupHeaders();
+                var response = await _httpClient.GetAsync(url).ConfigureAwait(false);
+                var responseString = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
+                return JsonConvert.DeserializeObject<ApiResponse<ReturnLookupResponse>>(responseString);
+            }
+            catch { return null; }
+        }
+
+        public async Task<ApiResponse<RefundCreateResult>?> CreateRefundAsync(RefundCreatePayload payload)
+        {
+            return await PostAsync<ApiResponse<RefundCreateResult>>("refund/create", payload);
+        }
+
+        public async Task<ApiResponse<List<ReturnLookupData>>?> FetchUnrefundedReturnsAsync()
+        {
+            try
+            {
+                int locationId = GlobalState.Instance.CurrentUser?.location_id ?? 1;
+                var url = $"{_baseUrl}/refund/unrefunded?location_id={locationId}";
+                SetupHeaders();
+                var response = await _httpClient.GetAsync(url).ConfigureAwait(false);
+                var responseString = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
+                return JsonConvert.DeserializeObject<ApiResponse<List<ReturnLookupData>>>(responseString);
+            }
+            catch { return null; }
+        }
+
         public async Task<ApiResponse<DayLedgerResponse>?> FetchDayLedgerAsync()
         {
             try
@@ -500,5 +532,45 @@ namespace DesktopPOS.Services
         public string? customer_name { get; set; }
         public double grand_total { get; set; }
         public string? created_at { get; set; }
+    }
+
+    public class ReturnLookupResponse
+    {
+        [JsonProperty("return")]
+        public ReturnLookupData? ReturnDoc { get; set; }
+        public List<ReturnInvoiceItem>? items { get; set; }
+        public bool is_refunded { get; set; }
+    }
+
+    public class ReturnLookupData
+    {
+        public int id { get; set; }
+        public string? return_no { get; set; }
+        public string? return_date { get; set; }
+        public int invoice_id { get; set; }
+        public string? invoice_no { get; set; }
+        public int customer_id { get; set; }
+        public string? customer_name { get; set; }
+        public double total_amount { get; set; }
+        public string? reason { get; set; }
+        public int location_id { get; set; }
+        public string? location_name { get; set; }
+    }
+
+    public class RefundCreatePayload
+    {
+        public int return_id { get; set; }
+        public int invoice_id { get; set; }
+        public int location_id { get; set; }
+        public double amount { get; set; }
+        public string payment_method { get; set; } = "Cash";
+        public string reference_no { get; set; } = "";
+        public string notes { get; set; } = "POS Return Refund";
+    }
+
+    public class RefundCreateResult
+    {
+        public int id { get; set; }
+        public string? refund_no { get; set; }
     }
 }
