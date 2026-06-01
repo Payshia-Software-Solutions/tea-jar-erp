@@ -1,0 +1,78 @@
+<Window x:Class="DesktopPOS.Pages.TodaySummaryDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Today's Summary" Height="550" Width="450"
+        WindowStyle="None" AllowsTransparency="True" Background="Transparent"
+        WindowStartupLocation="CenterOwner"
+        PreviewKeyDown="Window_PreviewKeyDown">
+    
+    <Grid Background="Transparent">
+        <Border HorizontalAlignment="Center" VerticalAlignment="Center"
+                Width="400" Height="500" Background="{DynamicResource BgCardElevated}" CornerRadius="20" Padding="32,28">
+            <Border.Effect>
+                <DropShadowEffect Color="{DynamicResource ShadowColor}" Opacity="0.15" BlurRadius="50" ShadowDepth="8"/>
+            </Border.Effect>
+            <Grid>
+                <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <TextBlock Text="Day End Summary" FontSize="22" FontWeight="Bold" Foreground="{DynamicResource TextPrimary}" Margin="0,0,0,20"/>
+        
+        <TextBlock x:Name="LoadingText" Text="Loading data..." Grid.Row="1" Foreground="{DynamicResource TextMuted}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+
+        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+            <StackPanel x:Name="SummaryPanel" Visibility="Collapsed">
+                <Border Background="{DynamicResource BgCard}" CornerRadius="10" Padding="15" Margin="0,0,0,15">
+                    <StackPanel>
+                        <Grid Margin="0,0,0,10">
+                            <TextBlock Text="Total Sales:" FontSize="16" Foreground="{DynamicResource TextSecondary}"/>
+                            <TextBlock x:Name="SalesText" Text="0.00" FontSize="16" FontWeight="Bold" Foreground="{DynamicResource TextPrimary}" HorizontalAlignment="Right"/>
+                        </Grid>
+                        <Grid Margin="0,0,0,10">
+                            <TextBlock Text="Total Returns:" FontSize="16" Foreground="{DynamicResource TextSecondary}"/>
+                            <TextBlock x:Name="ReturnsText" Text="0.00" FontSize="16" FontWeight="Bold" Foreground="{DynamicResource TextPrimary}" HorizontalAlignment="Right"/>
+                        </Grid>
+                        <Grid Margin="0,0,0,10">
+                            <TextBlock Text="Total Refunds:" FontSize="16" Foreground="{DynamicResource TextSecondary}"/>
+                            <TextBlock x:Name="RefundsText" Text="0.00" FontSize="16" FontWeight="Bold" Foreground="{DynamicResource TextDanger}" HorizontalAlignment="Right"/>
+                        </Grid>
+                        <Separator Margin="0,5,0,10" Background="{DynamicResource BorderPrimary}"/>
+                        <Grid Margin="0,0,0,10">
+                            <TextBlock Text="Net Total:" FontSize="18" FontWeight="Bold" Foreground="{DynamicResource TextPrimary}"/>
+                            <TextBlock x:Name="NetText" Text="0.00" FontSize="18" FontWeight="Bold" Foreground="{DynamicResource AccentSuccess}" HorizontalAlignment="Right"/>
+                        </Grid>
+                    </StackPanel>
+                </Border>
+
+                <TextBlock Text="Payment Methods" FontSize="16" FontWeight="Bold" Foreground="{DynamicResource TextPrimary}" Margin="0,0,0,10"/>
+                <Border Background="{DynamicResource BgCard}" CornerRadius="10" Padding="15">
+                    <ItemsControl x:Name="MethodsList">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Grid Margin="0,0,0,10">
+                                    <TextBlock Text="{Binding Key}" FontSize="14" Foreground="{DynamicResource TextSecondary}"/>
+                                    <TextBlock Text="{Binding Value, StringFormat='LKR \{0:N2\}'}" FontSize="14" FontWeight="Bold" Foreground="{DynamicResource TextPrimary}" HorizontalAlignment="Right"/>
+                                </Grid>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </Border>
+            </StackPanel>
+        </ScrollViewer>
+
+        <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,20,0,0">
+            <Button Content="Close" Width="100" Padding="10" Margin="0,0,10,0"
+                    Background="{DynamicResource BgInput}" Foreground="{DynamicResource TextPrimary}"
+                    BorderThickness="1" BorderBrush="{DynamicResource BorderPrimary}" Cursor="Hand"
+                    Click="Close_Click"/>
+            <Button x:Name="PrintBtn" Content="Print Z-Report" Width="140" Padding="10"
+                    Background="{DynamicResource AccentPrimary}" Foreground="White" BorderThickness="0"
+                    FontWeight="Bold" Cursor="Hand" Click="Print_Click"/>
+        </StackPanel>
+            </Grid>
+        </Border>
+    </Grid>
+</Window>

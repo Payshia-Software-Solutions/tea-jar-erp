@@ -1,0 +1,50 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <!-- ═══ LIGHT THEME — Clean Slate ═══ -->
+
+    <!-- Backgrounds -->
+    <SolidColorBrush x:Key="BgPage"         Color="#F8FAFC"/>
+    <SolidColorBrush x:Key="BgPanel"        Color="#FFFFFF"/>
+    <SolidColorBrush x:Key="BgCard"         Color="#F1F5F9"/>
+    <SolidColorBrush x:Key="BgCardElevated" Color="#FFFFFF"/>
+    <SolidColorBrush x:Key="BgInput"        Color="#E2E8F0"/>
+
+    <!-- Text -->
+    <SolidColorBrush x:Key="TextPrimary"   Color="#0F172A"/>
+    <SolidColorBrush x:Key="TextSecondary" Color="#475569"/>
+    <SolidColorBrush x:Key="TextMuted"     Color="#94A3B8"/>
+    <SolidColorBrush x:Key="TextInverted"  Color="#FFFFFF"/>
+
+    <!-- Borders -->
+    <SolidColorBrush x:Key="BorderPrimary" Color="#E2E8F0"/>
+    <SolidColorBrush x:Key="BorderLight"   Color="#CBD5E1"/>
+
+    <!-- Accents -->
+    <SolidColorBrush x:Key="AccentPrimary"   Color="#6366F1"/>
+    <SolidColorBrush x:Key="AccentSecondary" Color="#0EA5E9"/>
+    <SolidColorBrush x:Key="AccentSuccess"   Color="#10B981"/>
+    <SolidColorBrush x:Key="AccentWarning"   Color="#F59E0B"/>
+    <SolidColorBrush x:Key="AccentDanger"    Color="#EF4444"/>
+
+    <!-- Icon Pill Backgrounds (solid, theme-aware) -->
+    <SolidColorBrush x:Key="IconBgIndigo"  Color="#EEF2FF"/>
+    <SolidColorBrush x:Key="IconBgPurple"  Color="#F5F3FF"/>
+    <SolidColorBrush x:Key="IconBgBlue"    Color="#EFF6FF"/>
+    <SolidColorBrush x:Key="IconBgGreen"   Color="#ECFDF5"/>
+    <SolidColorBrush x:Key="IconBgAmber"   Color="#FFFBEB"/>
+    <SolidColorBrush x:Key="IconBgRed"     Color="#FEF2F2"/>
+    <SolidColorBrush x:Key="IconBgCyan"    Color="#ECFEFF"/>
+
+    <!-- Icon Foreground Tints -->
+    <SolidColorBrush x:Key="IconFgIndigo"  Color="#6366F1"/>
+    <SolidColorBrush x:Key="IconFgPurple"  Color="#7C3AED"/>
+    <SolidColorBrush x:Key="IconFgBlue"    Color="#2563EB"/>
+    <SolidColorBrush x:Key="IconFgGreen"   Color="#059669"/>
+    <SolidColorBrush x:Key="IconFgAmber"   Color="#D97706"/>
+    <SolidColorBrush x:Key="IconFgRed"     Color="#DC2626"/>
+    <SolidColorBrush x:Key="IconFgCyan"    Color="#0891B2"/>
+
+    <!-- Shadows -->
+    <Color x:Key="ShadowColor">#94A3B8</Color>
+</ResourceDictionary>

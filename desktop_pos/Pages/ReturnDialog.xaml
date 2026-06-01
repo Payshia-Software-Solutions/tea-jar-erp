@@ -1,0 +1,122 @@
+<Window x:Class="DesktopPOS.Pages.ReturnDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Process Return" Height="600" Width="800"
+        WindowStartupLocation="CenterOwner" Background="{DynamicResource BgBase}">
+
+    <Grid Margin="20">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- Search Bar -->
+        <Grid Grid.Row="0" Margin="0,0,0,20">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+            <TextBox x:Name="SearchBox" Grid.Column="0" FontSize="18" Padding="10" 
+                     Background="{DynamicResource BgInput}" Foreground="{DynamicResource TextPrimary}"
+                     BorderBrush="{DynamicResource BorderPrimary}" BorderThickness="1" 
+                     Margin="0,0,10,0" KeyDown="SearchBox_KeyDown" />
+            <TextBlock IsHitTestVisible="False" Text="Scan or type Invoice Number..." VerticalAlignment="Center" HorizontalAlignment="Left" Margin="15,0,0,0" Foreground="{DynamicResource TextMuted}">
+                <TextBlock.Style>
+                    <Style TargetType="TextBlock">
+                        <Setter Property="Visibility" Value="Collapsed"/>
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding Text, ElementName=SearchBox}" Value="">
+                                <Setter Property="Visibility" Value="Visible"/>
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </TextBlock.Style>
+            </TextBlock>
+            <Button Grid.Column="1" Content="Search" Width="100" Padding="10" 
+                    Background="{DynamicResource AccentPrimary}" Foreground="White" 
+                    BorderThickness="0" FontSize="16" FontWeight="Bold" Cursor="Hand"
+                    Click="SearchButton_Click"/>
+        </Grid>
+
+        <!-- Error/Loading Messages -->
+        <TextBlock x:Name="StatusMessage" Grid.Row="1" Foreground="{DynamicResource TextDanger}" FontSize="16" 
+                   HorizontalAlignment="Center" VerticalAlignment="Center" Visibility="Collapsed"/>
+
+        <!-- Items List -->
+        <ListBox x:Name="ItemsGrid" Grid.Row="1" Background="Transparent" BorderThickness="0"
+                 ScrollViewer.HorizontalScrollBarVisibility="Disabled" HorizontalContentAlignment="Stretch">
+            <ListBox.ItemContainerStyle>
+                <Style TargetType="ListBoxItem">
+                    <Setter Property="Template">
+                        <Setter.Value>
+                            <ControlTemplate TargetType="ListBoxItem">
+                                <Border Background="{DynamicResource BgCard}" CornerRadius="12" Margin="0,0,0,10" Padding="15"
+                                        BorderThickness="0">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
+                                        
+                                        <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                                            <TextBlock Text="{Binding description}" FontSize="15" FontWeight="Bold" Foreground="{DynamicResource TextPrimary}"/>
+                                            <TextBlock Text="{Binding unit_price, StringFormat='LKR \{0:N2\}'}" FontSize="13" Foreground="{DynamicResource TextSecondary}" Margin="0,2,0,0"/>
+                                            <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
+                                                <TextBlock Text="{Binding quantity, StringFormat='Sold: \{0\}'}" FontSize="12" Foreground="{DynamicResource TextMuted}"/>
+                                                <TextBlock Text=" • " FontSize="12" Foreground="{DynamicResource TextMuted}"/>
+                                                <TextBlock Text="{Binding returned_qty, StringFormat='Returned: \{0\}'}" FontSize="12" Foreground="{DynamicResource TextMuted}"/>
+                                            </StackPanel>
+                                        </StackPanel>
+                                        
+                                        <!-- Return Qty Edit -->
+                                        <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="15,0,20,0">
+                                            <TextBlock Text="Return Qty" FontSize="11" Foreground="{DynamicResource TextMuted}" HorizontalAlignment="Center"/>
+                                            <TextBox Text="{Binding return_qty, UpdateSourceTrigger=PropertyChanged}" 
+                                                     Width="60" TextAlignment="Center" Padding="5" FontSize="14" FontWeight="Bold"
+                                                     Background="{DynamicResource BgInput}" Foreground="{DynamicResource TextPrimary}"
+                                                     BorderBrush="{DynamicResource BorderPrimary}" BorderThickness="1" Margin="0,4,0,0"
+                                                     TextChanged="ReturnQty_TextChanged"/>
+                                        </StackPanel>
+                                        
+                                        <!-- Refund Amount -->
+                                        <StackPanel Grid.Column="2" VerticalAlignment="Center" HorizontalAlignment="Right" MinWidth="100">
+                                            <TextBlock Text="Refund Amt" FontSize="11" Foreground="{DynamicResource TextMuted}" HorizontalAlignment="Right"/>
+                                            <TextBlock Text="{Binding refund_amount, StringFormat='LKR \{0:N2\}'}" FontSize="16" FontWeight="Bold" Foreground="{DynamicResource AccentDanger}" HorizontalAlignment="Right" Margin="0,4,0,0"/>
+                                        </StackPanel>
+                                    </Grid>
+                                </Border>
+                            </ControlTemplate>
+                        </Setter.Value>
+                    </Setter>
+                </Style>
+            </ListBox.ItemContainerStyle>
+        </ListBox>
+
+        <!-- Totals & Actions -->
+        <Grid Grid.Row="2" Margin="0,20,0,0">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+
+            <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                <TextBlock x:Name="CustomerNameText" FontSize="14" Foreground="{DynamicResource TextSecondary}" Margin="0,0,0,5"/>
+                <TextBlock x:Name="TotalRefundText" Text="Total Refund: LKR 0.00" FontSize="24" FontWeight="Bold" Foreground="{DynamicResource AccentPrimary}"/>
+            </StackPanel>
+
+            <StackPanel Grid.Column="1" Orientation="Horizontal">
+                <Button Content="Cancel" Width="120" Padding="10" Margin="0,0,10,0"
+                        Background="{DynamicResource BgInput}" Foreground="{DynamicResource TextPrimary}" 
+                        BorderBrush="{DynamicResource BorderPrimary}" BorderThickness="1"
+                        FontSize="16" Cursor="Hand" Click="CancelButton_Click"/>
+                
+                <Button x:Name="ProcessButton" Content="Process Return" Width="160" Padding="10"
+                        Background="{DynamicResource AccentSuccess}" Foreground="White" 
+                        BorderThickness="0" FontSize="16" FontWeight="Bold" Cursor="Hand"
+                        Click="ProcessButton_Click" IsEnabled="False"/>
+            </StackPanel>
+        </Grid>
+    </Grid>
+</Window>

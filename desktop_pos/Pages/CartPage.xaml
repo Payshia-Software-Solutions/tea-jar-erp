@@ -1,0 +1,172 @@
+<Page x:Class="DesktopPOS.Pages.CartPage"
+      xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+      xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+      Title="Cart" Background="{DynamicResource BgPage}">
+
+    <Grid>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="*"/>
+            <ColumnDefinition Width="360"/>
+        </Grid.ColumnDefinitions>
+
+        <!-- LEFT: Cart Items -->
+        <Grid Grid.Column="0" Margin="30,30,16,30">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+            </Grid.RowDefinitions>
+
+            <!-- Header -->
+            <DockPanel Grid.Row="0" Margin="0,0,0,20">
+                <Button DockPanel.Dock="Right" Content="‹ Add More" Height="36" Padding="16,0"
+                        Background="{DynamicResource BgInput}" Foreground="{DynamicResource TextSecondary}" BorderThickness="0" FontSize="13"
+                        Click="Back_Click">
+                    <Button.Template>
+                        <ControlTemplate TargetType="Button">
+                            <Border Background="{TemplateBinding Background}" CornerRadius="8" Padding="{TemplateBinding Padding}">
+                                <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                            </Border>
+                        </ControlTemplate>
+                    </Button.Template>
+                </Button>
+                <StackPanel>
+                    <TextBlock Text="Shopping Cart" Foreground="White" FontSize="26" FontWeight="Bold"/>
+                    <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
+                        <TextBlock Text="Customer: " Foreground="{DynamicResource TextMuted}" FontSize="13"/>
+                        <TextBlock x:Name="CustomerNameText" Text="Walk-in Customer" Foreground="{DynamicResource AccentSecondary}" FontSize="13" FontWeight="SemiBold"/>
+                    </StackPanel>
+                </StackPanel>
+            </DockPanel>
+
+            <!-- Items List -->
+            <Border Grid.Row="1" Background="#121828" CornerRadius="14">
+                <ListView x:Name="CartListView" Background="Transparent" BorderThickness="0"
+                          ScrollViewer.HorizontalScrollBarVisibility="Disabled" Padding="8">
+                    <ListView.ItemContainerStyle>
+                        <Style TargetType="ListViewItem">
+                            <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+                            <Setter Property="Padding" Value="0"/>
+                            <Setter Property="Margin" Value="0,4"/>
+                            <Setter Property="Template">
+                                <Setter.Value>
+                                    <ControlTemplate TargetType="ListViewItem">
+                                        <ContentPresenter/>
+                                    </ControlTemplate>
+                                </Setter.Value>
+                            </Setter>
+                        </Style>
+                    </ListView.ItemContainerStyle>
+                    <ListView.ItemTemplate>
+                        <DataTemplate>
+                            <Border Background="{DynamicResource BgInput}" CornerRadius="12" Padding="16,12" Margin="4,4">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel Grid.Column="0">
+                                        <TextBlock Text="{Binding Name}" Foreground="White" FontSize="14" FontWeight="SemiBold"/>
+                                        <TextBlock Text="{Binding PriceDisplay}" Foreground="{DynamicResource TextMuted}" FontSize="12" Margin="0,3,0,0"/>
+                                    </StackPanel>
+                                    <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                                        <Border Background="{DynamicResource BgPage}" CornerRadius="8" Padding="8,4" Cursor="Hand" Tag="{Binding}" MouseLeftButtonUp="DecreaseQty_Click">
+                                            <TextBlock Text="−" Foreground="White" FontSize="16" FontWeight="Bold"/>
+                                        </Border>
+                                        <TextBlock Text="{Binding QuantityDisplay}" Foreground="White" FontSize="14" FontWeight="Bold"
+                                                   Width="40" TextAlignment="Center" VerticalAlignment="Center"/>
+                                        <Border Background="{DynamicResource BgPage}" CornerRadius="8" Padding="8,4" Cursor="Hand" Tag="{Binding}" MouseLeftButtonUp="IncreaseQty_Click">
+                                            <TextBlock Text="+" Foreground="White" FontSize="16" FontWeight="Bold"/>
+                                        </Border>
+                                        <TextBlock Text="{Binding LineTotalDisplay}" Foreground="{DynamicResource AccentSuccess}" FontSize="15" FontWeight="Bold"
+                                                   VerticalAlignment="Center" Margin="16,0,0,0" Width="80" TextAlignment="Right"/>
+                                    </StackPanel>
+                                </Grid>
+                            </Border>
+                        </DataTemplate>
+                    </ListView.ItemTemplate>
+                </ListView>
+            </Border>
+        </Grid>
+
+        <!-- RIGHT: Order Summary -->
+        <Border Grid.Column="1" Background="#121828" Margin="0,30,30,30" CornerRadius="16" Padding="24">
+            <StackPanel>
+                <TextBlock Text="Order Summary" Foreground="White" FontSize="20" FontWeight="Bold" Margin="0,0,0,24"/>
+
+                <!-- Subtotal -->
+                <DockPanel Margin="0,0,0,12">
+                    <TextBlock Text="Subtotal" Foreground="{DynamicResource TextSecondary}" FontSize="14"/>
+                    <TextBlock x:Name="SubtotalText" Text="LKR 0.00" Foreground="White" FontSize="14" FontWeight="SemiBold" DockPanel.Dock="Right" HorizontalAlignment="Right"/>
+                </DockPanel>
+
+                <!-- Discount -->
+                <Border Background="{DynamicResource BgInput}" CornerRadius="8" Padding="12,10" Margin="0,0,0,12">
+                    <DockPanel>
+                        <TextBlock Text="Discount" Foreground="{DynamicResource TextSecondary}" FontSize="13" VerticalAlignment="Center"/>
+                        <TextBox x:Name="DiscountBox" DockPanel.Dock="Right" Width="90"
+                                 Background="{DynamicResource BgPage}" Foreground="White" BorderThickness="0"
+                                 FontSize="13" TextAlignment="Right" Padding="4"
+                                 Text="0" TextChanged="DiscountBox_TextChanged" CaretBrush="White"/>
+                    </DockPanel>
+                </Border>
+
+                <!-- Tax -->
+                <DockPanel Margin="0,0,0,4">
+                    <TextBlock Text="Tax (0%)" Foreground="{DynamicResource TextSecondary}" FontSize="14"/>
+                    <TextBlock x:Name="TaxText" Text="LKR 0.00" Foreground="White" FontSize="14" DockPanel.Dock="Right" HorizontalAlignment="Right"/>
+                </DockPanel>
+
+                <Rectangle Fill="{DynamicResource BgInput}" Height="1" Margin="0,16,0,16"/>
+
+                <!-- Grand Total -->
+                <DockPanel Margin="0,0,0,24">
+                    <TextBlock Text="Grand Total" Foreground="White" FontSize="18" FontWeight="Bold"/>
+                    <TextBlock x:Name="GrandTotalText" Text="LKR 0.00" Foreground="{DynamicResource AccentSuccess}" FontSize="20" FontWeight="Bold" DockPanel.Dock="Right" HorizontalAlignment="Right"/>
+                </DockPanel>
+
+                <!-- Hold Order Button -->
+                <Button Content="Hold Order" Height="50" Margin="0,0,0,12"
+                        Background="{DynamicResource BgInput}" Foreground="{DynamicResource AccentWarning}" BorderThickness="0"
+                        FontSize="15" FontWeight="Bold" Click="HoldOrder_Click" ToolTip="Hold Order (F7)">
+                    <Button.Template>
+                        <ControlTemplate TargetType="Button">
+                            <Border Background="{TemplateBinding Background}" CornerRadius="10">
+                                <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                            </Border>
+                        </ControlTemplate>
+                    </Button.Template>
+                </Button>
+
+                <!-- Checkout Button -->
+                <Button Content="Proceed to Checkout  ›" Height="60"
+                        Background="{DynamicResource AccentPrimary}" Foreground="White" BorderThickness="0"
+                        FontSize="17" FontWeight="Bold" Click="Checkout_Click" ToolTip="Checkout (F9)">
+                    <Button.Template>
+                        <ControlTemplate TargetType="Button">
+                            <Border Background="{TemplateBinding Background}" CornerRadius="12">
+                                <Border.Effect>
+                                    <DropShadowEffect Color="#4F46E5" BlurRadius="20" Opacity="0.4" ShadowDepth="0"/>
+                                </Border.Effect>
+                                <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                            </Border>
+                        </ControlTemplate>
+                    </Button.Template>
+                </Button>
+
+                <!-- Step Indicator -->
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,24,0,0">
+                    <Ellipse Width="8" Height="8" Fill="{DynamicResource BorderLight}" Margin="4,0"/>
+                    <Border Width="24" Height="8" CornerRadius="4" Background="{DynamicResource AccentPrimary}" Margin="4,0"/>
+                    <Ellipse Width="8" Height="8" Fill="{DynamicResource BorderLight}" Margin="4,0"/>
+                </StackPanel>
+            </StackPanel>
+        </Border>
+    </Grid>
+</Page>
+
+
+
+
+
+
+

@@ -1,0 +1,118 @@
+<Page x:Class="DesktopPOS.Pages.ProductsPage"
+      xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+      xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+      Title="Products" Background="{DynamicResource BgPage}">
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- Header -->
+        <Border Grid.Row="0" Margin="30,30,30,0">
+            <DockPanel>
+                <Button DockPanel.Dock="Right" Content="‹ Back" Width="90" Height="36"
+                        Background="{DynamicResource BgInput}" Foreground="{DynamicResource TextSecondary}" BorderThickness="0"
+                        FontSize="13" Click="Back_Click">
+                    <Button.Template>
+                        <ControlTemplate TargetType="Button">
+                            <Border Background="{TemplateBinding Background}" CornerRadius="8" Padding="12,6">
+                                <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                            </Border>
+                        </ControlTemplate>
+                    </Button.Template>
+                </Button>
+                <StackPanel>
+                    <TextBlock Text="Select Products" Foreground="White" FontSize="26" FontWeight="Bold"/>
+                    <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
+                        <TextBlock Text="Customer: " Foreground="{DynamicResource TextMuted}" FontSize="13"/>
+                        <TextBlock x:Name="CustomerNameText" Text="Walk-in Customer" Foreground="{DynamicResource AccentSecondary}" FontSize="13" FontWeight="SemiBold"/>
+                    </StackPanel>
+                </StackPanel>
+            </DockPanel>
+        </Border>
+
+        <!-- Search Bar -->
+        <Border Grid.Row="1" Margin="30,16,30,8" Background="#121828" CornerRadius="10" Padding="16,0" Height="48">
+            <DockPanel>
+                <TextBlock Text="🔍" VerticalAlignment="Center" FontSize="16" Margin="0,0,10,0" DockPanel.Dock="Left"/>
+                <TextBox x:Name="SearchBox" Background="Transparent" Foreground="White" BorderThickness="0"
+                         FontSize="14" VerticalAlignment="Center" CaretBrush="White"
+                         TextChanged="SearchBox_TextChanged">
+                    <TextBox.Resources>
+                        <Style TargetType="TextBox">
+                            <Setter Property="Template">
+                                <Setter.Value>
+                                    <ControlTemplate TargetType="TextBox">
+                                        <ScrollViewer x:Name="PART_ContentHost" Focusable="False"/>
+                                    </ControlTemplate>
+                                </Setter.Value>
+                            </Setter>
+                        </Style>
+                    </TextBox.Resources>
+                </TextBox>
+            </DockPanel>
+        </Border>
+
+        <!-- Products Grid -->
+        <Grid Grid.Row="2" Margin="30,0,30,0">
+            <!-- Loading -->
+            <StackPanel x:Name="LoadingPanel" VerticalAlignment="Center" HorizontalAlignment="Center">
+                <TextBlock Text="⌛ Loading products..." Foreground="{DynamicResource TextSecondary}" FontSize="18" HorizontalAlignment="Center"/>
+            </StackPanel>
+
+            <ScrollViewer x:Name="ProductScrollViewer" VerticalScrollBarVisibility="Auto" Visibility="Collapsed">
+                <WrapPanel x:Name="ProductsWrapPanel" Orientation="Horizontal"/>
+            </ScrollViewer>
+        </Grid>
+
+        <!-- Cart Footer -->
+        <Border Grid.Row="3" Background="#121828" Padding="30,16" Margin="0,8,0,0">
+            <Border.Effect>
+                <DropShadowEffect Color="#000000" Opacity="0.4" BlurRadius="20" ShadowDepth="0"/>
+            </Border.Effect>
+            <DockPanel>
+                <StackPanel DockPanel.Dock="Left" Orientation="Horizontal" VerticalAlignment="Center">
+                    <Border Background="{DynamicResource BgInput}" CornerRadius="8" Padding="12,6" Margin="0,0,16,0">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="🛒 " FontSize="16"/>
+                            <TextBlock x:Name="CartCountText" Text="0 items" Foreground="White" FontSize="15" FontWeight="SemiBold"/>
+                        </StackPanel>
+                    </Border>
+                    <TextBlock x:Name="CartTotalText" Text="Total: LKR 0.00" Foreground="{DynamicResource AccentSecondary}" FontSize="18" FontWeight="Bold" VerticalAlignment="Center"/>
+                </StackPanel>
+
+                <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" HorizontalAlignment="Right">
+                    <!-- Step dots -->
+                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,24,0">
+                        <Ellipse Width="8" Height="8" Fill="{DynamicResource BorderLight}" Margin="4,0"/>
+                        <Border Width="24" Height="8" CornerRadius="4" Background="{DynamicResource AccentPrimary}" Margin="4,0"/>
+                        <Ellipse Width="8" Height="8" Fill="{DynamicResource BorderLight}" Margin="4,0"/>
+                    </StackPanel>
+
+                    <Button Content="View Cart  ›" Height="44" Padding="24,0"
+                            Background="{DynamicResource AccentPrimary}" Foreground="White" BorderThickness="0"
+                            FontSize="15" FontWeight="Bold" Click="ViewCart_Click">
+                        <Button.Template>
+                            <ControlTemplate TargetType="Button">
+                                <Border Background="{TemplateBinding Background}" CornerRadius="10" Padding="{TemplateBinding Padding}">
+                                    <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                </Border>
+                            </ControlTemplate>
+                        </Button.Template>
+                    </Button>
+                </StackPanel>
+            </DockPanel>
+        </Border>
+    </Grid>
+</Page>
+
+
+
+
+
+
+

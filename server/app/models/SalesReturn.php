@@ -55,7 +55,7 @@ class SalesReturn extends Model {
 
     public function create($data) {
         try {
-            $this->db->exec("START TRANSACTION");
+            $this->db->beginTransaction();
 
             // 1. Generate Return Number
             $returnNo = $this->generateReturnNo($data['location_id'] ?? 1);
@@ -78,7 +78,7 @@ class SalesReturn extends Model {
             $this->db->bind(':created_by', $data['userId']);
 
             if (!$this->db->execute()) {
-                $this->db->exec("ROLLBACK");
+                $this->db->rollBack();
                 return false;
             }
 
@@ -166,11 +166,11 @@ class SalesReturn extends Model {
             require_once '../app/helpers/AccountingHelper.php';
             AccountingHelper::postSalesReturn($returnId, $data);
 
-            $this->db->exec("COMMIT");
+            $this->db->commit();
             return ['id' => $returnId, 'return_no' => $returnNo];
         } catch (Exception $e) {
             error_log("RETURN_CREATE_ERROR: " . $e->getMessage());
-            try { $this->db->exec("ROLLBACK"); } catch (Exception $ex) {}
+            try { $this->db->rollBack(); } catch (Exception $ex) {}
             return ['error' => $e->getMessage()];
         }
     }

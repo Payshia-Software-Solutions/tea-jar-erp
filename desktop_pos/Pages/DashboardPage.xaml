@@ -1,0 +1,550 @@
+<Page x:Class="DesktopPOS.Pages.DashboardPage"
+      xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+      xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+      xmlns:controls="clr-namespace:DesktopPOS.Controls"
+      Title="Dashboard" Background="{DynamicResource BgPage}">
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <!-- === TOP HEADER BAR === -->
+        <controls:TopNavBar Grid.Row="0"/>
+
+        <!-- === MAIN CONTENT AREA === -->
+        <Grid Grid.Row="1" Margin="32,28,32,28">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="24"/>
+                <ColumnDefinition Width="340"/>
+            </Grid.ColumnDefinitions>
+
+            <ScrollViewer Grid.Column="0" VerticalScrollBarVisibility="Auto" Padding="0,0,16,0">
+                <StackPanel>
+
+                    <!-- ── Quick Action Cards ── -->
+                    <Grid Margin="0,0,0,28">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="20"/>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="20"/>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="20"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+
+                        <!-- New Transaction Card -->
+                        <Border Grid.Column="0" CornerRadius="20" Cursor="Hand" MouseLeftButtonUp="NewOrder_Click">
+                            <Border.Background>
+                                <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                                    <GradientStop Color="#312E81" Offset="0"/>
+                                    <GradientStop Color="#4338CA" Offset="1"/>
+                                </LinearGradientBrush>
+                            </Border.Background>
+                            <Border.Style>
+                                <Style TargetType="Border">
+                                    <Style.Triggers>
+                                        <Trigger Property="IsMouseOver" Value="True">
+                                            <Setter Property="Effect">
+                                                <Setter.Value>
+                                                    <DropShadowEffect Color="#4338CA" BlurRadius="30" Opacity="0.6" ShadowDepth="0"/>
+                                                </Setter.Value>
+                                            </Setter>
+                                        </Trigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Border.Style>
+                            <Grid Margin="28,28">
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="*"/>
+                                    <RowDefinition Height="Auto"/>
+                                </Grid.RowDefinitions>
+                                <Border Grid.Row="0" Width="54" Height="54" CornerRadius="14"
+                                        BorderBrush="#44FFFFFF" BorderThickness="2"
+                                        Background="#15FFFFFF" HorizontalAlignment="Left">
+                                    <TextBlock Text="+" Foreground="White" FontSize="30" FontWeight="Light"
+                                               HorizontalAlignment="Center" VerticalAlignment="Center" Margin="0,-2,0,0"/>
+                                </Border>
+                                <StackPanel Grid.Row="1" Margin="0,22,0,22">
+                                    <TextBlock Text="New Transaction" Foreground="White" FontSize="19" FontWeight="Bold"/>
+                                    <TextBlock Text="Start a fresh order for walk-in&#x0a;or registered customer"
+                                               Foreground="#CCFFFFFF" FontSize="12" TextWrapping="Wrap" Margin="0,8,0,0" LineHeight="18"/>
+                                </StackPanel>
+                                <Border Grid.Row="2" BorderBrush="#44FFFFFF" BorderThickness="1"
+                                        CornerRadius="8" Padding="14,6" HorizontalAlignment="Left">
+                                    <TextBlock Text="F1  ·  Click to Start" Foreground="#CCFFFFFF" FontSize="11"/>
+                                </Border>
+                            </Grid>
+                        </Border>
+
+                        <Border Grid.Column="2" CornerRadius="20" Cursor="Hand" MouseLeftButtonUp="ResumeBill_Click">
+                            <Border.Background>
+                                <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                                    <GradientStop Color="#D97706" Offset="0"/>
+                                    <GradientStop Color="#F59E0B" Offset="1"/>
+                                </LinearGradientBrush>
+                            </Border.Background>
+                            <Border.Style>
+                                <Style TargetType="Border">
+                                    <Style.Triggers>
+                                        <Trigger Property="IsMouseOver" Value="True">
+                                            <Setter Property="Effect">
+                                                <Setter.Value>
+                                                    <DropShadowEffect Color="#F59E0B" BlurRadius="30" Opacity="0.6" ShadowDepth="0"/>
+                                                </Setter.Value>
+                                            </Setter>
+                                        </Trigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Border.Style>
+                            <Grid Margin="28,28">
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="*"/>
+                                    <RowDefinition Height="Auto"/>
+                                </Grid.RowDefinitions>
+                                <Border Grid.Row="0" Width="54" Height="54" CornerRadius="14"
+                                        BorderBrush="#44FFFFFF" BorderThickness="2"
+                                        Background="#15FFFFFF" HorizontalAlignment="Left">
+                                    <TextBlock Text="↻" Foreground="White" FontSize="26"
+                                               HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                </Border>
+                                <StackPanel Grid.Row="1" Margin="0,22,0,22">
+                                    <TextBlock Text="Resume Bill" Foreground="White" FontSize="19" FontWeight="Bold"/>
+                                    <TextBlock Text="Continue a held or parked&#x0a;transaction from the queue"
+                                               Foreground="#CCFFFFFF" FontSize="12" TextWrapping="Wrap" Margin="0,8,0,0" LineHeight="18"/>
+                                </StackPanel>
+                                <Border Grid.Row="2" BorderBrush="#44FFFFFF" BorderThickness="1"
+                                        CornerRadius="8" Padding="14,6" HorizontalAlignment="Left">
+                                    <TextBlock Text="F2  ·  Click to Resume" Foreground="#CCFFFFFF" FontSize="11"/>
+                                </Border>
+                            </Grid>
+                        </Border>
+
+                        <!-- ERP Hub Card -->
+                        <Border Grid.Column="4" CornerRadius="20" Cursor="Hand" Background="{DynamicResource BgCard}">
+                            <Border.Style>
+                                <Style TargetType="Border">
+                                    <Style.Triggers>
+                                        <Trigger Property="IsMouseOver" Value="True">
+                                            <Setter Property="Effect">
+                                                <Setter.Value>
+                                                    <DropShadowEffect Color="#000000" BlurRadius="20" Opacity="0.1" ShadowDepth="4"/>
+                                                </Setter.Value>
+                                            </Setter>
+                                        </Trigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Border.Style>
+                            <Grid Margin="28,24">
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="*"/>
+                                    <RowDefinition Height="Auto"/>
+                                </Grid.RowDefinitions>
+                                <Border Grid.Row="0" Width="56" Height="56" CornerRadius="16"
+                                        Background="{DynamicResource AccentPrimary}" HorizontalAlignment="Left">
+                                    <TextBlock Text="⊞" Foreground="White" FontSize="26"
+                                               HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                </Border>
+                                <StackPanel Grid.Row="1" Margin="0,20,0,20">
+                                    <TextBlock Text="ERP Hub" Foreground="{DynamicResource TextPrimary}" FontSize="18" FontWeight="Bold"/>
+                                    <TextBlock Text="Access full management and reporting tools" 
+                                               Foreground="{DynamicResource TextMuted}" FontSize="12" TextWrapping="Wrap" Margin="0,6,0,0"/>
+                                </StackPanel>
+                                <Border Grid.Row="2" Background="{DynamicResource BgInput}" CornerRadius="8" Padding="12,7" HorizontalAlignment="Left">
+                                    <TextBlock Text="Open Dashboard" Foreground="{DynamicResource TextSecondary}" FontSize="11"/>
+                                </Border>
+                            </Grid>
+                        </Border>
+
+                        <!-- Process Return Card -->
+                        <Border Grid.Column="6" CornerRadius="20" Cursor="Hand" MouseLeftButtonUp="ProcessReturn_Click">
+                            <Border.Background>
+                                <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                                    <GradientStop Color="#9F1239" Offset="0"/>
+                                    <GradientStop Color="#E11D48" Offset="1"/>
+                                </LinearGradientBrush>
+                            </Border.Background>
+                            <Border.Style>
+                                <Style TargetType="Border">
+                                    <Style.Triggers>
+                                        <Trigger Property="IsMouseOver" Value="True">
+                                            <Setter Property="Effect">
+                                                <Setter.Value>
+                                                    <DropShadowEffect Color="#E11D48" BlurRadius="30" Opacity="0.6" ShadowDepth="0"/>
+                                                </Setter.Value>
+                                            </Setter>
+                                        </Trigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Border.Style>
+                            <Grid Margin="28,24">
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="*"/>
+                                    <RowDefinition Height="Auto"/>
+                                </Grid.RowDefinitions>
+                                <Border Grid.Row="0" Width="56" Height="56" CornerRadius="16"
+                                        BorderBrush="#44FFFFFF" BorderThickness="2"
+                                        Background="#15FFFFFF" HorizontalAlignment="Left">
+                                    <TextBlock Text="↩" Foreground="White" FontSize="26"
+                                               HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                </Border>
+                                <StackPanel Grid.Row="1" Margin="0,20,0,20">
+                                    <TextBlock Text="Process Return" Foreground="White" FontSize="18" FontWeight="Bold"/>
+                                    <TextBlock Text="Return items and process&#x0a;refunds securely" 
+                                               Foreground="#CCFFFFFF" FontSize="12" TextWrapping="Wrap" Margin="0,6,0,0"/>
+                                </StackPanel>
+                                <Border Grid.Row="2" BorderBrush="#44FFFFFF" BorderThickness="1"
+                                        CornerRadius="8" Padding="12,7" HorizontalAlignment="Left">
+                                    <TextBlock Text="F3  ·  Click to Return" Foreground="#CCFFFFFF" FontSize="11"/>
+                                </Border>
+                            </Grid>
+                        </Border>
+                    </Grid>
+
+                    <!-- ── Live Stats Row ── -->
+                    <TextBlock Text="TODAY'S OVERVIEW" Foreground="{DynamicResource TextMuted}" 
+                               FontSize="11" FontWeight="Bold" Margin="0,0,0,14"/>
+
+                    <UniformGrid Columns="4" Margin="0,0,0,28">
+                        <!-- Total Sales -->
+                        <Border Background="{DynamicResource BgCard}" CornerRadius="16" Margin="0,0,12,0" Padding="20,18">
+                            <Grid>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                </Grid.RowDefinitions>
+                                <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,12">
+                                    <Border Width="36" Height="36" CornerRadius="10" Background="{DynamicResource IconBgIndigo}">
+                                        <TextBlock Text="◈" Foreground="{DynamicResource IconFgIndigo}" FontSize="18" FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                    </Border>
+                                    <TextBlock Text="Total Sales" Foreground="{DynamicResource TextMuted}" FontSize="12" 
+                                               VerticalAlignment="Center" Margin="10,0,0,0"/>
+                                </StackPanel>
+                                <TextBlock Grid.Row="1" x:Name="TotalSalesText" Text="LKR 0.00" 
+                                           Foreground="{DynamicResource TextPrimary}" FontSize="22" FontWeight="Bold"/>
+                                <TextBlock Grid.Row="2" Text="Today" Foreground="{DynamicResource AccentSuccess}" 
+                                           FontSize="11" Margin="0,4,0,0"/>
+                            </Grid>
+                        </Border>
+
+                        <!-- Orders Count -->
+                        <Border Background="{DynamicResource BgCard}" CornerRadius="16" Margin="0,0,12,0" Padding="20,18">
+                            <Grid>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                </Grid.RowDefinitions>
+                                <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,12">
+                                    <Border Width="36" Height="36" CornerRadius="10" Background="{DynamicResource IconBgGreen}">
+                                        <TextBlock Text="≡" Foreground="{DynamicResource IconFgGreen}" FontSize="20" FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                    </Border>
+                                    <TextBlock Text="Orders" Foreground="{DynamicResource TextMuted}" FontSize="12" 
+                                               VerticalAlignment="Center" Margin="10,0,0,0"/>
+                                </StackPanel>
+                                <TextBlock Grid.Row="1" x:Name="OrderCountText" Text="0" 
+                                           Foreground="{DynamicResource TextPrimary}" FontSize="22" FontWeight="Bold"/>
+                                <TextBlock Grid.Row="2" Text="Completed today" Foreground="{DynamicResource AccentSuccess}" 
+                                           FontSize="11" Margin="0,4,0,0"/>
+                            </Grid>
+                        </Border>
+
+                        <!-- Held Orders -->
+                        <Border Background="{DynamicResource BgCard}" CornerRadius="16" Margin="0,0,12,0" Padding="20,18">
+                            <Grid>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                </Grid.RowDefinitions>
+                                <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,12">
+                                    <Border Width="36" Height="36" CornerRadius="10" Background="{DynamicResource IconBgAmber}">
+                                        <TextBlock Text="II" Foreground="{DynamicResource IconFgAmber}" FontSize="14" FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                    </Border>
+                                    <TextBlock Text="Held Orders" Foreground="{DynamicResource TextMuted}" FontSize="12" 
+                                               VerticalAlignment="Center" Margin="10,0,0,0"/>
+                                </StackPanel>
+                                <TextBlock Grid.Row="1" x:Name="HeldOrdersText" Text="0" 
+                                           Foreground="{DynamicResource TextPrimary}" FontSize="22" FontWeight="Bold"/>
+                                <TextBlock Grid.Row="2" Text="Pending resume" Foreground="{DynamicResource AccentWarning}" 
+                                           FontSize="11" Margin="0,4,0,0"/>
+                            </Grid>
+                        </Border>
+
+                        <!-- Cashier Session -->
+                        <Border Background="{DynamicResource BgCard}" CornerRadius="16" Padding="20,18">
+                            <Grid>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                </Grid.RowDefinitions>
+                                <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,12">
+                                    <Border Width="36" Height="36" CornerRadius="10" Background="{DynamicResource IconBgCyan}">
+                                        <TextBlock Text="◷" Foreground="{DynamicResource IconFgCyan}" FontSize="18" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                    </Border>
+                                    <TextBlock Text="Session" Foreground="{DynamicResource TextMuted}" FontSize="12" 
+                                               VerticalAlignment="Center" Margin="10,0,0,0"/>
+                                </StackPanel>
+                                <TextBlock Grid.Row="1" x:Name="SessionTimeText" Text="0h 0m" 
+                                           Foreground="{DynamicResource TextPrimary}" FontSize="22" FontWeight="Bold"/>
+                                <TextBlock Grid.Row="2" Text="Active session" Foreground="{DynamicResource AccentSecondary}" 
+                                           FontSize="11" Margin="0,4,0,0"/>
+                            </Grid>
+                        </Border>
+                    </UniformGrid>
+
+                    <!-- ── Quick Actions Bottom Row ── -->
+                    <TextBlock Text="QUICK ACTIONS" Foreground="{DynamicResource TextMuted}" 
+                               FontSize="11" FontWeight="Bold" Margin="0,0,0,14"/>
+
+                    <UniformGrid Columns="7">
+                        <!-- Returns -->
+                        <Border CornerRadius="14" Margin="0,0,10,0" Padding="16,14" Cursor="Hand"
+                                Background="{DynamicResource BgCard}" MouseLeftButtonUp="ProcessReturn_Click">
+                            <Border.Style>
+                                <Style TargetType="Border">
+                                    <Style.Triggers>
+                                        <Trigger Property="IsMouseOver" Value="True">
+                                            <Setter Property="Background" Value="{DynamicResource BgInput}"/>
+                                        </Trigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Border.Style>
+                            <StackPanel HorizontalAlignment="Center">
+                                <Border Width="44" Height="44" CornerRadius="12" Background="{DynamicResource IconBgPurple}" HorizontalAlignment="Center" Margin="0,0,0,10">
+                                    <TextBlock Text="↩" Foreground="{DynamicResource IconFgPurple}" FontSize="20" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                </Border>
+                                <TextBlock Text="Return" Foreground="{DynamicResource TextPrimary}" FontSize="12" FontWeight="SemiBold" HorizontalAlignment="Center"/>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Refund -->
+                        <Border CornerRadius="14" Margin="0,0,10,0" Padding="16,14" Cursor="Hand"
+                                Background="{DynamicResource BgCard}">
+                            <Border.Style>
+                                <Style TargetType="Border">
+                                    <Style.Triggers>
+                                        <Trigger Property="IsMouseOver" Value="True">
+                                            <Setter Property="Background" Value="{DynamicResource BgInput}"/>
+                                        </Trigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Border.Style>
+                            <StackPanel HorizontalAlignment="Center">
+                                <Border Width="44" Height="44" CornerRadius="12" Background="{DynamicResource IconBgRed}" HorizontalAlignment="Center" Margin="0,0,0,10">
+                                    <TextBlock Text="↩" Foreground="{DynamicResource IconFgPurple}" FontSize="22" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                </Border>
+                                <TextBlock Text="Refund" Foreground="{DynamicResource TextPrimary}" FontSize="12" FontWeight="SemiBold" HorizontalAlignment="Center"/>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Reservation -->
+                        <Border CornerRadius="14" Margin="0,0,10,0" Padding="16,14" Cursor="Hand"
+                                Background="{DynamicResource BgCard}">
+                            <Border.Style>
+                                <Style TargetType="Border">
+                                    <Style.Triggers>
+                                        <Trigger Property="IsMouseOver" Value="True">
+                                            <Setter Property="Background" Value="{DynamicResource BgInput}"/>
+                                        </Trigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Border.Style>
+                            <StackPanel HorizontalAlignment="Center">
+                                <Border Width="44" Height="44" CornerRadius="12" Background="{DynamicResource IconBgGreen}" HorizontalAlignment="Center" Margin="0,0,0,10">
+                                    <TextBlock Text="$" Foreground="{DynamicResource IconFgRed}" FontSize="20" FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                </Border>
+                                <TextBlock Text="Reservation" Foreground="{DynamicResource TextPrimary}" FontSize="12" FontWeight="SemiBold" HorizontalAlignment="Center"/>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Pending -->
+                        <Border CornerRadius="14" Margin="0,0,10,0" Padding="16,14" Cursor="Hand"
+                                Background="{DynamicResource BgCard}">
+                            <Border.Style>
+                                <Style TargetType="Border">
+                                    <Style.Triggers>
+                                        <Trigger Property="IsMouseOver" Value="True">
+                                            <Setter Property="Background" Value="{DynamicResource BgInput}"/>
+                                        </Trigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Border.Style>
+                            <StackPanel HorizontalAlignment="Center">
+                                <Border Width="44" Height="44" CornerRadius="12" Background="{DynamicResource IconBgAmber}" HorizontalAlignment="Center" Margin="0,0,0,10">
+                                    <TextBlock Text="⌂" Foreground="{DynamicResource IconFgGreen}" FontSize="22" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                </Border>
+                                <TextBlock Text="Pending" Foreground="{DynamicResource TextPrimary}" FontSize="12" FontWeight="SemiBold" HorizontalAlignment="Center"/>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Today Summary -->
+                        <Border CornerRadius="14" Margin="0,0,10,0" Padding="16,14" Cursor="Hand"
+                                Background="{DynamicResource BgCard}" MouseLeftButtonUp="TodaySummary_Click">
+                            <Border.Style>
+                                <Style TargetType="Border">
+                                    <Style.Triggers>
+                                        <Trigger Property="IsMouseOver" Value="True">
+                                            <Setter Property="Background" Value="{DynamicResource BgInput}"/>
+                                        </Trigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Border.Style>
+                            <StackPanel HorizontalAlignment="Center">
+                                <Border Width="44" Height="44" CornerRadius="12" Background="{DynamicResource IconBgIndigo}" HorizontalAlignment="Center" Margin="0,0,0,10">
+                                    <TextBlock Text="📊" Foreground="{DynamicResource IconFgIndigo}" FontSize="20" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                </Border>
+                                <TextBlock Text="Summary" Foreground="{DynamicResource TextPrimary}" FontSize="12" FontWeight="SemiBold" HorizontalAlignment="Center"/>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Reprint Invoice -->
+                        <Border CornerRadius="14" Margin="0,0,10,0" Padding="16,14" Cursor="Hand"
+                                Background="{DynamicResource BgCard}" MouseLeftButtonUp="ReprintInvoice_Click">
+                            <Border.Style>
+                                <Style TargetType="Border">
+                                    <Style.Triggers>
+                                        <Trigger Property="IsMouseOver" Value="True">
+                                            <Setter Property="Background" Value="{DynamicResource BgInput}"/>
+                                        </Trigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Border.Style>
+                            <StackPanel HorizontalAlignment="Center">
+                                <Border Width="44" Height="44" CornerRadius="12" Background="{DynamicResource IconBgCyan}" HorizontalAlignment="Center" Margin="0,0,0,10">
+                                    <TextBlock Text="🖨️" Foreground="{DynamicResource IconFgCyan}" FontSize="20" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                </Border>
+                                <TextBlock Text="Reprint" Foreground="{DynamicResource TextPrimary}" FontSize="12" FontWeight="SemiBold" HorizontalAlignment="Center"/>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Logout -->
+                        <Border CornerRadius="14" Padding="16,14" Cursor="Hand"
+                                Background="{DynamicResource BgCard}" MouseLeftButtonUp="Logout_Click">
+                            <Border.Style>
+                                <Style TargetType="Border">
+                                    <Style.Triggers>
+                                        <Trigger Property="IsMouseOver" Value="True">
+                                            <Setter Property="Background" Value="{DynamicResource BgInput}"/>
+                                        </Trigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Border.Style>
+                            <StackPanel HorizontalAlignment="Center">
+                                <Border Width="44" Height="44" CornerRadius="12" Background="{DynamicResource IconBgRed}" HorizontalAlignment="Center" Margin="0,0,0,10">
+                                    <TextBlock Text="⏻" Foreground="{DynamicResource AccentDanger}" FontSize="20" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                </Border>
+                                <TextBlock Text="Logout" Foreground="{DynamicResource AccentDanger}" FontSize="12" FontWeight="SemiBold" HorizontalAlignment="Center"/>
+                            </StackPanel>
+                        </Border>
+                    </UniformGrid>
+
+                </StackPanel>
+            </ScrollViewer>
+
+            <!-- === SIDE PANEL === -->
+            <ScrollViewer Grid.Column="2" VerticalScrollBarVisibility="Auto" Padding="0,0,0,24">
+                <StackPanel>
+                    <!-- Location Details -->
+                    <TextBlock Text="LOCATION DETAILS" Foreground="{DynamicResource TextMuted}" FontSize="12" FontWeight="Bold" Margin="0,0,0,12"/>
+                    <Border Background="{DynamicResource BgCardElevated}" CornerRadius="16" Padding="20" Margin="0,0,0,24" BorderBrush="{DynamicResource BorderPrimary}" BorderThickness="1">
+                        <Border.Effect>
+                            <DropShadowEffect Color="{DynamicResource ShadowColor}" Opacity="0.05" BlurRadius="20" ShadowDepth="4"/>
+                        </Border.Effect>
+                        <StackPanel>
+                            <Grid Margin="0,0,0,16">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <Border Width="40" Height="40" CornerRadius="10" Background="{DynamicResource IconBgIndigo}" Margin="0,0,12,0">
+                                    <TextBlock Text="📍" FontSize="18" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                </Border>
+                                <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                    <TextBlock x:Name="PanelLocationNameText" Text="Main Branch" Foreground="{DynamicResource TextPrimary}" FontSize="16" FontWeight="Bold"/>
+                                    <TextBlock Text="Active Terminal" Foreground="{DynamicResource TextSecondary}" FontSize="12"/>
+                                </StackPanel>
+                            </Grid>
+                            
+                            <StackPanel Margin="0,0,0,12">
+                                <TextBlock Text="Address" Foreground="{DynamicResource TextMuted}" FontSize="11" FontWeight="SemiBold" Margin="0,0,0,4"/>
+                                <TextBlock x:Name="PanelAddressText" Text="Loading address..." Foreground="{DynamicResource TextPrimary}" FontSize="13" TextWrapping="Wrap"/>
+                            </StackPanel>
+
+                            <StackPanel Margin="0,0,0,12">
+                                <TextBlock Text="Contact" Foreground="{DynamicResource TextMuted}" FontSize="11" FontWeight="SemiBold" Margin="0,0,0,4"/>
+                                <TextBlock x:Name="PanelContactText" Text="Loading contact..." Foreground="{DynamicResource TextPrimary}" FontSize="13"/>
+                            </StackPanel>
+
+                            <StackPanel>
+                                <TextBlock Text="Manager on Duty" Foreground="{DynamicResource TextMuted}" FontSize="11" FontWeight="SemiBold" Margin="0,0,0,4"/>
+                                <TextBlock x:Name="PanelManagerNameText" Text="Loading..." Foreground="{DynamicResource TextPrimary}" FontSize="13"/>
+                            </StackPanel>
+
+                            <StackPanel Margin="0,12,0,0">
+                                <TextBlock Text="Active Taxes" Foreground="{DynamicResource TextMuted}" FontSize="11" FontWeight="SemiBold" Margin="0,0,0,4"/>
+                                <ItemsControl x:Name="PanelActiveTaxesList">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <Border Background="{DynamicResource BgInput}" CornerRadius="4" Padding="6,2" Margin="0,0,6,4" HorizontalAlignment="Left">
+                                                <TextBlock Text="{Binding code}" Foreground="{DynamicResource AccentWarning}" FontSize="11" FontWeight="Bold"/>
+                                            </Border>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                    <ItemsControl.ItemsPanel>
+                                        <ItemsPanelTemplate>
+                                            <WrapPanel/>
+                                        </ItemsPanelTemplate>
+                                    </ItemsControl.ItemsPanel>
+                                </ItemsControl>
+                            </StackPanel>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- System Info -->
+                    <TextBlock Text="SYSTEM INFO" Foreground="{DynamicResource TextMuted}" FontSize="12" FontWeight="Bold" Margin="0,0,0,12"/>
+                    <Border Background="{DynamicResource BgCardElevated}" CornerRadius="16" Padding="20" Margin="0,0,0,16" BorderBrush="{DynamicResource BorderPrimary}" BorderThickness="1">
+                        <Border.Effect>
+                            <DropShadowEffect Color="{DynamicResource ShadowColor}" Opacity="0.05" BlurRadius="20" ShadowDepth="4"/>
+                        </Border.Effect>
+                        <StackPanel>
+                            <Grid Margin="0,0,0,12">
+                                <TextBlock Text="App Version" Foreground="{DynamicResource TextSecondary}" FontSize="13" HorizontalAlignment="Left"/>
+                                <TextBlock Text="v2.4.1 (Stable)" Foreground="{DynamicResource TextPrimary}" FontSize="13" FontWeight="SemiBold" HorizontalAlignment="Right"/>
+                            </Grid>
+                            
+                            <Grid Margin="0,0,0,12">
+                                <TextBlock Text="OS Environment" Foreground="{DynamicResource TextSecondary}" FontSize="13" HorizontalAlignment="Left"/>
+                                <TextBlock x:Name="PanelOsInfoText" Text="Windows 11" Foreground="{DynamicResource TextPrimary}" FontSize="13" FontWeight="SemiBold" HorizontalAlignment="Right"/>
+                            </Grid>
+
+                            <Grid Margin="0,0,0,12">
+                                <TextBlock Text="Cloud Sync" Foreground="{DynamicResource TextSecondary}" FontSize="13" HorizontalAlignment="Left"/>
+                                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                                    <Ellipse Width="6" Height="6" Fill="{DynamicResource AccentSuccess}" Margin="0,0,6,0"/>
+                                    <TextBlock Text="Connected" Foreground="{DynamicResource AccentSuccess}" FontSize="13" FontWeight="SemiBold"/>
+                                </StackPanel>
+                            </Grid>
+
+                            <Grid>
+                                <TextBlock Text="Last Sync" Foreground="{DynamicResource TextSecondary}" FontSize="13" HorizontalAlignment="Left"/>
+                                <TextBlock Text="Just now" Foreground="{DynamicResource TextPrimary}" FontSize="13" FontWeight="SemiBold" HorizontalAlignment="Right"/>
+                            </Grid>
+                        </StackPanel>
+                    </Border>
+                    
+                    <Button Content="Check for Updates" Height="40" Background="Transparent" Foreground="{DynamicResource AccentPrimary}" FontSize="13" FontWeight="Bold" BorderThickness="0" Cursor="Hand"/>
+                </StackPanel>
+            </ScrollViewer>
+        </Grid>
+    </Grid>
+</Page>

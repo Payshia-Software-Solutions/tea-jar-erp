@@ -1,0 +1,68 @@
+<Page x:Class="DesktopPOS.Pages.LoginPage"
+      xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+      xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+      Title="Login" Loaded="Page_Loaded">
+    
+    <Grid x:Name="MainGrid" Background="{DynamicResource BgPage}">
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="*"/>
+            <ColumnDefinition Width="450"/>
+        </Grid.ColumnDefinitions>
+
+        <!-- Left Side: Branding / Abstract background -->
+        <Border Grid.Column="0">
+            <Border.Background>
+                <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                    <GradientStop Color="#0F172A" Offset="0"/>
+                    <GradientStop Color="#1E293B" Offset="0.5"/>
+                    <GradientStop Color="#020617" Offset="1"/>
+                </LinearGradientBrush>
+            </Border.Background>
+            <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center">
+                <Border Background="{DynamicResource AccentSecondary}" CornerRadius="30" Width="80" Height="80" Margin="0,0,0,24">
+                    <TextBlock Text="B" Foreground="White" FontSize="46" FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                </Border>
+                <TextBlock Text="BIZZFLOW POS" FontSize="42" FontWeight="Black" Foreground="White" HorizontalAlignment="Center" Margin="0,0,0,10"/>
+                <TextBlock Text="Enterprise Point of Sale Solution" FontSize="16" Foreground="{DynamicResource TextMuted}" HorizontalAlignment="Center"/>
+            </StackPanel>
+        </Border>
+
+        <!-- Right Side: Login Form -->
+        <Border Grid.Column="1" Background="{DynamicResource BgPage}" Padding="48,0">
+            <StackPanel VerticalAlignment="Center">
+                <TextBlock Text="Welcome Back" FontSize="32" FontWeight="Bold" Foreground="{DynamicResource TextPrimary}" Margin="0,0,0,8"/>
+                <TextBlock Text="Enter your credentials to access the system" FontSize="14" Foreground="{DynamicResource TextSecondary}" Margin="0,0,0,48"/>
+                
+                <TextBlock Text="Email Address" FontSize="13" Foreground="{DynamicResource TextSecondary}" Margin="0,0,0,8" FontWeight="SemiBold"/>
+                <Border Background="{DynamicResource BgInput}" CornerRadius="12" Margin="0,0,0,24" BorderBrush="{DynamicResource BorderPrimary}" BorderThickness="1" Height="50">
+                    <TextBox x:Name="EmailTextBox" Padding="16,0" VerticalAlignment="Center" Background="Transparent" Foreground="{DynamicResource TextPrimary}" BorderThickness="0" FontSize="15" CaretBrush="White"/>
+                </Border>
+                
+                <TextBlock Text="Password" FontSize="13" Foreground="{DynamicResource TextSecondary}" Margin="0,0,0,8" FontWeight="SemiBold"/>
+                <Border Background="{DynamicResource BgInput}" CornerRadius="12" Margin="0,0,0,36" BorderBrush="{DynamicResource BorderPrimary}" BorderThickness="1" Height="50">
+                    <PasswordBox x:Name="PasswordBox" Padding="16,0" VerticalAlignment="Center" Background="Transparent" Foreground="{DynamicResource TextPrimary}" BorderThickness="0" FontSize="15" CaretBrush="White"/>
+                </Border>
+                
+                <Button x:Name="LoginButton" Content="AUTHENTICATE" Height="54" Background="{DynamicResource AccentSecondary}" Foreground="White" BorderThickness="0" FontSize="15" FontWeight="Bold" Click="LoginButton_Click" IsDefault="True" Cursor="Hand">
+                    <Button.Template>
+                        <ControlTemplate TargetType="Button">
+                            <Border Background="{TemplateBinding Background}" CornerRadius="12">
+                                <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                            </Border>
+                        </ControlTemplate>
+                    </Button.Template>
+                </Button>
+                
+                <TextBlock x:Name="ErrorTextBlock" Foreground="{DynamicResource AccentDanger}" Margin="0,24,0,0" HorizontalAlignment="Center" Visibility="Collapsed" TextWrapping="Wrap" TextAlignment="Center"/>
+                
+                <Button Content="Server Settings" Background="Transparent" Foreground="{DynamicResource TextSecondary}" BorderThickness="0" Margin="0,32,0,0" HorizontalAlignment="Center" Cursor="Hand" Click="SettingsButton_Click">
+                    <Button.Template>
+                        <ControlTemplate TargetType="Button">
+                            <TextBlock Text="{TemplateBinding Content}" TextDecorations="Underline" Foreground="{TemplateBinding Foreground}" HorizontalAlignment="Center"/>
+                        </ControlTemplate>
+                    </Button.Template>
+                </Button>
+            </StackPanel>
+        </Border>
+    </Grid>
+</Page>
