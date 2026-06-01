@@ -244,7 +244,7 @@ namespace DesktopPOS.Services
         {
             try
             {
-                var url = $"{_baseUrl}/refund/return_lookup?return_no={Uri.EscapeDataString(returnNo)}";
+                var url = $"{_baseUrl}/refund/return_lookup/{Uri.EscapeDataString(returnNo)}";
                 SetupHeaders();
                 var response = await _httpClient.GetAsync(url).ConfigureAwait(false);
                 var responseString = await response.Content.ReadAsStringAsync().ConfigureAwait(false);

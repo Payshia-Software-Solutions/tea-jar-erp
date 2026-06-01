@@ -26,39 +26,53 @@
                      SelectionChanged="PendingRefundsList_SelectionChanged">
                 <ListBox.ItemContainerStyle>
                     <Style TargetType="ListBoxItem">
+                        <Setter Property="Padding" Value="0"/>
+                        <Setter Property="Margin" Value="0,0,0,8"/>
+                        <Setter Property="Background" Value="Transparent"/>
+                        <Setter Property="BorderThickness" Value="0"/>
+                        <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
                         <Setter Property="Template">
                             <Setter.Value>
                                 <ControlTemplate TargetType="ListBoxItem">
-                                    <Border Background="{DynamicResource BgCard}" CornerRadius="10" Margin="0,0,0,8" Padding="12"
-                                            BorderThickness="1" BorderBrush="{DynamicResource BorderPrimary}" Cursor="Hand">
-                                        <Border.Style>
-                                            <Style TargetType="Border">
-                                                <Style.Triggers>
-                                                    <Trigger Property="IsMouseOver" Value="True">
-                                                        <Setter Property="Background" Value="{DynamicResource BgInput}"/>
-                                                    </Trigger>
-                                                </Style.Triggers>
-                                            </Style>
-                                        </Border.Style>
-                                        <Grid>
-                                            <Grid.RowDefinitions>
-                                                <RowDefinition Height="Auto"/>
-                                                <RowDefinition Height="Auto"/>
-                                                <RowDefinition Height="Auto"/>
-                                            </Grid.RowDefinitions>
-                                            <TextBlock Grid.Row="0" Text="{Binding return_no}" FontSize="13" FontWeight="Bold" Foreground="{DynamicResource TextPrimary}"/>
-                                            <TextBlock Grid.Row="1" Text="{Binding customer_name}" FontSize="11" Foreground="{DynamicResource TextSecondary}" Margin="0,2,0,0" TextTrimming="CharacterEllipsis"/>
-                                            <Grid Grid.Row="2" Margin="0,4,0,0">
-                                                <TextBlock Text="{Binding return_date}" FontSize="10" Foreground="{DynamicResource TextMuted}" HorizontalAlignment="Left" VerticalAlignment="Center"/>
-                                                <TextBlock Text="{Binding total_amount, StringFormat='LKR \{0:N2\}'}" FontSize="12" FontWeight="Bold" Foreground="{DynamicResource AccentPrimary}" HorizontalAlignment="Right" VerticalAlignment="Center"/>
-                                            </Grid>
-                                        </Grid>
-                                    </Border>
+                                    <ContentPresenter/>
                                 </ControlTemplate>
                             </Setter.Value>
                         </Setter>
                     </Style>
                 </ListBox.ItemContainerStyle>
+                <ListBox.ItemTemplate>
+                    <DataTemplate>
+                        <Border CornerRadius="10" Padding="12" Background="{DynamicResource BgCard}" BorderThickness="1" Cursor="Hand">
+                            <Border.Style>
+                                <Style TargetType="Border">
+                                    <Setter Property="BorderBrush" Value="{DynamicResource BorderPrimary}"/>
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding IsSelected, RelativeSource={RelativeSource AncestorType=ListBoxItem}}" Value="True">
+                                            <Setter Property="BorderBrush" Value="{DynamicResource AccentPrimary}"/>
+                                            <Setter Property="Background" Value="#1A6366F1"/>
+                                        </DataTrigger>
+                                        <Trigger Property="IsMouseOver" Value="True">
+                                            <Setter Property="BorderBrush" Value="{DynamicResource AccentPrimary}"/>
+                                        </Trigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Border.Style>
+                            <Grid>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                </Grid.RowDefinitions>
+                                <TextBlock Grid.Row="0" Text="{Binding return_no}" FontSize="13" FontWeight="Bold" Foreground="{DynamicResource TextPrimary}"/>
+                                <TextBlock Grid.Row="1" Text="{Binding customer_name}" FontSize="11" Foreground="{DynamicResource TextSecondary}" Margin="0,2,0,0" TextTrimming="CharacterEllipsis"/>
+                                <Grid Grid.Row="2" Margin="0,4,0,0">
+                                    <TextBlock Text="{Binding return_date}" FontSize="10" Foreground="{DynamicResource TextMuted}" HorizontalAlignment="Left" VerticalAlignment="Center"/>
+                                    <TextBlock Text="{Binding total_amount, StringFormat='LKR \{0:N2\}'}" FontSize="12" FontWeight="Bold" Foreground="{DynamicResource AccentPrimary}" HorizontalAlignment="Right" VerticalAlignment="Center"/>
+                                </Grid>
+                            </Grid>
+                        </Border>
+                    </DataTemplate>
+                </ListBox.ItemTemplate>
             </ListBox>
 
             <!-- Loading indicator for list -->

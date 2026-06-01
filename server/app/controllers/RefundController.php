@@ -104,6 +104,7 @@ class RefundController extends Controller {
     }
     public function return_lookup($returnNo = null) {
         $this->requirePermission('pos.read');
+        $returnNo = $returnNo ?? ($_GET['return_no'] ?? null);
         if (!$returnNo) {
             $this->error('Return Number required', 400);
             return;
