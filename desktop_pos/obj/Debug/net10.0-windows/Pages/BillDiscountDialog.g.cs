@@ -99,7 +99,7 @@ namespace DesktopPOS.Pages {
                 return;
             }
             _contentLoaded = true;
-            System.Uri resourceLocater = new System.Uri("/DesktopPOS;component/pages/billdiscountdialog.xaml", System.UriKind.Relative);
+            System.Uri resourceLocater = new System.Uri("/DesktopPOS;V1.0.0.0;component/pages/billdiscountdialog.xaml", System.UriKind.Relative);
             
             #line 1 "..\..\..\..\Pages\BillDiscountDialog.xaml"
             System.Windows.Application.LoadComponent(this, resourceLocater);

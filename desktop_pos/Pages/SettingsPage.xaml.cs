@@ -21,7 +21,13 @@ namespace DesktopPOS.Pages
             LoadPrinters();
             LoadDefaultCustomer();
             LoadThemeSetting();
+            LoadTaxSetting();
             Loaded += async (s, e) => await LoadLocationInfo();
+        }
+
+        private void LoadTaxSetting()
+        {
+            TaxModeComboBox.SelectedIndex = SettingsService.Current.IsTaxInclusive ? 1 : 0;
         }
 
         private void LoadDefaultCustomer()
@@ -147,6 +153,7 @@ namespace DesktopPOS.Pages
             
             bool isDark = ThemeComboBox.SelectedIndex == 0;
             SettingsService.Current.IsDarkTheme = isDark;
+            SettingsService.Current.IsTaxInclusive = TaxModeComboBox.SelectedIndex == 1;
             
             SettingsService.SaveSettings();
             

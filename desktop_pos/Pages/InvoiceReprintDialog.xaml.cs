@@ -109,6 +109,17 @@ namespace DesktopPOS.Pages
                             ItemType = i.item_type
                         }).ToList() ?? new System.Collections.Generic.List<DesktopPOS.Services.CartItem>();
 
+                        var taxConfirmDlg = new TaxMethodConfirmationDialog();
+                        taxConfirmDlg.Owner = this;
+                        if (taxConfirmDlg.ShowDialog() != true)
+                        {
+                            PrintBtn.IsEnabled = true;
+                            PrintBtn.Content = "Reprint Selected";
+                            return;
+                        }
+
+                        bool isTaxInclusive = taxConfirmDlg.IsTaxInclusive;
+
                         var receiptPanel = DesktopPOS.Services.PrintService.BuildReceiptPanel(
                             DesktopPOS.Services.GlobalState.Instance.CurrentUser?.location_name ?? "Store",
                             invoiceData,
@@ -117,7 +128,8 @@ namespace DesktopPOS.Pages
                             res.data.invoice.paid_amount,
                             0, // Balance
                             300, // width for preview window
-                            true // isReprint
+                            true, // isReprint
+                            isTaxInclusive
                         );
 
                         DesktopPOS.Services.PrintService.ShowReceiptPreview(
@@ -130,7 +142,8 @@ namespace DesktopPOS.Pages
                                 res.data.invoice.grand_total,
                                 res.data.invoice.paid_amount,
                                 0,
-                                true
+                                true,
+                                isTaxInclusive
                             ),
                             this
                         );

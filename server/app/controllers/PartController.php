@@ -165,12 +165,18 @@ class PartController extends Controller {
                 'public_description' => isset($item['public_description']) ? trim((string)$item['public_description']) : null,
             ];
 
-            $newId = $this->partModel->create($payload, (int)$u['sub']);
-            if ($newId) {
-                if (isset($item['supplier_id']) && $item['supplier_id']) {
-                    $this->partModel->setSuppliers((int)$newId, [(int)$item['supplier_id']], (int)$u['sub']);
+            try {
+                $newId = $this->partModel->create($payload, (int)$u['sub']);
+                if ($newId) {
+                    if (isset($item['supplier_id']) && $item['supplier_id']) {
+                        $this->partModel->setSuppliers((int)$newId, [(int)$item['supplier_id']], (int)$u['sub']);
+                    }
+                    $importedCount++;
                 }
-                $importedCount++;
+            } catch (Exception $e) {
+                // Log and bypass duplicate error or other creation exceptions
+                error_log("Import item exception bypassed: " . $e->getMessage());
+                continue;
             }
         }
 

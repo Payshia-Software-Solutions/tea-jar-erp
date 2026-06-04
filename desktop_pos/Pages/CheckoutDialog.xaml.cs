@@ -255,7 +255,7 @@ namespace DesktopPOS.Pages
 
             if (double.TryParse(TenderedBox.Text, out double tendered))
             {
-                double change = tendered - _grandTotal;
+                double change = Math.Round(tendered, 2) - Math.Round(_grandTotal, 2);
                 if (change >= 0)
                 {
                     ChangeBorder.Visibility = Visibility.Visible;
@@ -322,7 +322,7 @@ namespace DesktopPOS.Pages
 
             double.TryParse(TenderedBox.Text, out double tendered);
 
-            if (_paymentMethod != "Credit" && tendered < _grandTotal)
+            if (_paymentMethod != "Credit" && Math.Round(tendered, 2) < Math.Round(_grandTotal, 2))
             {
                 ErrorText.Text = "Amount tendered must be at least the grand total.";
                 ErrorText.Visibility = Visibility.Visible;
@@ -417,7 +417,7 @@ namespace DesktopPOS.Pages
                 {
                     var invoiceNo = result.data?.invoice_no ?? "N/A";
                     var custName = customer?.name ?? "Walk-in Customer";
-                    var changeAmt = _paymentMethod == "Credit" ? 0.0 : Math.Max(0, tendered - _grandTotal);
+                    var changeAmt = _paymentMethod == "Credit" ? 0.0 : Math.Max(0, Math.Round(tendered, 2) - Math.Round(_grandTotal, 2));
 
                     // Print 3-inch thermal receipt silently
                     PrintReceiptDirectly(invoiceNo, custName, tendered, changeAmt, DateTime.Now);
@@ -515,7 +515,8 @@ namespace DesktopPOS.Pages
         private StackPanel BuildReceiptPanel(
             string invoiceNo, string customerName,
             double tendered, double change, DateTime date,
-            double previewWidth = 300)
+            double previewWidth = 300,
+            bool? isTaxInclusiveOverride = null)
         {
             var cart  = GlobalState.Instance.CartItems;
             var cName = GlobalState.Instance.LocationName  ?? "Main Branch";
@@ -548,10 +549,10 @@ namespace DesktopPOS.Pages
                     new Thickness(0,0,0,4),
                     new SolidColorBrush(Color.FromRgb(220, 120, 0))));
 
-            // â”€â”€ Solid line â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+            // ———————————————————————————————————————————————————————————————— Solid line ———————————————————————————————————————————————————————————————————
             inner.Children.Add(SolidLine(w));
 
-            // â”€â”€ Meta rows â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+            // ———————————————————————————————————————————————————————————————— Meta rows —————————————————————————————————————————————————————————————————————
             inner.Children.Add(LRRow("Invoice#", invoiceNo,  w, rightBold:true));
             inner.Children.Add(LRRow("Date",     date.ToString("dd/MM/yyyy, hh:mm tt"), w));
             inner.Children.Add(LRRow("Customer", customerName, w));
@@ -563,49 +564,77 @@ namespace DesktopPOS.Pages
                 inner.Children.Add(LRRow("Steward", GlobalState.Instance.SelectedStewardName ?? "", w));
             }
 
-            // â”€â”€ Dashed line â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+            // ———————————————————————————————————————————————————————————————— Dashed line —————————————————————————————————————————————————————————————————
             inner.Children.Add(DashedLine(w));
 
-            // â”€â”€ Items â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+            // ———————————————————————————————————————————————————————————————— Items ————————————————————————————————————————————————————————————————————————
             inner.Children.Add(MakeTB("ITEMS", 10, FontWeights.Bold, TextAlignment.Left,
                 new Thickness(0,4,0,4)));
 
+            bool isTaxInc = isTaxInclusiveOverride ?? SettingsService.Current.IsTaxInclusive;
+            double totalTaxPercent = _activeTaxes.Sum(t => t.rate_percent);
+
+            double itemsSubtotal = 0;
             foreach (var item in cart)
             {
                 bool isFree    = item.Discount >= item.Price && item.Price > 0;
-                double lineTot = isFree ? 0.0 : item.LineTotal;
+                double displayPrice = item.Price;
+                double displayLineTotal = item.LineTotal;
+
+                if (isTaxInc && totalTaxPercent > 0)
+                {
+                    displayPrice = displayPrice * (1 + totalTaxPercent / 100);
+                    displayLineTotal = displayLineTotal * (1 + totalTaxPercent / 100);
+                }
+
+                double lineTot = isFree ? 0.0 : displayLineTotal;
+                itemsSubtotal += lineTot;
 
                 // Item name (bold)
                 inner.Children.Add(MakeTB(item.Name ?? "Item", 11, FontWeights.Bold,
                     TextAlignment.Left, new Thickness(0,3,0,1)));
 
-                // Qty Ã— @ price  |  lineTotal
-                string qtyLabel = $"{item.Quantity:0.##} \u00d7 @ LKR {item.Price:N2}";
+                // Qty × @ price  |  lineTotal
+                string qtyLabel = $"{item.Quantity:0.##} \u00d7 @ LKR {displayPrice:N2}";
                 string totLabel = isFree ? "LKR 0.00" : $"LKR {lineTot:N2}";
                 inner.Children.Add(LRRow(qtyLabel, totLabel, w, leftSize:10, rightSize:10, rightBold:false));
             }
 
-            // â”€â”€ Dashed line â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+            // ── Dashed line ─────────────────────────────────────────────────────────────
             inner.Children.Add(DashedLine(w));
 
-            // â”€â”€ Subtotal / Discount / Taxes â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-            double subtotal = cart.Sum(c => c.LineTotal);
-            inner.Children.Add(LRRow("Subtotal", $"LKR {subtotal:N2}", w));
-            if (_discount > 0)
-                inner.Children.Add(LRRow("Discount", $"-LKR {_discount:N2}", w));
-
-            foreach (dynamic tax in _appliedTaxesList)
+            // ── Subtotal / Discount / Taxes ─────────────────────────────────────────────
+            if (isTaxInc)
             {
-                string code   = tax.code;
-                double rate   = double.Parse(tax.rate_percent);
-                double amount = tax.amount;
-                inner.Children.Add(LRRow($"{code} ({rate:F2}%)", $"LKR {amount:N2}", w));
+                double discount = itemsSubtotal - _grandTotal;
+                if (discount > 0 && _grandTotal < itemsSubtotal)
+                {
+                    inner.Children.Add(LRRow("Savings / Discount", $"-LKR {discount:N2}", w));
+                }
+
+                double taxTotal = _taxTotal;
+                inner.Children.Add(LRRow("Total (Tax Inclusive)", $"LKR {_grandTotal:N2}", w));
+                inner.Children.Add(LRRow("Includes Total Taxes:", $"LKR {taxTotal:N2}", w, leftSize:9, rightSize:9));
+            }
+            else
+            {
+                inner.Children.Add(LRRow("Subtotal", $"LKR {itemsSubtotal:N2}", w));
+                if (_discount > 0)
+                    inner.Children.Add(LRRow("Discount", $"-LKR {_discount:N2}", w));
+
+                foreach (dynamic tax in _appliedTaxesList)
+                {
+                    string code   = tax.code;
+                    double rate   = double.Parse(tax.rate_percent);
+                    double amount = tax.amount;
+                    inner.Children.Add(LRRow($"{code} ({rate:F2}%)", $"LKR {amount:N2}", w));
+                }
             }
 
-            // â”€â”€ Solid line â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+            // ── Solid line ──────────────────────────────────────────────────────────────
             inner.Children.Add(SolidLine(w));
 
-            // â”€â”€ TOTAL â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+            // ── TOTAL ───────────────────────────────────────────────────────────────────
             inner.Children.Add(LRRow("TOTAL", $"LKR {_grandTotal:N2}", w,
                 leftBold:true, rightBold:true, leftSize:15, rightSize:15));
 
@@ -756,30 +785,39 @@ namespace DesktopPOS.Pages
             };
         }
 
-        // â”€â”€â”€ Print â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+        // ———————————————————————————————————————————————————————————————— Print ————————————————————————————————————————————————————————————————————————
 
         private void PrintReceiptDirectly(string invoiceNo, string customerName,
             double tendered, double change, DateTime date)
         {
             try
             {
+                var taxConfirmDlg = new TaxMethodConfirmationDialog();
+                taxConfirmDlg.Owner = this;
+                if (taxConfirmDlg.ShowDialog() != true)
+                {
+                    return; // Cancel printing
+                }
+
+                bool isTaxInclusive = taxConfirmDlg.IsTaxInclusive;
+
                 // Build at the 80 mm (300 px @ 96 dpi) receipt width
                 var receiptPanel = BuildReceiptPanel(invoiceNo, customerName,
-                    tendered, change, date, previewWidth: 300);
+                    tendered, change, date, previewWidth: 300, isTaxInclusiveOverride: isTaxInclusive);
 
                 // Force measure/arrange so PrintVisual works correctly
                 receiptPanel.Measure(new Size(300, double.PositiveInfinity));
                 receiptPanel.Arrange(new Rect(new Size(300, receiptPanel.DesiredSize.Height)));
                 receiptPanel.UpdateLayout();
 
-                // Show preview dialog (auto-prints on load)
+                // Show preview dialog
                 var previewWnd = new ReceiptPreviewWindow(
                     receiptPanel, invoiceNo, this,
                     tendered, change, date,
                     _paymentMethod, _cardType, _cardLast4, _cardAuthCode,
                     _chequeNo, _chequeDate, _chequeBank,
                     _bankTransferRef, _bankTransferBank,
-                    _discount, _grandTotal, _appliedTaxesList);
+                    _discount, _grandTotal, _appliedTaxesList, isTaxInclusive);
 
                 previewWnd.ShowDialog();
             }
@@ -802,17 +840,17 @@ namespace DesktopPOS.Pages
         public StackPanel BuildReceiptPanelPublic(
             string invoiceNo, string customerName,
             double tendered, double change, DateTime date,
-            double previewWidth = 300)
-            => BuildReceiptPanel(invoiceNo, customerName, tendered, change, date, previewWidth);
+            double previewWidth = 300,
+            bool? isTaxInclusiveOverride = null)
+            => BuildReceiptPanel(invoiceNo, customerName, tendered, change, date, previewWidth, isTaxInclusiveOverride);
     }
 
 
-    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+    // =================================================================================================================================================
     //  Receipt Preview Window
-    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+    // =================================================================================================================================================
     public class ReceiptPreviewWindow : Window
     {
-        private readonly StackPanel _receiptPanel;
         private readonly string     _invoiceNo;
 
         // State captured for re-build at print time (native printer resolution)
@@ -826,15 +864,21 @@ namespace DesktopPOS.Pages
         // Reference to parent CheckoutDialog so we can call BuildReceiptPanel
         private readonly CheckoutDialog _parent;
 
+        private readonly bool _initialIsTaxInclusive;
+
+        private ComboBox _taxModeCombo = null!;
+        private Border _cardBorder = null!;
+
         public ReceiptPreviewWindow(
             StackPanel receiptPanel, string invoiceNo, CheckoutDialog owner,
             double tendered, double change, DateTime date,
             string payMethod, string cardType, string cardLast4, string cardAuth,
             string chequeNo, string chequeDate, string chequeBank,
             string bankRef, string bankName,
-            double discount, double grandTotal, List<object> taxes)
+            double discount, double grandTotal, List<object> taxes,
+            bool initialIsTaxInclusive)
         {
-            _receiptPanel = receiptPanel;
+            _initialIsTaxInclusive = initialIsTaxInclusive;
             _invoiceNo    = invoiceNo;
             _parent       = owner;
             _tendered     = tendered;
@@ -856,9 +900,9 @@ namespace DesktopPOS.Pages
             Owner = owner;
             Title = $"Receipt Preview \u2014 Invoice {invoiceNo}";
             Width  = 380;
-            Height = 680;
+            Height = 720;
             MinWidth  = 380;
-            MinHeight = 400;
+            MinHeight = 450;
             WindowStartupLocation = WindowStartupLocation.CenterOwner;
             WindowStyle = WindowStyle.ThreeDBorderWindow;
             ResizeMode  = ResizeMode.CanResize;
@@ -873,17 +917,16 @@ namespace DesktopPOS.Pages
                          e.Key == System.Windows.Input.Key.Enter)
                 { ExecutePrint(); e.Handled = true; }
             };
-
-            Loaded += (s, e) => ExecutePrint();
         }
 
         private void BuildUI()
         {
             var root = new Grid();
             root.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
-            root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+            root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto }); // Tax Selection Row
+            root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto }); // Button Row
 
-            // â”€â”€ Scroll area â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+            // ── Scroll area ─────────────────────────────────────────────────────────────
             var scroll = new ScrollViewer
             {
                 VerticalScrollBarVisibility   = ScrollBarVisibility.Auto,
@@ -893,7 +936,7 @@ namespace DesktopPOS.Pages
             };
 
             // Shadow / card border around the receipt
-            var card = new Border
+            _cardBorder = new Border
             {
                 Background      = Brushes.White,
                 BorderBrush     = new SolidColorBrush(Color.FromRgb(200, 200, 200)),
@@ -905,15 +948,60 @@ namespace DesktopPOS.Pages
                     Opacity   = 0.18,
                     BlurRadius = 8,
                     ShadowDepth = 2
-                },
-                Child = _receiptPanel
+                }
             };
 
-            scroll.Content = card;
+            scroll.Content = _cardBorder;
             Grid.SetRow(scroll, 0);
             root.Children.Add(scroll);
 
-            // â”€â”€ Button bar â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+            // ── Tax Mode Selection ──────────────────────────────────────────────────────
+            var taxPanel = new Border
+            {
+                Background = new SolidColorBrush(Color.FromRgb(240, 240, 245)),
+                BorderBrush = new SolidColorBrush(Color.FromRgb(220, 220, 220)),
+                BorderThickness = new Thickness(0, 1, 0, 1),
+                Padding = new Thickness(12, 10, 12, 10)
+            };
+
+            var taxGrid = new Grid();
+            taxGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+            taxGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+
+            var taxLabel = new TextBlock
+            {
+                Text = "Taxing Method: ",
+                VerticalAlignment = VerticalAlignment.Center,
+                FontSize = 13,
+                FontWeight = FontWeights.SemiBold,
+                Foreground = new SolidColorBrush(Color.FromRgb(15, 23, 42)),
+                Margin = new Thickness(0, 0, 8, 0)
+            };
+            Grid.SetColumn(taxLabel, 0);
+            taxGrid.Children.Add(taxLabel);
+
+            _taxModeCombo = new ComboBox
+            {
+                Height = 32,
+                VerticalContentAlignment = VerticalAlignment.Center,
+                FontSize = 13
+            };
+            _taxModeCombo.Items.Add("Tax Exclusive (Add Tax on Top)");
+            _taxModeCombo.Items.Add("Tax Inclusive (Taxes Included in Prices)");
+            _taxModeCombo.SelectedIndex = _initialIsTaxInclusive ? 1 : 0;
+            
+            _taxModeCombo.SelectionChanged += (s, e) => {
+                UpdateReceiptPreview();
+            };
+
+            Grid.SetColumn(_taxModeCombo, 1);
+            taxGrid.Children.Add(_taxModeCombo);
+            taxPanel.Child = taxGrid;
+
+            Grid.SetRow(taxPanel, 1);
+            root.Children.Add(taxPanel);
+
+            // ── Button bar ──────────────────────────────────────────────────────────────
             var btnBar = new Border
             {
                 Background      = Brushes.White,
@@ -925,7 +1013,7 @@ namespace DesktopPOS.Pages
             var btnStack = new StackPanel
             {
                 Orientation         = Orientation.Horizontal,
-                HorizontalAlignment = HorizontalAlignment.Right
+                HorizontalAlignment = AlignmentX.Right == 0 ? HorizontalAlignment.Right : HorizontalAlignment.Right
             };
 
             var printBtn = new Button
@@ -959,10 +1047,24 @@ namespace DesktopPOS.Pages
             btnStack.Children.Add(closeBtn);
             btnBar.Child = btnStack;
 
-            Grid.SetRow(btnBar, 1);
+            Grid.SetRow(btnBar, 2);
             root.Children.Add(btnBar);
 
             Content = root;
+
+            // Trigger initial render
+            UpdateReceiptPreview();
+        }
+
+        private void UpdateReceiptPreview()
+        {
+            var isTaxInclusive = _taxModeCombo.SelectedIndex == 1;
+            var newPanel = _parent.BuildReceiptPanelPublic(
+                _invoiceNo,
+                GlobalState.Instance.SelectedCustomer?.name ?? "Walk-in Customer",
+                _tendered, _change, _date, 300, isTaxInclusive);
+
+            _cardBorder.Child = newPanel;
         }
 
         private void ExecutePrint()
@@ -971,18 +1073,18 @@ namespace DesktopPOS.Pages
             {
                 var dlg = new PrintDialog();
 
-                // Get the actual printable width in WPF units (96 dpi)
-                // Default to 226 WPF units (~60mm) if no printer configured yet
                 dlg.PrintQueue = System.Printing.LocalPrintServer.GetDefaultPrintQueue();
                 double printWidth = dlg.PrintableAreaWidth > 10
                     ? dlg.PrintableAreaWidth
                     : 226;
 
+                var isTaxInclusive = _taxModeCombo.SelectedIndex == 1;
+
                 // Re-build the panel at the actual print width for correct proportions
                 var printPanel = _parent.BuildReceiptPanelPublic(
                     _invoiceNo,
                     GlobalState.Instance.SelectedCustomer?.name ?? "Walk-in Customer",
-                    _tendered, _change, _date, printWidth);
+                    _tendered, _change, _date, printWidth, isTaxInclusive);
 
                 printPanel.Measure(new Size(printWidth, double.PositiveInfinity));
                 printPanel.Arrange(new Rect(new Size(printWidth,
@@ -996,6 +1098,253 @@ namespace DesktopPOS.Pages
                 MessageBox.Show($"Print failed: {ex.Message}", "Print Error",
                     MessageBoxButton.OK, MessageBoxImage.Warning);
             }
+        }
+    }
+
+    public class TaxMethodConfirmationDialog : Window
+    {
+        public bool IsTaxInclusive { get; private set; }
+
+        private Border _exclusiveCard;
+        private Border _inclusiveCard;
+
+        public TaxMethodConfirmationDialog()
+        {
+            IsTaxInclusive = SettingsService.Current.IsTaxInclusive;
+
+            Title = "Confirm Tax Method";
+            Width = 460;
+            Height = 280;
+            WindowStartupLocation = WindowStartupLocation.CenterOwner;
+            WindowStyle = WindowStyle.None;
+            AllowsTransparency = true;
+            Background = Brushes.Transparent;
+
+            // Outer wrapper with rounded corners and shadow
+            var outerBorder = new Border
+            {
+                Background = new SolidColorBrush(Color.FromRgb(15, 23, 42)), // Slate 900
+                BorderBrush = new SolidColorBrush(Color.FromRgb(30, 41, 59)), // Slate 800
+                BorderThickness = new Thickness(1),
+                CornerRadius = new CornerRadius(12),
+                Effect = new System.Windows.Media.Effects.DropShadowEffect
+                {
+                    Color = Colors.Black,
+                    Opacity = 0.4,
+                    BlurRadius = 20,
+                    ShadowDepth = 5
+                }
+            };
+
+            var mainGrid = new Grid();
+            mainGrid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto }); // Custom Titlebar
+            mainGrid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) }); // Cards Content
+            mainGrid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto }); // Buttons Bar
+
+            // ── Custom Titlebar ────────────────────────────────────────────────────────
+            var headerBar = new Grid
+            {
+                Background = new SolidColorBrush(Color.FromRgb(30, 41, 59)), // Slate 800
+                Height = 44
+            };
+            // Allow dragging from titlebar
+            headerBar.MouseLeftButtonDown += (s, e) => { if (e.LeftButton == System.Windows.Input.MouseButtonState.Pressed) DragMove(); };
+
+            var titleText = new TextBlock
+            {
+                Text = "Confirm Taxing Method",
+                Foreground = Brushes.White,
+                FontSize = 14,
+                FontWeight = FontWeights.Bold,
+                VerticalAlignment = VerticalAlignment.Center,
+                Margin = new Thickness(16, 0, 0, 0)
+            };
+            headerBar.Children.Add(titleText);
+
+            var closeBtn = new Button
+            {
+                Content = "×",
+                Foreground = new SolidColorBrush(Color.FromRgb(148, 163, 184)), // Slate 400
+                Background = Brushes.Transparent,
+                BorderThickness = new Thickness(0),
+                FontSize = 20,
+                FontWeight = FontWeights.Bold,
+                Width = 28,
+                Height = 28,
+                HorizontalAlignment = HorizontalAlignment.Right,
+                VerticalAlignment = VerticalAlignment.Center,
+                Cursor = System.Windows.Input.Cursors.Hand,
+                Margin = new Thickness(0, 0, 16, 0)
+            };
+            closeBtn.Click += (s, e) => { DialogResult = false; Close(); };
+            headerBar.Children.Add(closeBtn);
+
+            Grid.SetRow(headerBar, 0);
+            mainGrid.Children.Add(headerBar);
+
+            // ── Content (Selectable Cards) ──────────────────────────────────────────────
+            var contentGrid = new Grid { Margin = new Thickness(16, 20, 16, 20) };
+            contentGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            contentGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(16) }); // Gap
+            contentGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+
+            // Exclusive Card
+            _exclusiveCard = CreateCard("Tax Exclusive", "Add tax on top of items.\nPrices exclude tax.", 0);
+            _exclusiveCard.MouseLeftButtonDown += (s, e) => { IsTaxInclusive = false; UpdateCardStyles(); };
+            contentGrid.Children.Add(_exclusiveCard);
+
+            // Inclusive Card
+            _inclusiveCard = CreateCard("Tax Inclusive", "Taxes included in prices.\nShow inclusive totals.", 2);
+            _inclusiveCard.MouseLeftButtonDown += (s, e) => { IsTaxInclusive = true; UpdateCardStyles(); };
+            contentGrid.Children.Add(_inclusiveCard);
+
+            Grid.SetRow(contentGrid, 1);
+            mainGrid.Children.Add(contentGrid);
+
+            // ── Bottom Action Bar ───────────────────────────────────────────────────────
+            var actionBorder = new Border
+            {
+                Background = new SolidColorBrush(Color.FromRgb(30, 41, 59)),
+                Padding = new Thickness(16, 12, 16, 12),
+                CornerRadius = new CornerRadius(0, 0, 12, 12)
+            };
+
+            var btnStack = new StackPanel
+            {
+                Orientation = Orientation.Horizontal,
+                HorizontalAlignment = HorizontalAlignment.Right
+            };
+
+            var confirmBtn = new Button
+            {
+                Content = "Confirm Selection",
+                Width = 140,
+                Height = 32,
+                Background = new SolidColorBrush(Color.FromRgb(99, 102, 241)), // Indigo 500
+                Foreground = Brushes.White,
+                FontWeight = FontWeights.Bold,
+                BorderThickness = new Thickness(0),
+                Cursor = System.Windows.Input.Cursors.Hand,
+                IsDefault = true,
+                Margin = new Thickness(0, 0, 10, 0)
+            };
+            confirmBtn.Template = CreateButtonTemplate(Color.FromRgb(99, 102, 241));
+            confirmBtn.Click += (s, e) => { DialogResult = true; Close(); };
+
+            var cancelBtn = new Button
+            {
+                Content = "Cancel",
+                Width = 90,
+                Height = 32,
+                Background = new SolidColorBrush(Color.FromRgb(71, 85, 105)), // Slate 600
+                Foreground = new SolidColorBrush(Color.FromRgb(241, 245, 249)),
+                BorderThickness = new Thickness(0),
+                Cursor = System.Windows.Input.Cursors.Hand,
+                IsCancel = true
+            };
+            cancelBtn.Template = CreateButtonTemplate(Color.FromRgb(71, 85, 105));
+            cancelBtn.Click += (s, e) => { DialogResult = false; Close(); };
+
+            btnStack.Children.Add(confirmBtn);
+            btnStack.Children.Add(cancelBtn);
+            actionBorder.Child = btnStack;
+
+            Grid.SetRow(actionBorder, 2);
+            mainGrid.Children.Add(actionBorder);
+
+            PreviewKeyDown += (s, ev) =>
+            {
+                if (ev.Key == System.Windows.Input.Key.Left ||
+                    ev.Key == System.Windows.Input.Key.Right ||
+                    ev.Key == System.Windows.Input.Key.Tab)
+                {
+                    IsTaxInclusive = !IsTaxInclusive;
+                    UpdateCardStyles();
+                    ev.Handled = true;
+                }
+            };
+
+            outerBorder.Child = mainGrid;
+            Content = outerBorder;
+
+            UpdateCardStyles();
+        }
+
+        private Border CreateCard(string title, string desc, int gridCol)
+        {
+            var card = new Border
+            {
+                CornerRadius = new CornerRadius(8),
+                BorderThickness = new Thickness(2),
+                Padding = new Thickness(14, 12, 14, 12),
+                Cursor = System.Windows.Input.Cursors.Hand
+            };
+
+            var stack = new StackPanel();
+
+            var titleTB = new TextBlock
+            {
+                Text = title,
+                Foreground = Brushes.White,
+                FontSize = 14,
+                FontWeight = FontWeights.Bold,
+                Margin = new Thickness(0, 0, 0, 4)
+            };
+
+            var descTB = new TextBlock
+            {
+                Text = desc,
+                Foreground = new SolidColorBrush(Color.FromRgb(148, 163, 184)), // Slate 400
+                FontSize = 11,
+                LineHeight = 15,
+                TextWrapping = TextWrapping.Wrap
+            };
+
+            stack.Children.Add(titleTB);
+            stack.Children.Add(descTB);
+            card.Child = stack;
+
+            Grid.SetColumn(card, gridCol);
+            return card;
+        }
+
+        private void UpdateCardStyles()
+        {
+            var activeBorder = new SolidColorBrush(Color.FromRgb(99, 102, 241)); // Indigo 500
+            var activeBg = new SolidColorBrush(Color.FromRgb(30, 41, 59)); // Slate 800
+            var inactiveBorder = new SolidColorBrush(Color.FromRgb(30, 41, 59)); // Slate 800
+            var inactiveBg = new SolidColorBrush(Color.FromRgb(15, 23, 42)); // Slate 900
+
+            if (IsTaxInclusive)
+            {
+                _inclusiveCard.BorderBrush = activeBorder;
+                _inclusiveCard.Background = activeBg;
+                _exclusiveCard.BorderBrush = inactiveBorder;
+                _exclusiveCard.Background = inactiveBg;
+            }
+            else
+            {
+                _exclusiveCard.BorderBrush = activeBorder;
+                _exclusiveCard.Background = activeBg;
+                _inclusiveCard.BorderBrush = inactiveBorder;
+                _inclusiveCard.Background = inactiveBg;
+            }
+        }
+
+        private ControlTemplate CreateButtonTemplate(Color bg)
+        {
+            var template = new ControlTemplate(typeof(Button));
+            var border = new FrameworkElementFactory(typeof(Border));
+            border.SetValue(Border.BackgroundProperty, new SolidColorBrush(bg));
+            border.SetValue(Border.CornerRadiusProperty, new CornerRadius(6));
+            
+            var presenter = new FrameworkElementFactory(typeof(ContentPresenter));
+            presenter.SetValue(ContentPresenter.HorizontalAlignmentProperty, HorizontalAlignment.Center);
+            presenter.SetValue(ContentPresenter.VerticalAlignmentProperty, VerticalAlignment.Center);
+            
+            border.AppendChild(presenter);
+            template.VisualTree = border;
+            return template;
         }
     }
 }

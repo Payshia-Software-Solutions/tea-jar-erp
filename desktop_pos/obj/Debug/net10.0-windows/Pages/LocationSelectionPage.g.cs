@@ -59,7 +59,7 @@ namespace DesktopPOS.Pages {
                 return;
             }
             _contentLoaded = true;
-            System.Uri resourceLocater = new System.Uri("/DesktopPOS;component/pages/locationselectionpage.xaml", System.UriKind.Relative);
+            System.Uri resourceLocater = new System.Uri("/DesktopPOS;V1.0.0.0;component/pages/locationselectionpage.xaml", System.UriKind.Relative);
             
             #line 1 "..\..\..\..\Pages\LocationSelectionPage.xaml"
             System.Windows.Application.LoadComponent(this, resourceLocater);

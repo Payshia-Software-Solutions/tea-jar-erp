@@ -264,7 +264,7 @@
                                        Margin="0,0,0,10" TextWrapping="Wrap"/>
                             
                             <Border BorderBrush="{DynamicResource BorderPrimary}" BorderThickness="1"
-                                    CornerRadius="8" Background="{DynamicResource BgInput}" Padding="2" HorizontalAlignment="Left" Width="200">
+                                    CornerRadius="8" Background="{DynamicResource BgInput}" Padding="2" HorizontalAlignment="Left" Width="200" Margin="0,0,0,16">
                                 <ComboBox x:Name="ThemeComboBox" Height="40" FontSize="14"
                                           Padding="12,10" Background="Transparent" BorderThickness="0">
                                     <ComboBoxItem Content="Dark Theme"/>
@@ -272,6 +272,22 @@
                                 </ComboBox>
                             </Border>
 
+                            <Border Height="1" Background="{DynamicResource BorderPrimary}" Margin="0,0,0,16"/>
+
+                            <TextBlock Text="Tax Calculation Mode" Foreground="{DynamicResource TextPrimary}"
+                                       FontSize="16" FontWeight="Bold" Margin="0,0,0,2"/>
+                            <TextBlock Text="Choose whether printed invoices display total tax-inclusive pricing or tax-exclusive itemizations."
+                                       Foreground="{DynamicResource TextSecondary}" FontSize="13"
+                                       Margin="0,0,0,10" TextWrapping="Wrap"/>
+
+                            <Border BorderBrush="{DynamicResource BorderPrimary}" BorderThickness="1"
+                                    CornerRadius="8" Background="{DynamicResource BgInput}" Padding="2" HorizontalAlignment="Left" Width="200">
+                                <ComboBox x:Name="TaxModeComboBox" Height="40" FontSize="14"
+                                          Padding="12,10" Background="Transparent" BorderThickness="0">
+                                    <ComboBoxItem Content="Tax Exclusive (Itemized)"/>
+                                    <ComboBoxItem Content="Tax Inclusive"/>
+                                </ComboBox>
+                            </Border>
                         </StackPanel>
                     </Grid>
                 </Border>

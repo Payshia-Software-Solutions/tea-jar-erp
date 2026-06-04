@@ -144,7 +144,8 @@ namespace DesktopPOS.Pages
             if (_loadedReturn?.ReturnDoc == null) return;
 
             var retObj = _loadedReturn.ReturnDoc;
-            var method = ((ComboBoxItem)MethodComboBox.SelectedItem).Content.ToString();
+            var methodItem = MethodComboBox.SelectedItem as ComboBoxItem;
+            var method = methodItem?.Content?.ToString() ?? "Cash";
             var reference = RefTextBox.Text.Trim();
 
             if (method == "Bank Transfer" && string.IsNullOrEmpty(reference))
@@ -177,6 +178,31 @@ namespace DesktopPOS.Pages
             {
                 MessageBox.Show($"Refund processed successfully!\n\nReceipt/Voucher No: {res.data?.refund_no}", "Success", MessageBoxButton.OK, MessageBoxImage.Information);
                 
+                // Print Preview
+                try
+                {
+                    var locName = retObj.location_name;
+                    if (string.IsNullOrEmpty(locName)) locName = GlobalState.Instance.LocationName ?? "KDU Group";
+
+                    var refNo = res.data?.refund_no ?? "";
+                    var retNo = retObj.return_no ?? "";
+                    var invNo = retObj.invoice_no ?? "";
+                    var custName = retObj.customer_name ?? "Walk-in Customer";
+                    var amt = retObj.total_amount;
+
+                    var receiptPanel = PrintService.BuildRefundReceiptPanel(locName, refNo, retNo, invNo, custName, amt, method, reference);
+                    PrintService.ShowReceiptPreview(
+                        "Refund Receipt Preview",
+                        receiptPanel,
+                        () => PrintService.PrintRefundReceipt(locName, refNo, retNo, invNo, custName, amt, method, reference),
+                        this
+                    );
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show($"Could not open print preview: {ex.Message}", "Print Preview Error", MessageBoxButton.OK, MessageBoxImage.Warning);
+                }
+
                 // Reset right side UI
                 DetailsContainer.Visibility = Visibility.Collapsed;
                 StatusMessage.Text = "Select a pending return from the left or search manually.";

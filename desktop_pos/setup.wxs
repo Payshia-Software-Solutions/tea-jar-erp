@@ -1,0 +1,131 @@
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs"
+     xmlns:ui="http://wixtoolset.org/schemas/v4/wxs/ui"
+     xmlns:util="http://wixtoolset.org/schemas/v4/wxs/util">
+  <Package Name="Desktop POS"
+           Version="1.0.1"
+           Manufacturer="KDU Group"
+           UpgradeCode="4630a91f-ff37-4d94-8bf2-0cfb7f6fa6e7">
+
+    <MajorUpgrade DowngradeErrorMessage="A newer version of [ProductName] is already installed." />
+
+    <MediaTemplate EmbedCab="yes" />
+
+    <WixVariable Id="WixUILicenseRtf" Value="license.rtf" />
+
+    <Property Id="WixShellExecTarget" Value="[#DesktopPOS_EXE]" />
+    <Property Id="WIXUI_EXITDIALOGOPTIONALCHECKBOXTEXT" Value="Launch Desktop POS after installation completes" />
+    <Property Id="WIXUI_EXITDIALOGOPTIONALCHECKBOX" Value="1" />
+    
+    <Property Id="INSTALLDESKTOPSHORTCUT" Value="1" />
+    <Property Id="PINTOTASKBAR" Value="1" />
+
+    <CustomAction Id="LaunchApplication" 
+                  BinaryRef="Wix4UtilCA_$(sys.BUILDARCHSHORT)" 
+                  DllEntry="WixShellExec" 
+                  Impersonate="yes" />
+
+    <UI>
+      <ui:WixUI Id="WixUI_InstallDir" InstallDirectory="INSTALLFOLDER" />
+      
+      <!-- Override transitions to insert ShortcutDlg between LicenseAgreementDlg and InstallDirDlg -->
+      <Publish Dialog="LicenseAgreementDlg" Control="Next" Event="NewDialog" Value="ShortcutDlg" Condition="LicenseAccepted = &quot;1&quot;" Order="5" />
+      <Publish Dialog="InstallDirDlg" Control="Back" Event="NewDialog" Value="ShortcutDlg" Order="5" />
+      
+      <Publish Dialog="ShortcutDlg" Control="Back" Event="NewDialog" Value="LicenseAgreementDlg" Order="1" />
+      <Publish Dialog="ShortcutDlg" Control="Next" Event="NewDialog" Value="InstallDirDlg" Order="1" />
+
+      <Publish Dialog="ExitDialog" 
+               Control="Finish" 
+               Event="DoAction" 
+               Value="LaunchApplication" 
+               Condition="WIXUI_EXITDIALOGOPTIONALCHECKBOX = 1 and NOT Installed" />
+    </UI>
+
+    <UI>
+      <Dialog Id="ShortcutDlg" Width="370" Height="270" Title="[ProductName] Setup">
+        <Control Id="Next" Type="PushButton" X="236" Y="243" Width="56" Height="17" Default="yes" Text="&amp;Next" />
+        <Control Id="Back" Type="PushButton" X="180" Y="243" Width="56" Height="17" Text="&amp;Back" />
+        <Control Id="Cancel" Type="PushButton" X="304" Y="243" Width="56" Height="17" Cancel="yes" Text="Cancel">
+          <Publish Event="SpawnDialog" Value="CancelDlg" />
+        </Control>
+        <Control Id="BannerLine" Type="Line" X="0" Y="44" Width="370" Height="0" />
+        <Control Id="BottomLine" Type="Line" X="0" Y="234" Width="370" Height="0" />
+        <Control Id="Description" Type="Text" X="25" Y="23" Width="280" Height="15" Transparent="yes" NoPrefix="yes" Text="Configure installation shortcuts and options." />
+        <Control Id="Title" Type="Text" X="15" Y="6" Width="200" Height="15" Transparent="yes" NoPrefix="yes" Text="{\WixUI_Font_Title}Additional Shortcuts" />
+        <Control Id="BannerBitmap" Type="Bitmap" X="0" Y="0" Width="370" Height="44" TabSkip="no" Text="!(loc.InstallDirDlgBannerBitmap)" />
+        
+        <Control Id="DesktopShortcutCheckbox" Type="CheckBox" X="25" Y="80" Width="290" Height="17" Property="INSTALLDESKTOPSHORTCUT" CheckBoxValue="1" Text="Create a shortcut on the Desktop" />
+        <Control Id="PinTaskbarCheckbox" Type="CheckBox" X="25" Y="110" Width="290" Height="17" Property="PINTOTASKBAR" CheckBoxValue="1" Text="Pin application to the Taskbar" />
+      </Dialog>
+    </UI>
+
+    <StandardDirectory Id="ProgramFiles64Folder">
+      <Directory Id="INSTALLFOLDER" Name="DesktopPOS" />
+    </StandardDirectory>
+
+    <StandardDirectory Id="StartMenuFolder">
+      <Directory Id="ApplicationProgramsFolder" Name="Desktop POS" />
+    </StandardDirectory>
+
+    <StandardDirectory Id="DesktopFolder" />
+
+    <StandardDirectory Id="AppDataFolder">
+      <Directory Id="MicrosoftFolder" Name="Microsoft">
+        <Directory Id="QuickLaunchFolder" Name="Quick Launch">
+          <Directory Id="UserPinnedFolder" Name="User Pinned">
+            <Directory Id="TaskBarFolder" Name="TaskBar" />
+          </Directory>
+        </Directory>
+      </Directory>
+    </StandardDirectory>
+
+    <ComponentGroup Id="ProductComponents" Directory="INSTALLFOLDER">
+      <Component Id="Executable" Guid="a53820a4-37ab-4318-8f81-54b70db64228">
+        <File Id="DesktopPOS_EXE" Source="bin\Release\net10.0-windows\win-x64\publish\DesktopPOS.exe" KeyPath="yes" />
+      </Component>
+
+      <Component Id="StartMenuShortcutComponent" Guid="f31920a4-37ab-4318-8f81-54b70db64229">
+        <RegistryValue Root="HKCU" Key="Software\KDUGroup\DesktopPOS" Name="start_menu_shortcut" Value="1" Type="integer" KeyPath="yes" />
+        <Shortcut Id="StartMenuShortcut"
+                  Directory="ApplicationProgramsFolder"
+                  Name="Desktop POS"
+                  Target="[#DesktopPOS_EXE]"
+                  WorkingDirectory="INSTALLFOLDER" />
+      </Component>
+
+      <Component Id="DesktopShortcutComponent" Guid="c37c220f-0c4a-4e2e-84fa-f1311b5853b0" Condition="INSTALLDESKTOPSHORTCUT = 1">
+        <RegistryValue Root="HKCU" Key="Software\KDUGroup\DesktopPOS" Name="desktop_shortcut" Value="1" Type="integer" KeyPath="yes" />
+        <Shortcut Id="DesktopShortcut"
+                  Directory="DesktopFolder"
+                  Name="Desktop POS"
+                  Target="[#DesktopPOS_EXE]"
+                  WorkingDirectory="INSTALLFOLDER" />
+      </Component>
+
+      <Component Id="TaskbarShortcutComponent" Guid="d48d210f-0c4a-4e2e-84fa-f1311b5853b1" Condition="PINTOTASKBAR = 1">
+        <RegistryValue Root="HKCU" Key="Software\KDUGroup\DesktopPOS" Name="taskbar_shortcut" Value="1" Type="integer" KeyPath="yes" />
+        <Shortcut Id="TaskbarShortcut"
+                  Directory="TaskBarFolder"
+                  Name="Desktop POS"
+                  Target="[#DesktopPOS_EXE]"
+                  WorkingDirectory="INSTALLFOLDER" />
+      </Component>
+
+      <Component Id="SettingsFile" Guid="e36dfa40-3ef0-4824-9b1b-689e3a6c117d">
+        <File Id="Settings_JSON" Source="bin\Release\net10.0-windows\win-x64\publish\settings.json" KeyPath="yes" />
+      </Component>
+    </ComponentGroup>
+
+    <DirectoryRef Id="ApplicationProgramsFolder">
+      <Component Id="ApplicationShortcut" Guid="724b172a-9cb8-4f24-94e8-8a8b8398b1b5">
+        <RemoveFolder Id="CleanUpShortCut" Directory="ApplicationProgramsFolder" On="uninstall" />
+        <RegistryValue Root="HKCU" Key="Software\KDUGroup\DesktopPOS" Name="installed" Type="integer" Value="1" KeyPath="yes" />
+      </Component>
+    </DirectoryRef>
+
+    <Feature Id="MainFeature" Title="Desktop POS" Level="1">
+      <ComponentGroupRef Id="ProductComponents" />
+      <ComponentRef Id="ApplicationShortcut" />
+    </Feature>
+  </Package>
+</Wix>
