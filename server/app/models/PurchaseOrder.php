@@ -119,7 +119,7 @@ class PurchaseOrder extends Model {
         if (count($mergedItems) === 0) return false;
 
         try {
-            $this->db->exec("START TRANSACTION");
+            $this->db->beginTransaction();
 
             $poNumber = trim((string)($data['po_number'] ?? ''));
             if ($poNumber === '') {
@@ -143,7 +143,7 @@ class PurchaseOrder extends Model {
             $this->db->bind(':updated_by', $userId);
             $ok = $this->db->execute();
             if (!$ok) {
-                $this->db->exec("ROLLBACK");
+                $this->db->rollBack();
                 return false;
             }
             $poId = (int)$this->db->lastInsertId();
@@ -168,10 +168,11 @@ class PurchaseOrder extends Model {
                 $this->db->execute();
             }
 
-            $this->db->exec("COMMIT");
+            $this->db->commit();
             return $poId;
         } catch (Exception $e) {
-            try { $this->db->exec("ROLLBACK"); } catch (Exception $e2) {}
+            error_log("PurchaseOrder::create error: " . $e->getMessage() . "\n" . $e->getTraceAsString());
+            try { $this->db->rollBack(); } catch (Exception $e2) {}
             return false;
         }
     }
@@ -204,19 +205,19 @@ class PurchaseOrder extends Model {
         if (count($mergedItems) === 0) return false;
 
         try {
-            $this->db->exec("START TRANSACTION");
+            $this->db->beginTransaction();
 
             // Only allow editing if not received/cancelled
             $this->db->query("SELECT status FROM {$this->table} WHERE id = :id FOR UPDATE");
             $this->db->bind(':id', $poId);
             $row = $this->db->single();
             if (!$row) {
-                $this->db->exec("ROLLBACK");
+                $this->db->rollBack();
                 return false;
             }
             $status = (string)($row->status ?? '');
             if (in_array($status, ['Received', 'Cancelled'], true)) {
-                $this->db->exec("ROLLBACK");
+                $this->db->rollBack();
                 return false;
             }
 
@@ -262,10 +263,11 @@ class PurchaseOrder extends Model {
                 $this->db->execute();
             }
 
-            $this->db->exec("COMMIT");
+            $this->db->commit();
             return true;
         } catch (Exception $e) {
-            try { $this->db->exec("ROLLBACK"); } catch (Exception $e2) {}
+            error_log("PurchaseOrder::update error: " . $e->getMessage() . "\n" . $e->getTraceAsString());
+            try { $this->db->rollBack(); } catch (Exception $e2) {}
             return false;
         }
     }
