@@ -265,9 +265,8 @@ class GoodsReceiveNote extends Model {
             $mergedItems[$key]['qty'] = round(((float)$mergedItems[$key]['qty']) + $qty, 3);
         }
         if (count($mergedItems) === 0) return false;
-
         try {
-            $this->db->exec("START TRANSACTION");
+            $this->db->beginTransaction();
 
             $grnNumber = trim((string)($data['grn_number'] ?? ''));
             if ($grnNumber === '') {
@@ -280,17 +279,17 @@ class GoodsReceiveNote extends Model {
                 $this->db->bind(':id', $poId);
                 $poRow = $this->db->single();
                 if (!$poRow) {
-                    $this->db->exec("ROLLBACK");
+                    $this->db->rollBack();
                     return false;
                 }
                 $poStatus = (string)($poRow->status ?? '');
                 if (in_array($poStatus, ['Received', 'Cancelled'], true)) {
-                    $this->db->exec("ROLLBACK");
+                    $this->db->rollBack();
                     return false;
                 }
                 $poSupplierId = (int)($poRow->supplier_id ?? 0);
                 if ($poSupplierId > 0 && $supplierId > 0 && $poSupplierId !== $supplierId) {
-                    $this->db->exec("ROLLBACK");
+                    $this->db->rollBack();
                     return false;
                 }
                 $poLocId = (int)($poRow->location_id ?? 0);
@@ -329,7 +328,7 @@ class GoodsReceiveNote extends Model {
             $this->db->bind(':updated_by', $userId);
             $ok = $this->db->execute();
             if (!$ok) {
-                $this->db->exec("ROLLBACK");
+                $this->db->rollBack();
                 return false;
             }
             $grnId = (int)$this->db->lastInsertId();
@@ -487,8 +486,7 @@ class GoodsReceiveNote extends Model {
                     $this->db->execute();
                 }
             }
-
-            $this->db->exec("COMMIT");
+            $this->db->commit();
             
             // Automated Accounting
             try {
@@ -499,7 +497,8 @@ class GoodsReceiveNote extends Model {
 
             return $grnId;
         } catch (Exception $e) {
-            try { $this->db->exec("ROLLBACK"); } catch (Exception $e2) {}
+            error_log("GoodsReceiveNote::create error: " . $e->getMessage() . "\n" . $e->getTraceAsString());
+            try { $this->db->rollBack(); } catch (Exception $e2) {}
             return false;
         }
     }

@@ -654,7 +654,7 @@ export default function NewGrnPage() {
                         <TableCell className="p-2 align-middle">
                           {(() => {
                             const p = partsById.get(it.part_id);
-                            const showBatch = !!(p as any)?.is_fifo || !!(p as any)?.is_expiry;
+                            const showBatch = Number((p as any)?.is_fifo) === 1 || Number((p as any)?.is_expiry) === 1;
                             if (!showBatch) return <div className="text-[9px] text-muted-foreground/50 italic px-2 py-1">N/A</div>;
                             
                             const generateBatch = () => {
@@ -699,7 +699,7 @@ export default function NewGrnPage() {
                         <TableCell className="p-2 align-middle">
                           {(() => {
                             const p = partsById.get(it.part_id);
-                            const showExpiry = !!(p as any)?.is_expiry;
+                            const showExpiry = Number((p as any)?.is_expiry) === 1;
                             if (!showExpiry) return <div className="text-[9px] text-muted-foreground/50 italic px-2 py-1">N/A</div>;
                             return (
                               <div className="space-y-1.5 py-0.5">

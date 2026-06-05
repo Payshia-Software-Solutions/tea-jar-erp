@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("DesktopPOS")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+99fd1f77917258b1a8eaac42b1f704c13474a667")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+3ea4c7a384bcbf7275ca1348c3d4f9bbe7159bca")]
 [assembly: System.Reflection.AssemblyProductAttribute("DesktopPOS")]
 [assembly: System.Reflection.AssemblyTitleAttribute("DesktopPOS")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

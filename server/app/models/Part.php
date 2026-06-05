@@ -265,7 +265,7 @@ class Part extends Model {
         $uniqueIds = array_keys($norm);
 
         try {
-            $this->db->exec("START TRANSACTION");
+            $this->db->beginTransaction();
             $this->db->query("DELETE FROM part_suppliers WHERE part_id = :pid");
             $this->db->bind(':pid', $pid);
             $this->db->execute();
@@ -281,10 +281,11 @@ class Part extends Model {
                 $this->db->execute();
             }
 
-            $this->db->exec("COMMIT");
+            $this->db->commit();
             return true;
         } catch (Exception $e) {
-            try { $this->db->exec("ROLLBACK"); } catch (Exception $e2) {}
+            error_log("Error in Part::setSuppliers: " . $e->getMessage() . "\n" . $e->getTraceAsString());
+            try { $this->db->rollBack(); } catch (Exception $e2) {}
             return false;
         }
     }
@@ -504,14 +505,14 @@ class Part extends Model {
         if ($pid <= 0 || $delta === 0.0) return false;
 
         try {
-            $this->db->exec("START TRANSACTION");
+            $this->db->beginTransaction();
 
             // lock row
             $this->db->query("SELECT stock_quantity, is_fifo FROM {$this->table} WHERE id = :id FOR UPDATE");
             $this->db->bind(':id', $pid);
             $row = $this->db->single();
             if (!$row) {
-                $this->db->exec("ROLLBACK");
+                $this->db->rollBack();
                 return false;
             }
 
@@ -544,10 +545,11 @@ class Part extends Model {
             $this->db->bind(':created_by', $userId);
             $this->db->execute();
 
-            $this->db->exec("COMMIT");
+            $this->db->commit();
             return true;
         } catch (Exception $e) {
-            try { $this->db->exec("ROLLBACK"); } catch (Exception $e2) {}
+            error_log("Error in Part::adjustStock: " . $e->getMessage() . "\n" . $e->getTraceAsString());
+            try { $this->db->rollBack(); } catch (Exception $e2) {}
             return false;
         }
     }
@@ -563,7 +565,7 @@ class Part extends Model {
         if ($pid <= 0 || $totalNeeded <= 0) return false;
 
         try {
-            $this->db->exec("START TRANSACTION");
+            $this->db->beginTransaction();
 
             // 1. Get batches ordered by FIFO (oldest first)
             $this->db->query("
@@ -637,11 +639,11 @@ class Part extends Model {
             $this->db->bind(':id', $pid);
             $this->db->execute();
 
-            $this->db->exec("COMMIT");
+            $this->db->commit();
             return true;
         } catch (Exception $e) {
-            try { $this->db->exec("ROLLBACK"); } catch (Exception $e2) {}
-            error_log("FIFO Deduction Error: " . $e->getMessage());
+            error_log("FIFO Deduction Error: " . $e->getMessage() . "\n" . $e->getTraceAsString());
+            try { $this->db->rollBack(); } catch (Exception $e2) {}
             return false;
         }
     }

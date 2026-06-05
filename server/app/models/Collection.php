@@ -87,7 +87,7 @@ class Collection extends Model {
         $ids = is_array($collectionIds) ? array_map('intval', $collectionIds) : [];
         
         try {
-            $this->db->exec("START TRANSACTION");
+            $this->db->beginTransaction();
             
             // Remove existing
             $this->db->query("DELETE FROM parts_collections WHERE part_id = :pid");
@@ -103,10 +103,10 @@ class Collection extends Model {
                 $this->db->execute();
             }
             
-            $this->db->exec("COMMIT");
+            $this->db->commit();
             return true;
         } catch (Exception $e) {
-            try { $this->db->exec("ROLLBACK"); } catch (Exception $e2) {}
+            try { $this->db->rollBack(); } catch (Exception $e2) {}
             error_log("Failed to sync product collections: " . $e->getMessage());
             return false;
         }
@@ -135,7 +135,7 @@ class Collection extends Model {
         $ids = is_array($partIds) ? array_map('intval', $partIds) : [];
         
         try {
-            $this->db->exec("START TRANSACTION");
+            $this->db->beginTransaction();
             
             // Remove existing mappings for THIS collection
             $this->db->query("DELETE FROM parts_collections WHERE collection_id = :cid");
@@ -151,10 +151,10 @@ class Collection extends Model {
                 $this->db->execute();
             }
             
-            $this->db->exec("COMMIT");
+            $this->db->commit();
             return true;
         } catch (Exception $e) {
-            try { $this->db->exec("ROLLBACK"); } catch (Exception $e2) {}
+            try { $this->db->rollBack(); } catch (Exception $e2) {}
             error_log("Failed to sync collection parts: " . $e->getMessage());
             return false;
         }

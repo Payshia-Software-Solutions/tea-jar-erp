@@ -381,7 +381,7 @@ class PartController extends Controller {
 
         try {
             $db = new Database();
-            $db->exec("START TRANSACTION");
+            $db->beginTransaction();
 
             // Create batch
             $db->query("
@@ -438,11 +438,14 @@ class PartController extends Controller {
             $db->bind(':created_by', (int)$u['sub']);
             $db->execute();
 
-            $db->exec("COMMIT");
+            $db->commit();
             $this->success(['batch_id' => $newBatchId, 'batch_number' => $batchNumber], 'Stock classified successfully');
             
         } catch (Exception $e) {
-            if (isset($db)) $db->exec("ROLLBACK");
+            error_log("Error in PartController::classify_batch: " . $e->getMessage() . "\n" . $e->getTraceAsString());
+            if (isset($db)) {
+                try { $db->rollBack(); } catch (Exception $e2) {}
+            }
             $this->error('Failed to classify stock: ' . $e->getMessage(), 500);
         }
     }

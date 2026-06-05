@@ -195,7 +195,7 @@ class StockTransfer extends Model {
             require_once __DIR__ . '/InventoryBatch.php';
             $batchModel = new InventoryBatch();
 
-            $this->db->exec("START TRANSACTION");
+            $this->db->beginTransaction();
 
             // If created from a requisition, validate it and lock destination.
             if ($reqId > 0) {
@@ -203,16 +203,16 @@ class StockTransfer extends Model {
                 $this->db->bind(':id', $reqId);
                 $req = $this->db->single();
                 if (!$req) {
-                    $this->db->exec("ROLLBACK");
+                    $this->db->rollBack();
                     return ['error' => 'Requisition not found'];
                 }
                 if (!in_array((string)$req->status, ['Requested','Approved'], true)) {
-                    $this->db->exec("ROLLBACK");
+                    $this->db->rollBack();
                     return ['error' => 'Requisition is not in a valid state'];
                 }
                 $toId = (int)$req->to_location_id;
                 if ($toId <= 0) {
-                    $this->db->exec("ROLLBACK");
+                    $this->db->rollBack();
                     return ['error' => 'Requisition has no valid destination location'];
                 }
             }
@@ -245,7 +245,7 @@ class StockTransfer extends Model {
                         $name = $row ? (string)($row->part_name ?? '') : null;
                     } catch (Exception $e2) {}
                     $label = $name ? $name : ("Item #" . $pid);
-                    $this->db->exec("ROLLBACK");
+                    $this->db->rollBack();
                     return ['error' => "Insufficient stock at source for {$label}" . ($bid ? " (Batch #{$bid})" : "") . ". Available: " . number_format(max(0, $avail), 3, '.', '') . ", requested: " . number_format($need, 3, '.', '')];
                 }
             }
@@ -264,7 +264,7 @@ class StockTransfer extends Model {
             $this->db->bind(':u', $userId);
             $ok = $this->db->execute();
             if (!$ok) {
-                $this->db->exec("ROLLBACK");
+                $this->db->rollBack();
                 return ['error' => 'Failed to insert transfer request into database'];
             }
             $id = (int)$this->db->lastInsertId();
@@ -295,7 +295,7 @@ class StockTransfer extends Model {
                 if ($reqId > 0) {
                     $rem = isset($remaining[$pid]) ? (float)$remaining[$pid] : 0.0;
                     if ($rem <= 0 || $qty > $rem + 0.000001) {
-                        $this->db->exec("ROLLBACK");
+                        $this->db->rollBack();
                         return ['error' => "Quantity for item #{$pid} exceeds the remaining requested amount"];
                     }
                     // Subtract from the local tracker to support multiple lines of same part against one req
@@ -309,10 +309,11 @@ class StockTransfer extends Model {
                 $this->db->execute();
             }
 
-            $this->db->exec("COMMIT");
+            $this->db->commit();
             return $id;
         } catch (Throwable $e) {
-            try { $this->db->exec("ROLLBACK"); } catch (Throwable $e2) {}
+            error_log("Error in StockTransfer::create: " . $e->getMessage() . "\n" . $e->getTraceAsString());
+            try { $this->db->rollBack(); } catch (Throwable $e2) {}
             return ['error' => 'Stock Transfer Error: ' . $e->getMessage() . ' in ' . $e->getFile() . ' on line ' . $e->getLine()];
         }
     }
@@ -343,7 +344,7 @@ class StockTransfer extends Model {
         if (!$items || count($items) === 0) return ['error' => 'No transfer items'];
 
         try {
-            $this->db->exec("START TRANSACTION");
+            $this->db->beginTransaction();
 
             require_once 'Part.php';
             require_once 'InventoryBatch.php';
@@ -357,7 +358,7 @@ class StockTransfer extends Model {
 
                 $part = $partModel->getById($pid);
                 if (!$part) {
-                    $this->db->exec("ROLLBACK");
+                    $this->db->rollBack();
                     return ['error' => 'Invalid part ID: ' . $pid];
                 }
 
@@ -437,7 +438,7 @@ class StockTransfer extends Model {
             $this->db->bind(':id', $tid);
             $this->db->execute();
 
-            $this->db->exec("COMMIT");
+            $this->db->commit();
 
             if ($reqId > 0) {
                 try {
@@ -447,7 +448,8 @@ class StockTransfer extends Model {
             }
             return true;
         } catch (Exception $e) {
-            try { $this->db->exec("ROLLBACK"); } catch (Exception $e2) {}
+            error_log("Error in StockTransfer::receive: " . $e->getMessage() . "\n" . $e->getTraceAsString());
+            try { $this->db->rollBack(); } catch (Exception $e2) {}
             return ['error' => 'Receive failed'];
         }
     }

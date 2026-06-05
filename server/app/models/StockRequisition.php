@@ -139,7 +139,7 @@ class StockRequisition extends Model {
         if (!$requestedAt) $requestedAt = (new DateTime('now'))->format('Y-m-d H:i:s');
 
         try {
-            $this->db->exec("START TRANSACTION");
+            $this->db->beginTransaction();
             $this->db->query("
                 INSERT INTO stock_transfer_requisitions
                 (requisition_number, from_location_id, to_location_id, status, requested_at, notes, created_by)
@@ -153,7 +153,7 @@ class StockRequisition extends Model {
             $this->db->bind(':u', $userId);
             $ok = $this->db->execute();
             if (!$ok) {
-                $this->db->exec("ROLLBACK");
+                $this->db->rollBack();
                 return false;
             }
             $id = (int)$this->db->lastInsertId();
@@ -171,10 +171,11 @@ class StockRequisition extends Model {
                 $this->db->execute();
             }
 
-            $this->db->exec("COMMIT");
+            $this->db->commit();
             return $id;
         } catch (Exception $e) {
-            try { $this->db->exec("ROLLBACK"); } catch (Exception $e2) {}
+            error_log("Error in StockRequisition::create: " . $e->getMessage() . "\n" . $e->getTraceAsString());
+            try { $this->db->rollBack(); } catch (Exception $e2) {}
             return false;
         }
     }

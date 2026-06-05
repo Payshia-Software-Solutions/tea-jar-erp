@@ -67,7 +67,7 @@ class Supplier extends Model {
         $ids = array_values(array_unique(array_filter(array_map('intval', (array)$taxIds), function($x) { return $x > 0; })));
 
         try {
-            $this->db->exec("START TRANSACTION");
+            $this->db->beginTransaction();
             $this->db->query("DELETE FROM supplier_taxes WHERE supplier_id = :sid");
             $this->db->bind(':sid', $sid);
             $this->db->execute();
@@ -79,10 +79,11 @@ class Supplier extends Model {
                 $this->db->bind(':u', $userId);
                 $this->db->execute();
             }
-            $this->db->exec("COMMIT");
+            $this->db->commit();
             return true;
         } catch (Exception $e) {
-            try { $this->db->exec("ROLLBACK"); } catch (Exception $e2) {}
+            error_log("Error in Supplier::setTaxes: " . $e->getMessage() . "\n" . $e->getTraceAsString());
+            try { $this->db->rollBack(); } catch (Exception $e2) {}
             return false;
         }
     }

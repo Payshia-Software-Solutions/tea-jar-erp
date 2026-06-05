@@ -125,7 +125,7 @@ class StockAdjustment extends Model {
         if ($adjNumber === '') $adjNumber = $this->genNumber();
 
         try {
-            $this->db->exec("START TRANSACTION");
+            $this->db->beginTransaction();
 
             // Insert header
             $this->db->query("
@@ -140,7 +140,7 @@ class StockAdjustment extends Model {
             $this->db->bind(':u', $userId);
             $ok = $this->db->execute();
             if (!$ok) {
-                $this->db->exec("ROLLBACK");
+                $this->db->rollBack();
                 return false;
             }
             $adjId = (int)$this->db->lastInsertId();
@@ -156,7 +156,7 @@ class StockAdjustment extends Model {
 
                 $physical = round($physical, 3);
                 if ($physical < 0) {
-                    $this->db->exec("ROLLBACK");
+                    $this->db->rollBack();
                     return ['error' => "Invalid physical stock for part {$pid}"];
                 }
 
@@ -169,7 +169,7 @@ class StockAdjustment extends Model {
                     $this->db->bind(':loc', $locId);
                     $btch = $this->db->single();
                     if (!$btch) {
-                        $this->db->exec("ROLLBACK");
+                        $this->db->rollBack();
                         return ['error' => "Batch {$bid} not found at this location"];
                     }
                     $system = round((float)($btch->quantity_on_hand ?? 0), 3);
@@ -244,10 +244,11 @@ class StockAdjustment extends Model {
             require_once __DIR__ . '/../helpers/AccountingHelper.php';
             AccountingHelper::postStockAdjustment($adjId);
 
-            $this->db->exec("COMMIT");
+            $this->db->commit();
             return $adjId;
         } catch (Throwable $e) {
-            try { $this->db->exec("ROLLBACK"); } catch (Throwable $e2) {}
+            error_log("Error in StockAdjustment::create: " . $e->getMessage() . "\n" . $e->getTraceAsString());
+            try { $this->db->rollBack(); } catch (Throwable $e2) {}
             return ['error' => 'Adjustment Error: ' . $e->getMessage() . ' in ' . $e->getFile() . ' on line ' . $e->getLine()];
         }
     }

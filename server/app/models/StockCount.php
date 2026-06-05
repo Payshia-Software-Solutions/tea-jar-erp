@@ -139,7 +139,7 @@ class StockCount extends Model {
         $countNumber = $this->genNumber();
 
         try {
-            $this->db->exec("START TRANSACTION");
+            $this->db->beginTransaction();
 
             // Create stock count session header
             $this->db->query("
@@ -154,7 +154,7 @@ class StockCount extends Model {
             $this->db->bind(':u', $userId);
             $ok = $this->db->execute();
             if (!$ok) {
-                $this->db->exec("ROLLBACK");
+                $this->db->rollBack();
                 return false;
             }
             $countId = (int)$this->db->lastInsertId();
@@ -171,7 +171,7 @@ class StockCount extends Model {
 
                 $physical = round($physical, 3);
                 if ($physical < 0) {
-                    $this->db->exec("ROLLBACK");
+                    $this->db->rollBack();
                     return ['error' => "Invalid physical stock for part {$pid}"];
                 }
 
@@ -184,7 +184,7 @@ class StockCount extends Model {
                     $this->db->bind(':loc', $locId);
                     $btch = $this->db->single();
                     if (!$btch) {
-                        $this->db->exec("ROLLBACK");
+                        $this->db->rollBack();
                         return ['error' => "Batch {$bid} not found at this location"];
                     }
                     $system = round((float)($btch->quantity_on_hand ?? 0), 3);
@@ -218,10 +218,11 @@ class StockCount extends Model {
                 $this->db->execute();
             }
 
-            $this->db->exec("COMMIT");
+            $this->db->commit();
             return $countId;
         } catch (Throwable $e) {
-            try { $this->db->exec("ROLLBACK"); } catch (Throwable $e2) {}
+            error_log("Error in StockCount::create: " . $e->getMessage() . "\n" . $e->getTraceAsString());
+            try { $this->db->rollBack(); } catch (Throwable $e2) {}
             return ['error' => 'Stock Count Error: ' . $e->getMessage() . ' in ' . $e->getFile() . ' on line ' . $e->getLine()];
         }
     }
@@ -233,18 +234,18 @@ class StockCount extends Model {
     public function approve($id, $userId) {
         $cid = (int)$id;
         try {
-            $this->db->exec("START TRANSACTION");
+            $this->db->beginTransaction();
 
             // Lock and load stock count header
             $this->db->query("SELECT * FROM stock_counts WHERE id = :id FOR UPDATE");
             $this->db->bind(':id', $cid);
             $hdr = $this->db->single();
             if (!$hdr) {
-                $this->db->exec("ROLLBACK");
+                $this->db->rollBack();
                 return ['error' => "Count session not found"];
             }
             if ($hdr->status !== 'Pending') {
-                $this->db->exec("ROLLBACK");
+                $this->db->rollBack();
                 return ['error' => "Count session is already " . $hdr->status];
             }
 
@@ -256,7 +257,7 @@ class StockCount extends Model {
             $items = $this->db->resultSet();
 
             if (empty($items)) {
-                $this->db->exec("ROLLBACK");
+                $this->db->rollBack();
                 return ['error' => "No items in count session"];
             }
 
@@ -285,11 +286,11 @@ class StockCount extends Model {
             $adjId = $adjModel->create($adjPayload, $userId, $locId);
 
             if (is_array($adjId) && isset($adjId['error'])) {
-                $this->db->exec("ROLLBACK");
+                $this->db->rollBack();
                 return ['error' => "Spawn Adjustment Failed: " . $adjId['error']];
             }
             if (!$adjId) {
-                $this->db->exec("ROLLBACK");
+                $this->db->rollBack();
                 return ['error' => "Failed to spawn stock adjustment transaction"];
             }
 
@@ -303,10 +304,11 @@ class StockCount extends Model {
             $this->db->bind(':id', $cid);
             $this->db->execute();
 
-            $this->db->exec("COMMIT");
+            $this->db->commit();
             return true;
         } catch (Throwable $e) {
-            try { $this->db->exec("ROLLBACK"); } catch (Throwable $e2) {}
+            error_log("Error in StockCount::approve: " . $e->getMessage() . "\n" . $e->getTraceAsString());
+            try { $this->db->rollBack(); } catch (Throwable $e2) {}
             return ['error' => 'Approve Error: ' . $e->getMessage() . ' in ' . $e->getFile() . ' on line ' . $e->getLine()];
         }
     }
@@ -317,18 +319,18 @@ class StockCount extends Model {
     public function reject($id, $userId) {
         $cid = (int)$id;
         try {
-            $this->db->exec("START TRANSACTION");
+            $this->db->beginTransaction();
 
             // Lock and load header
             $this->db->query("SELECT * FROM stock_counts WHERE id = :id FOR UPDATE");
             $this->db->bind(':id', $cid);
             $hdr = $this->db->single();
             if (!$hdr) {
-                $this->db->exec("ROLLBACK");
+                $this->db->rollBack();
                 return ['error' => "Count session not found"];
             }
             if ($hdr->status !== 'Pending') {
-                $this->db->exec("ROLLBACK");
+                $this->db->rollBack();
                 return ['error' => "Count session is already " . $hdr->status];
             }
 
@@ -342,10 +344,11 @@ class StockCount extends Model {
             $this->db->bind(':id', $cid);
             $this->db->execute();
 
-            $this->db->exec("COMMIT");
+            $this->db->commit();
             return true;
         } catch (Throwable $e) {
-            try { $this->db->exec("ROLLBACK"); } catch (Throwable $e2) {}
+            error_log("Error in StockCount::reject: " . $e->getMessage() . "\n" . $e->getTraceAsString());
+            try { $this->db->rollBack(); } catch (Throwable $e2) {}
             return ['error' => 'Reject Error: ' . $e->getMessage()];
         }
     }

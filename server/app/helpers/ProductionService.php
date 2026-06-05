@@ -122,7 +122,7 @@ class ProductionService {
 
         try {
             $db = $orderModel->getDb();
-            $db->exec("START TRANSACTION");
+            $db->beginTransaction();
 
             // 1. Calculate Total Material Cost
             $items = $orderModel->getItems($orderId);
@@ -245,10 +245,11 @@ class ProductionService {
             $db->bind(':id', $orderId);
             $db->execute();
 
-            $db->exec("COMMIT");
+            $db->commit();
             return ['success' => true, 'message' => 'Production batch completed and items received.'];
         } catch (Exception $e) {
-            try { $db->exec("ROLLBACK"); } catch (Exception $e2) {}
+            error_log("Error in ProductionService::completeProduction: " . $e->getMessage() . "\n" . $e->getTraceAsString());
+            try { $db->rollBack(); } catch (Exception $e2) {}
             return ['success' => false, 'message' => $e->getMessage()];
         }
     }

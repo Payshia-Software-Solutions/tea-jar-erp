@@ -336,7 +336,7 @@ class OrderController extends Controller {
 
         $db = new Database();
         try {
-            $db->exec("START TRANSACTION");
+            $db->beginTransaction();
             $db->query("
                 UPDATE repair_orders
                 SET status = :status,
@@ -354,7 +354,7 @@ class OrderController extends Controller {
             $db->bind(':loc', $locId);
             $ok = $db->execute();
             if (!$ok) {
-                $db->exec("ROLLBACK");
+                $db->rollBack();
                 $this->error('Update failed', 400);
             }
 
@@ -417,9 +417,10 @@ class OrderController extends Controller {
                 }
             }
 
-            $db->exec("COMMIT");
+            $db->commit();
         } catch (Exception $e) {
-            try { $db->exec("ROLLBACK"); } catch (Exception $e2) {}
+            error_log("Error in OrderController::complete: " . $e->getMessage() . "\n" . $e->getTraceAsString());
+            try { $db->rollBack(); } catch (Exception $e2) {}
             $this->error('Update failed', 400);
         }
 
@@ -510,7 +511,7 @@ class OrderController extends Controller {
         // Persist assignment and update bay status using the SAME DB connection/transaction.
         $db = new Database();
         try {
-            $db->exec("START TRANSACTION");
+            $db->beginTransaction();
 
             // Lock the order row and capture old bay name inside the transaction.
             $db->query("SELECT location FROM repair_orders WHERE id = :id AND (location_id = :loc OR from_location_id = :loc) FOR UPDATE");
@@ -518,7 +519,7 @@ class OrderController extends Controller {
             $db->bind(':loc', $locId);
             $rowOrder = $db->single();
             if (!$rowOrder) {
-                $db->exec("ROLLBACK");
+                $db->rollBack();
                 $this->error('Order not found', 404);
             }
             $oldBay = trim((string)($rowOrder->location ?? ''));
@@ -542,7 +543,7 @@ class OrderController extends Controller {
             $db->bind(':loc', $locId);
             $ok = $db->execute();
             if (!$ok) {
-                $db->exec("ROLLBACK");
+                $db->rollBack();
                 $this->error('Assign failed', 400);
             }
 
@@ -577,9 +578,10 @@ class OrderController extends Controller {
                 }
             }
 
-            $db->exec("COMMIT");
+            $db->commit();
         } catch (Exception $e) {
-            try { $db->exec("ROLLBACK"); } catch (Exception $e2) {}
+            error_log("Error in OrderController::assign: " . $e->getMessage() . "\n" . $e->getTraceAsString());
+            try { $db->rollBack(); } catch (Exception $e2) {}
             $this->error('Assign failed', 400);
         }
 

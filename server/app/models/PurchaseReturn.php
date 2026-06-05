@@ -12,7 +12,7 @@ class PurchaseReturn extends Model {
 
     public function create($data) {
         try {
-            $this->db->exec("START TRANSACTION");
+            $this->db->beginTransaction();
 
             $this->db->query("
                 INSERT INTO {$this->table} (grn_id, supplier_id, return_date, subtotal, tax_total, total_amount, reason, created_by)
@@ -67,10 +67,10 @@ class PurchaseReturn extends Model {
             require_once '../app/helpers/AccountingHelper.php';
             AccountingHelper::postPurchaseReturn($returnId, $data);
 
-            $this->db->exec("COMMIT");
+            $this->db->commit();
             return $returnId;
         } catch (Exception $e) {
-            $this->db->exec("ROLLBACK");
+            try { $this->db->rollBack(); } catch (Exception $e2) {}
             error_log("PurchaseReturn Error: " . $e->getMessage());
             return false;
         }
