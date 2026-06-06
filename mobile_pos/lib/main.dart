@@ -14,6 +14,9 @@ import 'components/location_enforcer.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   
+  // Load custom server URL from storage
+  await ApiService.initBaseUrl();
+  
   // Initialize tracking
   await TrackingService().initialize();
 

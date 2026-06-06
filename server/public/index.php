@@ -26,7 +26,21 @@ $allowedOrigins = [
     'http://bizzflow.nebulync.com',
 ];
 
-if ($origin && in_array($origin, $allowedOrigins, true)) {
+$isAllowed = false;
+if ($origin) {
+    if (in_array($origin, $allowedOrigins, true)) {
+        $isAllowed = true;
+    } else {
+        $host = parse_url($origin, PHP_URL_HOST);
+        if ($host) {
+            if ($host === 'nebulync.com' || preg_match('/\.nebulync\.com$/', $host)) {
+                $isAllowed = true;
+            }
+        }
+    }
+}
+
+if ($origin && $isAllowed) {
     header('Access-Control-Allow-Origin: ' . $origin);
     header('Access-Control-Allow-Credentials: true');
     header('Vary: Origin');

@@ -15,8 +15,45 @@ import 'db_service.dart';
 import '../models/tax.dart';
 
 class ApiService {
-  static const String baseUrl = 'https://server-kdu-service.payshia.com/api';
+  static String get baseUrl => _customBaseUrl ?? 'https://server-kdu-service.payshia.com/api';
+  static String? _customBaseUrl;
   static void Function()? onUnauthorized;
+
+  static String get baseHost {
+    try {
+      final uri = Uri.parse(baseUrl);
+      return '${uri.scheme}://${uri.host}${uri.hasPort ? ":${uri.port}" : ""}';
+    } catch (_) {
+      return 'https://server-kdu-service.payshia.com';
+    }
+  }
+
+  static Future<void> initBaseUrl() async {
+    final prefs = await SharedPreferences.getInstance();
+    _customBaseUrl = prefs.getString('custom_base_url');
+  }
+
+  static Future<void> updateBaseUrl(String? newUrl) async {
+    final prefs = await SharedPreferences.getInstance();
+    if (newUrl == null || newUrl.trim().isEmpty) {
+      _customBaseUrl = null;
+      await prefs.remove('custom_base_url');
+    } else {
+      String formattedUrl = newUrl.trim();
+      if (!formattedUrl.endsWith('/api') && !formattedUrl.endsWith('/api/')) {
+        if (formattedUrl.endsWith('/')) {
+          formattedUrl = '${formattedUrl}api';
+        } else {
+          formattedUrl = '$formattedUrl/api';
+        }
+      }
+      if (formattedUrl.endsWith('/')) {
+        formattedUrl = formattedUrl.substring(0, formattedUrl.length - 1);
+      }
+      _customBaseUrl = formattedUrl;
+      await prefs.setString('custom_base_url', formattedUrl);
+    }
+  }
 
   void _checkResponse(http.Response response) {
     if (response.statusCode == 401) {

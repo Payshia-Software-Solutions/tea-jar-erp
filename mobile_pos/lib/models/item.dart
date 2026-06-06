@@ -1,3 +1,5 @@
+import '../services/api_service.dart';
+
 class Item {
   final int id;
   final String name;
@@ -22,10 +24,11 @@ class Item {
     
     // Normalize relative URLs to point to the server
     if (rawImage != null && rawImage.isNotEmpty && !rawImage.startsWith('http')) {
+      final host = ApiService.baseHost;
       if (rawImage.startsWith('/')) {
-        rawImage = 'https://server-kdu-service.payshia.com$rawImage';
+        rawImage = '$host$rawImage';
       } else {
-        rawImage = 'https://server-kdu-service.payshia.com/$rawImage';
+        rawImage = '$host/$rawImage';
       }
     }
 
