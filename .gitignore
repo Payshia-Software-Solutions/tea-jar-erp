@@ -5,3 +5,11 @@
 /local-printer-py
 bizzflow-printer-v9.exe
 
+# Desktop POS build and output artifacts
+/desktop_pos/bin/
+/desktop_pos/obj/
+/desktop_pos/.wix/
+/desktop_pos/*.msi
+/desktop_pos/*.wixpdb
+/desktop_pos/*_log.txt
+/desktop_pos/build_out.txt
