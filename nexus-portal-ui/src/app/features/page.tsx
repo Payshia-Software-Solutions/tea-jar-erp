@@ -40,7 +40,7 @@ export default function FeaturesPage() {
           Deep-Integrated <br /> Modules
         </h1>
         <p className="text-slate-600 dark:text-slate-400 text-lg max-w-2xl mx-auto leading-relaxed font-medium">
-          From high-frequency inventory to complex HRM payroll, Nexus ERP provides the complete infrastructure to power your entire enterprise.
+          From high-frequency inventory to complex HRM payroll, BizzFlow ERP provides the complete infrastructure to power your entire enterprise.
         </p>
       </motion.div>
 
@@ -70,7 +70,7 @@ export default function FeaturesPage() {
         {[
           { icon: Boxes, title: 'Inventory Intelligence', desc: 'Advanced stock management with real-time tracking, low-stock alerts, and automated reorder logic.' },
           { icon: CreditCard, title: 'Hyper-Fast POS', desc: 'Touch-optimized point of sale for retail and service industries with multi-payment engine.' },
-          { icon: Users, title: 'Nexus HRM Core', desc: 'Complete HR management featuring employee profiles, attendance, leaves, and payroll automation.' },
+          { icon: Users, title: 'BizzFlow HRM', desc: 'Complete HR management featuring employee profiles, attendance, leaves, and payroll automation.' },
           { icon: Wrench, title: 'RepairOS Lifecycle', desc: 'End-to-end repair management with status tracking, technician assignment, and customer alerts.' },
           { icon: BarChart3, title: 'Enterprise Finance', desc: 'High-density accounting with automated tax calculation, profit tracking, and detailed P&L.' },
           { icon: Globe, title: 'SaaS Architecture', desc: 'Native multi-tenant support with custom domain mapping and individual database isolation.' },

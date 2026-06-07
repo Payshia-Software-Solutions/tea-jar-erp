@@ -8,6 +8,7 @@ class Item {
   final String? imageUrl;
   final String? sku;
   final String? itemType;
+  final String? recipeType;
 
   Item({
     required this.id,
@@ -17,6 +18,7 @@ class Item {
     this.imageUrl,
     this.sku,
     this.itemType,
+    this.recipeType,
   });
 
   factory Item.fromJson(Map<String, dynamic> json) {
@@ -40,6 +42,7 @@ class Item {
       imageUrl: (rawImage != null && rawImage.isNotEmpty) ? rawImage : null,
       sku: json['sku']?.toString(),
       itemType: json['item_type']?.toString(),
+      recipeType: json['recipe_type']?.toString(),
     );
   }
 

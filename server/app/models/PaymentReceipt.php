@@ -224,6 +224,7 @@ class PaymentReceipt {
             FROM payment_receipts pr
             LEFT JOIN cheque_inventory ci ON pr.id = ci.receipt_id
             WHERE pr.invoice_id = :id 
+            AND pr.status != 'Cancelled'
             AND (pr.payment_method != 'Cheque' OR (ci.status IS NOT NULL AND ci.status NOT IN ('Bounced', 'Cancelled')))
         ");
         $this->db->bind(':id', $invoiceId);
@@ -434,6 +435,21 @@ class PaymentReceipt {
             $this->db->bind(':user', $userId);
             $this->db->bind(':reason', $reason);
             $this->db->bind(':id', $id);
+            $this->db->execute();
+
+            // Delete mirrored record from invoice_payments to keep tables in sync
+            $this->db->query("
+                DELETE FROM invoice_payments 
+                WHERE invoice_id = :invoice_id 
+                  AND amount = :amount 
+                  AND DATE(payment_date) = :payment_date 
+                  AND payment_method = :payment_method
+                LIMIT 1
+            ");
+            $this->db->bind(':invoice_id',     $receipt->invoice_id);
+            $this->db->bind(':amount',         $receipt->amount);
+            $this->db->bind(':payment_date',   $receipt->payment_date);
+            $this->db->bind(':payment_method', $receipt->payment_method);
             $this->db->execute();
 
             // 2. If it has a cheque, cancel the cheque too

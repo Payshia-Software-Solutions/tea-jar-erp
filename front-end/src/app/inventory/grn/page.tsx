@@ -41,6 +41,8 @@ export default function GrnPage() {
   const [rows, setRows] = useState<GrnRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [query, setQuery] = useState("");
+  const [locations, setLocations] = useState<any[]>([]);
+  const [locationId, setLocationId] = useState<string>("all");
 
   // Cancellation State
   const [isCancelDialogOpen, setIsCancelDialogOpen] = useState(false);
@@ -51,7 +53,8 @@ export default function GrnPage() {
   const load = async () => {
     setLoading(true);
     try {
-      const grnRows = await fetchGrns("");
+      const locParam = locationId === "all" ? null : locationId;
+      const grnRows = await fetchGrns("", locParam);
       setRows(Array.isArray(grnRows) ? grnRows : []);
     } catch (e: any) {
       toast({ title: "Error", description: e?.message || "Failed to load GRNs", variant: "destructive" });
@@ -61,9 +64,15 @@ export default function GrnPage() {
   };
 
   useEffect(() => {
+    import("@/lib/api").then(api => {
+      api.fetchLocations().then(res => setLocations(Array.isArray(res) ? res : [])).catch(console.error);
+    });
+  }, []);
+
+  useEffect(() => {
     void load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [locationId]);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -124,9 +133,21 @@ export default function GrnPage() {
       </div>
 
       <div className="space-y-4">
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-          <Input placeholder="Search GRNs..." className="pl-9 h-11" value={query} onChange={(e) => setQuery(e.target.value)} />
+        <div className="flex flex-wrap gap-3">
+          <div className="relative flex-1 min-w-[200px]">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <Input placeholder="Search GRNs..." className="pl-9 h-11" value={query} onChange={(e) => setQuery(e.target.value)} />
+          </div>
+          <select
+            className="h-11 rounded-md border border-input bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring min-w-[140px]"
+            value={locationId}
+            onChange={e => setLocationId(e.target.value)}
+          >
+            <option value="all">All Locations</option>
+            {locations.map((loc: any) => (
+              <option key={loc.id} value={loc.id}>{loc.name}</option>
+            ))}
+          </select>
         </div>
 
         <Card className="border-none shadow-md overflow-hidden">
@@ -149,7 +170,7 @@ export default function GrnPage() {
                 <TableHeader className="bg-muted/30">
                   <TableRow>
                     <TableHead>GRN</TableHead>
-                    <TableHead className="hidden lg:table-cell">Location</TableHead>
+                    <TableHead>Location</TableHead>
                     <TableHead>Supplier</TableHead>
                     <TableHead className="hidden md:table-cell">PO</TableHead>
                     <TableHead className="hidden md:table-cell">Received</TableHead>
@@ -170,7 +191,7 @@ export default function GrnPage() {
                           </div>
                         </div>
                       </TableCell>
-                      <TableCell className="hidden lg:table-cell">
+                      <TableCell>
                         {g.location_name ? (
                           <Badge variant="outline" className="text-[10px] font-semibold">
                             {g.location_name}

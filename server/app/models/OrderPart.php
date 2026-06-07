@@ -74,8 +74,8 @@ class OrderPart extends Model {
 
             $isFifo = ($itemType !== 'Service' && ((int)($p->is_fifo ?? 0) === 1 || (int)($p->is_expiry ?? 0) === 1));
             
-            // A La Carte handling: Consume ingredients and offset main item stock
-            if ($recipeType === 'A La Carte') {
+            // A La Carte/Buffet handling: Consume ingredients and offset main item stock
+            if ($recipeType === 'A La Carte' || $recipeType === 'Buffet') {
                 require_once 'ProductionBOM.php';
                 $bomModel = new ProductionBOM();
                 $bom = $bomModel->getActiveBOMForPart($pid);
@@ -104,7 +104,7 @@ class OrderPart extends Model {
                     }
                 }
                 
-                // Always add main item (Assembly Offset) for A La Carte items
+                // Always add main item (Assembly Offset) for A La Carte / Buffet items
                 $this->db->query("
                     INSERT INTO stock_movements (location_id, part_id, qty_change, movement_type, ref_table, ref_id, unit_cost, notes, created_by)
                     VALUES (:loc, :part_id, :qty_change, 'PRODUCTION_RECEIPT', 'repair_orders', :ref_id, :unit_cost, :notes, :created_by)
@@ -114,7 +114,7 @@ class OrderPart extends Model {
                 $this->db->bind(':qty_change', $qty);
                 $this->db->bind(':ref_id', $oid);
                 $this->db->bind(':unit_cost', $unitCost);
-                $this->db->bind(':notes', 'A La Carte Assembly');
+                $this->db->bind(':notes', $recipeType . ' Assembly');
                 $this->db->bind(':created_by', $userId);
                 $this->db->execute();
                 
@@ -122,27 +122,6 @@ class OrderPart extends Model {
                 $this->db->bind(':qty', $qty);
                 $this->db->bind(':id', $pid);
                 $this->db->execute();
-            }
-            
-            if ($recipeType === 'Buffet') {
-                $lineTotal = ($unitPrice !== null) ? round($unitPrice * $qty, 2) : null;
-                $this->db->query("
-                    INSERT INTO order_parts (order_id, part_id, quantity, unit_cost, unit_price, line_total, created_by, updated_by)
-                    VALUES (:order_id, :part_id, :qty, :unit_cost, :unit_price, :line_total, :created_by, :updated_by)
-                ");
-                $this->db->bind(':order_id', $oid);
-                $this->db->bind(':part_id', $pid);
-                $this->db->bind(':qty', $qty);
-                $this->db->bind(':unit_cost', $unitCost);
-                $this->db->bind(':unit_price', $unitPrice);
-                $this->db->bind(':line_total', $lineTotal);
-                $this->db->bind(':created_by', $userId);
-                $this->db->bind(':updated_by', $userId);
-                $this->db->execute();
-                $lineId = (int)$this->db->lastInsertId();
-
-                $this->db->commit();
-                return $lineId;
             }
             
             if ($isFifo && $qty > 0) {

@@ -101,7 +101,7 @@ export default function NewItemPage() {
     is_fifo: false,
     is_expiry: false,
     item_type: "Part" as "Part" | "Service",
-    recipe_type: "Standard" as "Standard" | "A La Carte" | "Recipe",
+    recipe_type: "Standard" as "Standard" | "A La Carte" | "Recipe" | "Buffet",
     default_location_id: "none",
     net_weight_kg: "",
     gross_weight_kg: "",
@@ -578,6 +578,7 @@ export default function NewItemPage() {
                               <SelectItem value="Standard">Standard</SelectItem>
                               <SelectItem value="A La Carte">A La Carte</SelectItem>
                               <SelectItem value="Recipe">Recipe</SelectItem>
+                              <SelectItem value="Buffet">Buffet</SelectItem>
                             </SelectContent>
                           </Select>
                        </div>

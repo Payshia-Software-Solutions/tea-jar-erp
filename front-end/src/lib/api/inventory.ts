@@ -232,9 +232,14 @@ export const updatePartGallery = async (partId: number | string, images: any[]) 
   return res.json();
 };
 
-export const fetchParts = async (q: string = '') => {
+export const fetchParts = async (q: string = '', locationIdOverride?: number | string | null) => {
   const qs = q ? `?q=${encodeURIComponent(q)}` : '';
-  const res = await api(`/api/part/list${qs}`);
+  const headers: Record<string, string> = {};
+  if (locationIdOverride) headers["X-Location-Id"] = String(locationIdOverride);
+
+  const res = await api(`/api/part/list${qs}`, {
+    ...(Object.keys(headers).length ? { headers } : {}),
+  });
   if (!res.ok) throw new Error('Failed to load parts');
   const data = await res.json();
   return data.status === 'success' ? (data.data as PartRow[]) : data;
@@ -653,9 +658,16 @@ export const updatePurchaseOrderStatus = async (id: string | number, status: str
 };
 
 // Good Receive Note (GRN)
-export const fetchGrns = async (q: string = '') => {
+export const fetchGrns = async (q: string = '', locationIdOverride?: number | string | null) => {
   const qs = q ? `?q=${encodeURIComponent(q)}` : '';
-  const res = await api(`/api/grn/list${qs}`);
+  const headers: Record<string, string> = {};
+  if (locationIdOverride !== undefined && locationIdOverride !== null) {
+    headers["X-Location-Id"] = String(locationIdOverride);
+  }
+
+  const res = await api(`/api/grn/list${qs}`, {
+    ...(Object.keys(headers).length ? { headers } : {}),
+  });
   if (!res.ok) throw new Error('Failed to load GRNs');
   const data = await res.json();
   return data.status === 'success' ? data.data : data;

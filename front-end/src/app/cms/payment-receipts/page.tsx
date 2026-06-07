@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { DashboardLayout } from "@/components/dashboard-layout";
-import { fetchPaymentReceipts, cancelPaymentReceipt } from "@/lib/api";
+import { fetchPaymentReceipts, cancelPaymentReceipt, fetchLocations } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -40,6 +40,8 @@ export default function PaymentReceiptsPage() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [method, setMethod] = useState("");
+  const [locationId, setLocationId] = useState<string>("all");
+  const [locations, setLocations] = useState<any[]>([]);
   const today = new Date().toISOString().split('T')[0];
   const [fromDate, setFromDate] = useState(today);
   const [toDate, setToDate] = useState(today);
@@ -61,6 +63,7 @@ export default function PaymentReceiptsPage() {
       // For now, I'll update the API call to pass these
       const res = await fetchPaymentReceipts({ 
         method: method || undefined, 
+        location_id: locationId || undefined,
         from_date: fromDate || undefined, 
         to_date: toDate || undefined,
         page,
@@ -103,7 +106,11 @@ export default function PaymentReceiptsPage() {
     }
   };
 
-  useEffect(() => { setPage(1); load(); }, [method, fromDate, toDate, limit]);
+  useEffect(() => {
+    fetchLocations().then(res => setLocations(Array.isArray(res) ? res : [])).catch(console.error);
+  }, []);
+
+  useEffect(() => { setPage(1); load(); }, [method, locationId, fromDate, toDate, limit]);
   useEffect(() => { load(); }, [page]);
 
   const filtered = receipts.filter(r => {
@@ -158,9 +165,19 @@ export default function PaymentReceiptsPage() {
                 <option>Bank Transfer</option>
                 <option>Cheque</option>
               </select>
+              <select
+                className="h-10 rounded-md border border-input bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring min-w-[140px]"
+                value={locationId}
+                onChange={e => setLocationId(e.target.value)}
+              >
+                <option value="all">All Locations</option>
+                {locations.map((loc: any) => (
+                  <option key={loc.id} value={loc.id}>{loc.name}</option>
+                ))}
+              </select>
               <Input type="date" className="w-38" placeholder="From" value={fromDate} onChange={e => setFromDate(e.target.value)} />
               <Input type="date" className="w-38" placeholder="To" value={toDate} onChange={e => setToDate(e.target.value)} />
-              <Button variant="outline" onClick={() => { setSearch(""); setMethod(""); setFromDate(""); setToDate(""); }}>Clear</Button>
+              <Button variant="outline" onClick={() => { setSearch(""); setMethod(""); setLocationId("all"); setFromDate(""); setToDate(""); }}>Clear</Button>
             </div>
           </CardContent>
         </Card>
@@ -184,6 +201,7 @@ export default function PaymentReceiptsPage() {
                     <tr className="border-b border-border bg-muted/40">
                       <th className="text-left px-4 py-3 font-semibold text-muted-foreground">Receipt No.</th>
                       <th className="text-left px-4 py-3 font-semibold text-muted-foreground">Invoice No.</th>
+                      <th className="text-left px-4 py-3 font-semibold text-muted-foreground">Location</th>
                       <th className="text-left px-4 py-3 font-semibold text-muted-foreground">Customer</th>
                       <th className="text-left px-4 py-3 font-semibold text-muted-foreground">Method</th>
                       <th className="text-left px-4 py-3 font-semibold text-muted-foreground">Date</th>
@@ -196,6 +214,9 @@ export default function PaymentReceiptsPage() {
                       <tr key={r.id} className={`border-b border-border/50 hover:bg-muted/20 transition-colors ${idx % 2 === 0 ? '' : 'bg-muted/10'}`}>
                         <td className="px-4 py-3 font-mono font-bold text-primary">{r.receipt_no}</td>
                         <td className="px-4 py-3 font-mono text-muted-foreground">{r.invoice_no}</td>
+                        <td className="px-4 py-3 font-medium text-muted-foreground">
+                          {locations.find(loc => loc.id == r.location_id)?.name || `Location ${r.location_id || 'N/A'}`}
+                        </td>
                         <td className="px-4 py-3 font-medium">{r.customer_name}</td>
                         <td className="px-4 py-3">
                           <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold ${METHOD_COLORS[r.payment_method] || 'bg-muted text-foreground'}`}>

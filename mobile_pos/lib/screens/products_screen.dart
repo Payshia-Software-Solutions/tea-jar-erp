@@ -186,7 +186,9 @@ class _ProductsScreenState extends State<ProductsScreen> {
                  });
               }
 
-              bool isService = item.itemType?.toLowerCase() == 'service';
+              bool isService = item.itemType?.toLowerCase() == 'service' ||
+                               item.recipeType?.toLowerCase() == 'a la carte' ||
+                               item.recipeType?.toLowerCase() == 'buffet';
               bool isOutOfStock = !isService && item.stockLevel <= 0;
 
               return Container(
@@ -541,11 +543,15 @@ class _ProductsScreenState extends State<ProductsScreen> {
                         child: Container(
                           padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                           decoration: BoxDecoration(
-                            color: item.itemType?.toLowerCase() == 'service' ? Colors.purple.withOpacity(0.9) : Colors.blueAccent.withOpacity(0.9),
+                            color: item.itemType?.toLowerCase() == 'service' ? Colors.purple.withOpacity(0.9) : 
+                                   (item.recipeType?.toLowerCase() == 'a la carte' || item.recipeType?.toLowerCase() == 'buffet') ? Colors.orange.withOpacity(0.9) : 
+                                   Colors.blueAccent.withOpacity(0.9),
                             borderRadius: BorderRadius.circular(6),
                           ),
                           child: Text(
-                            (item.itemType ?? 'Part').toUpperCase(),
+                            (item.recipeType?.toLowerCase() == 'a la carte' || item.recipeType?.toLowerCase() == 'buffet') 
+                                ? item.recipeType!.toUpperCase() 
+                                : (item.itemType ?? 'Part').toUpperCase(),
                             style: const TextStyle(fontSize: 9, color: Colors.white, fontWeight: FontWeight.bold)
                           ),
                         ),
@@ -581,7 +587,7 @@ class _ProductsScreenState extends State<ProductsScreen> {
                               '\$${item.price.toStringAsFixed(2)}', 
                               style: const TextStyle(color: Colors.green, fontSize: 14, fontWeight: FontWeight.bold)
                             ),
-                            if (item.itemType?.toLowerCase() != 'service')
+                            if (item.itemType?.toLowerCase() != 'service' && item.recipeType?.toLowerCase() != 'a la carte' && item.recipeType?.toLowerCase() != 'buffet')
                               Container(
                                 padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                                 decoration: BoxDecoration(
@@ -659,12 +665,21 @@ class _ProductsScreenState extends State<ProductsScreen> {
                             padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                             margin: const EdgeInsets.only(right: 6),
                             decoration: BoxDecoration(
-                              color: item.itemType?.toLowerCase() == 'service' ? Colors.purple.withOpacity(0.1) : Colors.blueAccent.withOpacity(0.1),
+                              color: item.itemType?.toLowerCase() == 'service' ? Colors.purple.withOpacity(0.1) : 
+                                     (item.recipeType?.toLowerCase() == 'a la carte' || item.recipeType?.toLowerCase() == 'buffet') ? Colors.orange.withOpacity(0.1) : 
+                                     Colors.blueAccent.withOpacity(0.1),
                               borderRadius: BorderRadius.circular(6),
                             ),
                             child: Text(
-                              (item.itemType ?? 'Part').toUpperCase(),
-                              style: TextStyle(fontSize: 8, color: item.itemType?.toLowerCase() == 'service' ? Colors.purple : Colors.blueAccent, fontWeight: FontWeight.bold)
+                              (item.recipeType?.toLowerCase() == 'a la carte' || item.recipeType?.toLowerCase() == 'buffet') 
+                                  ? item.recipeType!.toUpperCase() 
+                                  : (item.itemType ?? 'Part').toUpperCase(),
+                              style: TextStyle(
+                                fontSize: 8, 
+                                color: item.itemType?.toLowerCase() == 'service' ? Colors.purple : 
+                                       (item.recipeType?.toLowerCase() == 'a la carte' || item.recipeType?.toLowerCase() == 'buffet') ? Colors.deepOrange : 
+                                       Colors.blueAccent, 
+                                fontWeight: FontWeight.bold)
                             ),
                           ),
                           Expanded(

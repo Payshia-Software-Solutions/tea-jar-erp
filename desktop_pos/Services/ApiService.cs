@@ -106,6 +106,12 @@ namespace DesktopPOS.Services
             _httpClient.DefaultRequestHeaders.Add("Accept", "application/json");
             if (!string.IsNullOrEmpty(JwtToken))
                 _httpClient.DefaultRequestHeaders.Add("Authorization", $"Bearer {JwtToken}");
+
+            var user = DesktopPOS.Services.GlobalState.Instance?.CurrentUser;
+            if (user != null && user.location_id > 0)
+            {
+                _httpClient.DefaultRequestHeaders.Add("X-Location-Id", user.location_id.ToString());
+            }
         }
 
         private void HandleUnauthorized()
@@ -379,6 +385,8 @@ namespace DesktopPOS.Services
         public double price { get; set; }
         public double stock_level { get; set; }
         public string? item_type { get; set; }
+        public string? recipe_type { get; set; }
+        public string? allowed_locations { get; set; }
         
         [Newtonsoft.Json.JsonProperty("image_filename")]
         public string? image_url { get; set; }
@@ -422,6 +430,9 @@ namespace DesktopPOS.Services
         public string? phone { get; set; }
         public string? allowed_taxes_json { get; set; }
         public string? default_customer_id { get; set; }
+        public int allow_dine_in { get; set; }
+        public int allow_take_away { get; set; }
+        public int allow_retail { get; set; }
     }
 
     public class TableModel

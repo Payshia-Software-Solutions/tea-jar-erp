@@ -149,11 +149,13 @@ class GoodsReceiveNote extends Model {
         return DocumentSequenceHelper::getStandardDocNo($docType, $locationId);
     }
 
-    public function list($q = '', $locationId = 1) {
-        // // // // // // $this->ensureSchema();
-        $locId = (int)$locationId;
-        if ($locId <= 0) $locId = 1;
+    public function list($q = '', $locationId = null) {
         $q = is_string($q) ? trim($q) : '';
+        $locCondition = "";
+        if ($locationId !== null && (int)$locationId > 0) {
+            $locCondition = " AND g.location_id = :loc ";
+        }
+
         if ($q !== '') {
             $this->db->query("
                 SELECT g.*, s.name AS supplier_name, po.po_number, u.name AS created_by_name,
@@ -163,13 +165,16 @@ class GoodsReceiveNote extends Model {
                 LEFT JOIN purchase_orders po ON po.id = g.purchase_order_id
                 LEFT JOIN users u ON u.id = g.created_by
                 LEFT JOIN service_locations sl ON sl.id = g.location_id
-                WHERE g.location_id = :loc AND g.status != 'Cancelled' AND (g.grn_number LIKE :q OR s.name LIKE :q OR po.po_number LIKE :q OR sl.name LIKE :q)
+                WHERE g.status != 'Cancelled' {$locCondition} AND (g.grn_number LIKE :q OR s.name LIKE :q OR po.po_number LIKE :q OR sl.name LIKE :q)
                 ORDER BY g.id DESC
             ");
-            $this->db->bind(':loc', $locId);
+            if ($locationId !== null && (int)$locationId > 0) {
+                $this->db->bind(':loc', (int)$locationId);
+            }
             $this->db->bind(':q', '%' . $q . '%');
             return $this->db->resultSet();
         }
+
         $this->db->query("
             SELECT g.*, s.name AS supplier_name, po.po_number, u.name AS created_by_name,
                    sl.name AS location_name
@@ -178,10 +183,12 @@ class GoodsReceiveNote extends Model {
             LEFT JOIN purchase_orders po ON po.id = g.purchase_order_id
             LEFT JOIN users u ON u.id = g.created_by
             LEFT JOIN service_locations sl ON sl.id = g.location_id
-            WHERE g.location_id = :loc AND g.status != 'Cancelled'
+            WHERE g.status != 'Cancelled' {$locCondition}
             ORDER BY g.id DESC
         ");
-        $this->db->bind(':loc', $locId);
+        if ($locationId !== null && (int)$locationId > 0) {
+            $this->db->bind(':loc', (int)$locationId);
+        }
         return $this->db->resultSet();
     }
 

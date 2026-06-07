@@ -465,14 +465,19 @@
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="Auto"/>
                                     <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
                                 </Grid.ColumnDefinitions>
-                                <Border Width="40" Height="40" CornerRadius="10" Background="{DynamicResource IconBgIndigo}" Margin="0,0,12,0">
+                                <Border Grid.Column="0" Width="40" Height="40" CornerRadius="10" Background="{DynamicResource IconBgIndigo}" Margin="0,0,12,0">
                                     <TextBlock Text="📍" FontSize="18" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                                 </Border>
                                 <StackPanel Grid.Column="1" VerticalAlignment="Center">
                                     <TextBlock x:Name="PanelLocationNameText" Text="Main Branch" Foreground="{DynamicResource TextPrimary}" FontSize="16" FontWeight="Bold"/>
                                     <TextBlock Text="Active Terminal" Foreground="{DynamicResource TextSecondary}" FontSize="12"/>
                                 </StackPanel>
+                                <Button Grid.Column="2" Content="Change" Height="28" Padding="10,0" Margin="10,0,0,0" VerticalAlignment="Center" 
+                                        Background="{DynamicResource BgInput}" Foreground="{DynamicResource AccentPrimary}" 
+                                        BorderBrush="{DynamicResource BorderPrimary}" BorderThickness="1" Cursor="Hand"
+                                        Click="ChangeLocation_Click" ToolTip="Switch Location" />
                             </Grid>
                             
                             <StackPanel Margin="0,0,0,12">

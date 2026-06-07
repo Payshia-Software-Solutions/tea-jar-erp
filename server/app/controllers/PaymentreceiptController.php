@@ -64,7 +64,7 @@ class PaymentreceiptController extends Controller {
             'from_date'   => $_GET['from_date'] ?? null,
             'to_date'     => $_GET['to_date'] ?? null,
             'customer_id' => $_GET['customer_id'] ?? null,
-            'location_id' => $_GET['location_id'] ?? $this->currentLocationId($u),
+            'location_id' => (isset($_GET['location_id']) && $_GET['location_id'] === 'all') ? null : ($_GET['location_id'] ?? null),
             'page'        => $_GET['page'] ?? 1,
             'limit'       => $_GET['limit'] ?? 50
         ];

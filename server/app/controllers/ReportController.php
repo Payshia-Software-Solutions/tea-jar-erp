@@ -600,7 +600,7 @@ class ReportController extends Controller {
         $this->db->query("
             SELECT payment_method, SUM(amount) as total
             FROM payment_receipts
-            WHERE location_id IN ($inLoc) AND payment_date = :date
+            WHERE location_id IN ($inLoc) AND payment_date = :date AND status != 'Cancelled'
             GROUP BY payment_method
         ");
         $this->bindInList('loc', $locIds);

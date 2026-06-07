@@ -725,6 +725,7 @@ export default function ItemDetailPage() {
                               <SelectItem value="Standard">Standard</SelectItem>
                               <SelectItem value="A La Carte">A La Carte</SelectItem>
                               <SelectItem value="Recipe">Recipe</SelectItem>
+                              <SelectItem value="Buffet">Buffet</SelectItem>
                             </SelectContent>
                           </Select>
                        </div>

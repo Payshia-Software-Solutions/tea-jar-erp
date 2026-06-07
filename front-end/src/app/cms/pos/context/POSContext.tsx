@@ -139,7 +139,7 @@ interface POSContextType {
   setGuideModalOpen: (val: boolean) => void;
   
   // Helper for refreshing data
-  refreshInventory: () => Promise<void>;
+  refreshInventory: (locId?: string | number) => Promise<void>;
   refreshCustomers: () => Promise<void>;
 
   // Virtual Keyboard State
@@ -217,7 +217,7 @@ export const POSProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       window.localStorage.setItem('location_id', val);
     }
     // Refresh inventory and tables when location changes
-    refreshInventory();
+    refreshInventory(val);
     refreshTablesAndStewards(val);
   };
   const [selectedCustomer, setSelectedCustomer] = useState<string>("");
@@ -320,9 +320,10 @@ export const POSProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         }
     };
 
-    const refreshInventory = async () => {
+    const refreshInventory = async (locId?: string | number) => {
+    const id = locId || selectedLocation || (typeof window !== 'undefined' ? window.localStorage.getItem('location_id') : undefined);
     try {
-      const partsRes = await fetchParts();
+      const partsRes = await fetchParts('', id);
       setInventory(partsRes);
     } catch (err) {}
   };
@@ -395,8 +396,9 @@ export const POSProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const loadContext = async () => {
       try {
         setLoading(true);
+        const initLocId = typeof window !== 'undefined' ? window.localStorage.getItem('location_id') : undefined;
         const [partsRes, taxesRes, locsRes, custsRes, compRes, banksRes, collRes] = await Promise.all([
-          fetchParts().catch(() => []),
+          fetchParts('', initLocId).catch(() => []),
           fetchTaxes('', { all: true }).catch(() => []),
           fetchLocations().catch(() => []),
           fetchCustomers().catch(() => []),

@@ -160,9 +160,11 @@ class Part extends Model {
             LEFT JOIN stock_movements sm ON sm.part_id = p.id AND sm.location_id = :loc
         ";
 
+        $filterCondition = " AND (p.allowed_locations IS NULL OR p.allowed_locations = '' OR FIND_IN_SET(:loc, p.allowed_locations) > 0) ";
+
         if ($q !== '') {
             $this->db->query($sqlBase . "
-                WHERE (p.part_name LIKE :q OR p.sku LIKE :q OR p.part_number LIKE :q OR p.barcode_number LIKE :q)
+                WHERE (p.part_name LIKE :q OR p.sku LIKE :q OR p.part_number LIKE :q OR p.barcode_number LIKE :q) " . $filterCondition . "
                 GROUP BY p.id
                 ORDER BY p.part_name ASC
             ");
@@ -170,6 +172,7 @@ class Part extends Model {
             $this->db->bind(':q', '%' . $q . '%');
         } else {
             $this->db->query($sqlBase . "
+                WHERE 1=1 " . $filterCondition . "
                 GROUP BY p.id
                 ORDER BY p.part_name ASC
             ");

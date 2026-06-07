@@ -38,16 +38,19 @@ export default function LandingPage() {
           
           <h1 className="text-hero text-gradient mb-8">
             The intelligent <br />
-            Nexus ERP Operating System
+            BizzFlow ERP Operating System
           </h1>
           
           <p className="max-w-2xl mx-auto text-lg lg:text-xl text-muted mb-14 leading-relaxed font-medium">
-            Nexus ERP accelerates your entire operational lifecycle with deep-integrated modules. Build inventory, manage POS, and scale HRM, all in one unified workspace.
+            BizzFlow ERP, powered by Nebulync software, accelerates your entire operational lifecycle with deep-integrated modules. Build inventory, manage POS, and scale HRM, all in one unified workspace.
           </p>
 
           <div className="flex flex-col sm:flex-row items-center justify-center gap-6 mb-20">
             <Link href="/order" className="btn-pill shadow-xl dark:shadow-indigo-500/10">
               Get Started Now
+            </Link>
+            <Link href="/docs" className="btn-pill bg-slate-900/40 border border-white/10 hover:bg-slate-900/60 shadow-xl">
+              Read Docs
             </Link>
             <Link href="/features" className="text-sm font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400 hover:text-foreground transition-colors flex items-center gap-2 group">
               Explore Features
@@ -93,13 +96,13 @@ export default function LandingPage() {
                     <span className="text-slate-400 dark:text-slate-500">Infinite Possibilities.</span>
                  </h2>
                  <p className="text-muted text-lg leading-relaxed font-medium">
-                    Nexus ERP isn't just software—it's the bedrock for your business. We provide specialized modules that communicate instantly, eliminating data silos and driving growth.
+                    BizzFlow ERP isn't just software—it's the bedrock for your business. We provide specialized modules that communicate instantly, eliminating data silos and driving growth.
                  </p>
                  <div className="grid gap-6">
                     {[
                        { title: 'Inventory Intel', desc: 'Real-time stock tracking with automated restock workflows.' },
                        { title: 'Hyper POS', desc: 'Touch-optimized point of sale with multi-payment engine.' },
-                       { title: 'Nexus HRM', desc: 'Complete HR lifecycle, attendance, leaves, and automated payroll.' }
+                       { title: 'BizzFlow HRM', desc: 'Complete HR lifecycle, attendance, leaves, and automated payroll.' }
                     ].map((item, i) => (
                        <div key={i} className="flex gap-4 items-start">
                           <div className="w-6 h-6 rounded-full bg-indigo-500/10 flex items-center justify-center shrink-0 mt-1">
@@ -166,7 +169,7 @@ export default function LandingPage() {
                </h2>
                
                <p className="text-slate-400 text-lg md:text-xl font-medium max-w-2xl mx-auto leading-relaxed">
-                 Join 500+ global enterprises scaling with Nexus. Initialize your dedicated instance and dominate your market.
+                 Join 500+ global enterprises scaling with BizzFlow. Initialize your dedicated instance and dominate your market.
                </p>
 
                <div className="flex flex-col sm:flex-row items-center justify-center gap-8 pt-6">

@@ -21,6 +21,7 @@ namespace DesktopPOS.Services
         public string? LocationAddress { get; set; }
         public string? LocationPhone { get; set; }
         public DesktopPOS.Models.UserDetails? CurrentUser { get; set; }
+        public LocationDetailsModel? LocationDetails { get; set; }
         public int? HeldOrderId { get; set; }
 
         public DateTime SessionStartTime { get; set; } = DateTime.Now;

@@ -308,7 +308,7 @@ class Invoice extends Model {
                     if ($shouldDeduct) {
                         $qty = (float)$item['quantity'];
                         $recipeType = $part->recipe_type ?? 'Standard';
-                        if ($recipeType === 'A La Carte') {
+                        if ($recipeType === 'A La Carte' || $recipeType === 'Buffet') {
                             // 1. Process Ingredients (only if BOM exists)
                             $bom = $bomModel->getActiveBOMForPart($pid);
                             if ($bom && !empty($bom->items)) {
@@ -319,15 +319,13 @@ class Invoice extends Model {
                                 }
                             }
                             
-                            // 2. Always log the "Assembly" (Plus entry) for A La Carte items
-                            $this->deductStock($pid, -1 * $qty, $invoiceLocationId, $invoiceId, $costPrice, null, 'A La Carte Assembly', 'PRODUCTION_RECEIPT', $userId);
+                            // 2. Always log the "Assembly" (Plus entry) for A La Carte/Buffet items
+                            $this->deductStock($pid, -1 * $qty, $invoiceLocationId, $invoiceId, $costPrice, null, $recipeType . ' Assembly', 'PRODUCTION_RECEIPT', $userId);
                         }
 
-                        if ($recipeType !== 'Buffet') {
-                            // Always deduct the main item if it's a part and $shouldDeduct is true
-                            // This handles both Standard and A La Carte (which now has an offsetting plus entry above)
-                            $this->deductStock($pid, $qty, $invoiceLocationId, $invoiceId, $item['unit_price'], $item['selected_batches'] ?? null, 'Retail Sale', 'SALE', $userId);
-                        }
+                        // Always deduct the main item if it's a part and $shouldDeduct is true
+                        // This handles Standard, A La Carte, and Buffet (which now has an offsetting plus entry above)
+                        $this->deductStock($pid, $qty, $invoiceLocationId, $invoiceId, $item['unit_price'], $item['selected_batches'] ?? null, 'Retail Sale', 'SALE', $userId);
                     }
                 }
             }

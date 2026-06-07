@@ -5,12 +5,13 @@ import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { ThemeToggle } from "./ThemeToggle";
-import { Zap, UserCircle } from "lucide-react";
+import { Zap, UserCircle, Menu, X } from "lucide-react";
 
 export default function Navbar() {
   const pathname = usePathname();
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [user, setUser] = useState("");
+  const [isOpen, setIsOpen] = useState(false);
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -34,7 +35,15 @@ export default function Navbar() {
     { name: "Home", path: "/" },
     { name: "Features", path: "/features" },
     { name: "Pricing", path: "/pricing" },
+    { name: "Docs", path: "/docs" },
   ];
+
+  const isActive = (path: string) => {
+    if (path === "/docs") {
+      return pathname.startsWith("/docs");
+    }
+    return pathname === path;
+  };
 
   return (
     <nav className="fixed top-0 w-full z-50 bg-background/80 backdrop-blur-md border-b border-slate-200 dark:border-white/5">
@@ -49,17 +58,19 @@ export default function Navbar() {
           </div>
           <span className="text-2xl font-black tracking-tighter text-gradient">BIZZFLOW</span>
         </Link>
+        
+        {/* Desktop Navigation */}
         <div className="hidden md:flex items-center gap-8 text-sm font-bold uppercase tracking-widest text-foreground/60">
           {links.map((link) => (
             <Link
               key={link.path}
               href={link.path}
               className={`hover:text-foreground transition-colors py-2 relative ${
-                pathname === link.path ? "text-foreground" : ""
+                isActive(link.path) ? "text-foreground" : ""
               }`}
             >
               {link.name}
-              {pathname === link.path && (
+              {isActive(link.path) && (
                 <div className="absolute bottom-0 left-0 w-full h-[2px] bg-indigo-500 rounded-full" />
               )}
             </Link>
@@ -92,7 +103,68 @@ export default function Navbar() {
             <ThemeToggle />
           </div>
         </div>
+
+        {/* Mobile menu button */}
+        <div className="flex items-center gap-2 md:hidden">
+          <ThemeToggle />
+          <button
+            onClick={() => setIsOpen(!isOpen)}
+            className="text-foreground focus:outline-none p-2"
+            aria-label="Toggle Menu"
+          >
+            {isOpen ? <X size={24} /> : <Menu size={24} />}
+          </button>
+        </div>
       </div>
+
+      {/* Mobile Navigation Dropdown */}
+      {isOpen && (
+        <div className="md:hidden bg-background/95 backdrop-blur-md border-b border-slate-200 dark:border-white/5 px-4 pt-2 pb-6 space-y-4">
+          <div className="flex flex-col gap-4">
+            {links.map((link) => (
+              <Link
+                key={link.path}
+                href={link.path}
+                onClick={() => setIsOpen(false)}
+                className={`text-sm font-bold uppercase tracking-widest hover:text-foreground transition-colors py-2 block ${
+                  isActive(link.path) ? "text-foreground" : "text-foreground/60"
+                }`}
+              >
+                {link.name}
+              </Link>
+            ))}
+            <div className="pt-4 border-t border-slate-900/10 dark:border-white/10 flex flex-col gap-4">
+              {isLoggedIn ? (
+                <Link
+                  href="/admin/dashboard"
+                  onClick={() => setIsOpen(false)}
+                  className="flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-500 text-white px-6 py-2.5 rounded-full text-[11px] font-bold uppercase tracking-widest transition-all shadow-lg shadow-indigo-600/20 group w-full"
+                >
+                  <UserCircle size={16} className="group-hover:scale-110 transition-transform" />
+                  <span>Portal ({user})</span>
+                </Link>
+              ) : (
+                <>
+                  <Link
+                    href="/admin"
+                    onClick={() => setIsOpen(false)}
+                    className="text-[11px] font-bold uppercase tracking-widest hover:text-foreground transition-colors text-center py-2"
+                  >
+                    Log In
+                  </Link>
+                  <Link
+                    href="/order"
+                    onClick={() => setIsOpen(false)}
+                    className="bg-indigo-600 hover:bg-indigo-500 text-white px-6 py-2.5 rounded-full text-[11px] font-bold uppercase tracking-widest transition-all shadow-lg shadow-indigo-600/20 text-center w-full"
+                  >
+                    Sign Up
+                  </Link>
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </nav>
   );
 }

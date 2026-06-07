@@ -40,6 +40,7 @@ namespace DesktopPOS.Pages
                         GlobalState.Instance.LocationName = user.location_name;
                         GlobalState.Instance.LocationAddress = locationDetails.address;
                         GlobalState.Instance.LocationPhone = locationDetails.phone;
+                        GlobalState.Instance.LocationDetails = locationDetails;
 
                         if (int.TryParse(locationDetails.default_customer_id, out int defCustId))
                         {
@@ -260,6 +261,56 @@ namespace DesktopPOS.Pages
             
             dialog.ShowDialog();
             
+            if (mainWindow != null) mainWindow.Effect = null;
+        }
+
+        private async void ChangeLocation_Click(object sender, RoutedEventArgs e)
+        {
+            var user = GlobalState.Instance.CurrentUser;
+            if (user?.allowed_locations == null || user.allowed_locations.Count == 0)
+            {
+                MessageBox.Show("No other locations available for your account.", "Locations", MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+
+            var dialog = new LocationSelectionDialog(user.allowed_locations);
+            var mainWindow = Application.Current.MainWindow;
+            if (mainWindow != null)
+            {
+                dialog.Owner = mainWindow;
+                mainWindow.Effect = new System.Windows.Media.Effects.BlurEffect { Radius = 10 };
+            }
+
+            if (dialog.ShowDialog() == true && dialog.SelectedLocation != null)
+            {
+                user.location_id = dialog.SelectedLocation.id;
+                user.location_name = dialog.SelectedLocation.name;
+                GlobalState.Instance.CurrentUser = user;
+                GlobalState.Instance.LocationName = user.location_name;
+
+                var _apiService = new ApiService();
+                var locationDetails = await _apiService.FetchLocationDetailsAsync(user.location_id);
+                if (locationDetails != null)
+                {
+                    GlobalState.Instance.LocationAddress = locationDetails.address;
+                    GlobalState.Instance.LocationPhone = locationDetails.phone;
+                    GlobalState.Instance.LocationDetails = locationDetails;
+                }
+                
+                // Update session
+                var session = StorageService.LoadSession();
+                if (session != null)
+                {
+                    session.user = user;
+                    StorageService.SaveSession(session);
+                }
+
+                ApiService.ClearCache();
+
+                // Refresh dashboard by reloading page
+                NavigationService.Navigate(new DashboardPage());
+            }
+
             if (mainWindow != null) mainWindow.Effect = null;
         }
 

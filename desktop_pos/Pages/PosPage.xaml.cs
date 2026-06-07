@@ -106,7 +106,21 @@ namespace DesktopPOS.Pages
             try
             {
                 var result = await _api.FetchProductsAsync(forceRefresh);
-                _allProducts = result ?? new List<ProductModel>();
+                var fetchedProducts = result ?? new List<ProductModel>();
+
+                int locId = GlobalState.Instance.CurrentUser?.location_id ?? 0;
+                if (locId > 0)
+                {
+                    _allProducts = fetchedProducts.Where(p => 
+                        string.IsNullOrEmpty(p.allowed_locations) || 
+                        p.allowed_locations.Split(',').Select(x => x.Trim()).Contains(locId.ToString())
+                    ).ToList();
+                }
+                else
+                {
+                    _allProducts = fetchedProducts;
+                }
+
                 RenderProducts(_allProducts);
             }
             catch (Exception ex)
@@ -135,7 +149,9 @@ namespace DesktopPOS.Pages
 
         private Border BuildProductCard(ProductModel product)
         {
-            bool isService = product.item_type?.ToLower() == "service";
+            bool isService = product.item_type?.ToLower() == "service" || 
+                             product.recipe_type?.ToLower() == "a la carte" || 
+                             product.recipe_type?.ToLower() == "buffet";
             bool outOfStock = !isService && product.stock_level <= 0;
 
             // Type badge
@@ -170,8 +186,14 @@ namespace DesktopPOS.Pages
             typeBadge.Child = typeBadgeText;
 
             var badges = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 0, 0, 6) };
-            badges.Children.Add(typeBadge);
-            if (!isService) badges.Children.Add(categoryBadge);
+            
+            if (product.recipe_type?.ToLower() == "a la carte" || product.recipe_type?.ToLower() == "buffet") {
+                typeBadgeText.Text = product.recipe_type.ToUpper();
+                badges.Children.Add(typeBadge);
+            }
+            if (product.item_type?.ToLower() == "service") {
+                badges.Children.Add(categoryBadge);
+            }
 
             var skuText = new TextBlock
             {

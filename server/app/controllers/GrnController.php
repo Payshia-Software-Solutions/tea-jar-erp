@@ -15,7 +15,15 @@ class GrnController extends Controller {
     public function list() {
         $u = $this->requirePermission('grn.read');
         if ($_SERVER['REQUEST_METHOD'] !== 'GET') $this->error('Method Not Allowed', 405);
+        
         $locId = $this->currentLocationId($u);
+        $reqLoc = $_SERVER['HTTP_X_LOCATION_ID'] ?? null;
+        if ($reqLoc === 'all') {
+            $locId = 0;
+        } elseif ((int)$reqLoc > 0) {
+            $locId = (int)$reqLoc;
+        }
+
         $rows = $this->grnModel->list($_GET['q'] ?? '', $locId);
         $this->success($rows);
     }

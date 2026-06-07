@@ -74,7 +74,7 @@ class PosController extends Controller {
         $db->query("
             SELECT id, receipt_no as doc_no, invoice_id, customer_name, amount, payment_method, created_at, 'Receipt' as type
             FROM payment_receipts
-            WHERE location_id = :locId AND DATE(created_at) = CURDATE()
+            WHERE location_id = :locId AND DATE(created_at) = CURDATE() AND status != 'Cancelled'
             ORDER BY created_at DESC
         ");
         $db->bind(':locId', $locationId);

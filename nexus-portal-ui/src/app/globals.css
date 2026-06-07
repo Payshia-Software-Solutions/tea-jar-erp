@@ -18,6 +18,9 @@
   --text-strong: #0f172a;
   --input-bg: #ffffff;
   --input-border: #e2e8f0;
+  --docs-sidebar-bg: #f8fafc;
+  --docs-sidebar-border: #e2e8f0;
+  --docs-code-bg: #f1f5f9;
 }
 
 .dark {
@@ -34,6 +37,9 @@
   --text-strong: #f8fafc;
   --input-bg: rgba(15, 23, 42, 0.5);
   --input-border: rgba(255, 255, 255, 0.1);
+  --docs-sidebar-bg: #0b0f19;
+  --docs-sidebar-border: rgba(255, 255, 255, 0.05);
+  --docs-code-bg: #020617;
 }
 
 body {
@@ -145,4 +151,13 @@ button:disabled {
     transform: scale(1.05);
     box-shadow: 0 0 50px color-mix(in srgb, var(--foreground) 20%, transparent);
   }
+}
+
+@utility docs-sidebar {
+  background-color: var(--docs-sidebar-bg);
+  border-right: 1px solid var(--docs-sidebar-border);
+}
+
+@utility docs-code {
+  background-color: var(--docs-code-bg);
 }
