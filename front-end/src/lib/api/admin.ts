@@ -329,3 +329,27 @@ export const runDatabaseMigrations = async (): Promise<any> => {
   return res.json();
 };
 
+export interface MigrationLog {
+  id: number;
+  user_id: number | null;
+  user_name: string | null;
+  action: string;
+  entity: string;
+  method: string;
+  path: string;
+  ip: string | null;
+  user_agent: string | null;
+  details: string | null;
+  created_at: string;
+}
+
+export const fetchMigrationLogs = async (): Promise<MigrationLog[]> => {
+  const res = await api('/api/check/logs');
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.message || 'Failed to fetch migration logs');
+  }
+  const data = await res.json();
+  return data.data || [];
+};
+

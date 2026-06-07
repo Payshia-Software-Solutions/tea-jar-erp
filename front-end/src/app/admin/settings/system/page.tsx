@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
-import { fetchSystemSettings, updateSystemSettings, testSms, fetchApiClients, createApiClient, deleteApiClient, regenerateApiClientKey, toggleApiClientStatus, ApiClientRow, fetchLocations, ServiceLocation, syncMorningMileage, checkDatabaseTables, runDatabaseMigrations, TableCheckRow } from "@/lib/api";
+import { fetchSystemSettings, updateSystemSettings, testSms, fetchApiClients, createApiClient, deleteApiClient, regenerateApiClientKey, toggleApiClientStatus, ApiClientRow, fetchLocations, ServiceLocation, syncMorningMileage, checkDatabaseTables, runDatabaseMigrations, TableCheckRow, fetchMigrationLogs, MigrationLog } from "@/lib/api";
 import { Settings, Mail, MessageSquare, Save, Loader2, Link2, ShieldCheck, UserCheck, Smartphone, Globe, Copy, RotateCw, CheckCircle2, AlertCircle, Plus, Trash2, ExternalLink, Eye, EyeOff, CreditCard, Factory, Building2, Banknote, ShoppingCart, Code2, Terminal, Truck, MapPin } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -50,6 +50,20 @@ export default function SystemSettingsPage() {
   const [tableChecks, setTableChecks] = useState<TableCheckRow[]>([]);
   const [missingTables, setMissingTables] = useState<string[]>([]);
   const [checkMessage, setCheckMessage] = useState("");
+  const [migrationLogs, setMigrationLogs] = useState<MigrationLog[]>([]);
+  const [loadingLogs, setLoadingLogs] = useState(false);
+
+  const loadMigrationLogs = async () => {
+    setLoadingLogs(true);
+    try {
+      const logs = await fetchMigrationLogs();
+      setMigrationLogs(logs);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoadingLogs(false);
+    }
+  };
 
   const runTableChecks = async () => {
     setCheckingTables(true);
@@ -70,7 +84,7 @@ export default function SystemSettingsPage() {
     try {
       const res = await runDatabaseMigrations();
       toast({ title: "Migration Successful", description: res.message || "Database schema updated successfully." });
-      await runTableChecks();
+      await Promise.all([runTableChecks(), loadMigrationLogs()]);
     } catch (err) {
       toast({ title: "Migration Failed", description: (err as Error).message, variant: "destructive" });
     } finally {
@@ -133,7 +147,7 @@ export default function SystemSettingsPage() {
 
   useEffect(() => {
     setLoading(true);
-    Promise.all([loadSettings(), loadApiClients(), loadLocations(), runTableChecks()]).finally(() => setLoading(false));
+    Promise.all([loadSettings(), loadApiClients(), loadLocations(), runTableChecks(), loadMigrationLogs()]).finally(() => setLoading(false));
   }, []);
 
   const handleChange = (key: string, val: string) => {
@@ -1177,6 +1191,74 @@ export default function SystemSettingsPage() {
                     </div>
                   ))}
                 </div>
+              </div>
+
+              {/* Migration Logs */}
+              <div className="border-t pt-6 space-y-4">
+                <div className="flex items-center justify-between">
+                  <div className="text-sm font-bold text-slate-800">Migration & Update Logs</div>
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    onClick={loadMigrationLogs} 
+                    disabled={loadingLogs}
+                    className="h-8 text-xs gap-1.5"
+                  >
+                    <RotateCw className={`w-3.5 h-3.5 ${loadingLogs ? "animate-spin" : ""}`} />
+                    Refresh Logs
+                  </Button>
+                </div>
+
+                {loadingLogs && migrationLogs.length === 0 ? (
+                  <div className="flex justify-center items-center py-10 text-muted-foreground">
+                    <Loader2 className="w-5 h-5 animate-spin mr-2" />
+                    Loading logs...
+                  </div>
+                ) : migrationLogs.length === 0 ? (
+                  <div className="text-center py-10 text-xs text-muted-foreground border border-dashed rounded-xl">
+                    No schema migrations logged yet.
+                  </div>
+                ) : (
+                  <div className="border rounded-xl overflow-hidden bg-card">
+                    <Table>
+                      <TableHeader className="bg-muted/50">
+                        <TableRow>
+                          <TableHead className="w-[120px]">Timestamp</TableHead>
+                          <TableHead className="w-[120px]">Action By</TableHead>
+                          <TableHead className="w-[80px]">IP</TableHead>
+                          <TableHead>Execution Details</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {migrationLogs.map((log) => {
+                          let detailsObj: any = {};
+                          try {
+                            detailsObj = typeof log.details === 'string' ? JSON.parse(log.details) : log.details || {};
+                          } catch (e) {}
+                          return (
+                            <TableRow key={log.id} className="text-[11px] hover:bg-muted/5">
+                              <TableCell className="text-muted-foreground font-mono">
+                                {new Date(log.created_at).toLocaleString()}
+                              </TableCell>
+                              <TableCell className="font-medium">
+                                {log.user_name ?? "System / CLI"}
+                              </TableCell>
+                              <TableCell className="text-muted-foreground font-mono">
+                                {log.ip ?? "—"}
+                              </TableCell>
+                              <TableCell className="font-mono text-xs">
+                                <span className="text-emerald-600 font-bold bg-emerald-50 border border-emerald-100 px-1.5 py-0.5 rounded mr-2">
+                                  SUCCESS
+                                </span>
+                                {detailsObj.message || "Schema updates executed successfully."}
+                              </TableCell>
+                            </TableRow>
+                          );
+                        })}
+                      </TableBody>
+                    </Table>
+                  </div>
+                )}
               </div>
             </CardContent>
           </Card>
