@@ -318,6 +318,54 @@ class AccountingHelper {
         ]);
     }
 
+    public static function postIssueNote($issueNoteId) {
+        require_once '../app/models/IssueNote.php';
+        $isnModel = new IssueNote();
+        $journalModel = new Journal();
+        $data = $isnModel->getById($issueNoteId);
+        if (!$data || !$data->issue_note) return false;
+        $isn = $data->issue_note;
+        $lines = $data->items;
+
+        $expId = self::getMappedId('issue_note_expense');
+        $invId = self::getMappedId('issue_note_inventory');
+
+        if (!$expId || !$invId) return false;
+
+        $totalCost = 0;
+        foreach ($lines as $line) {
+            $totalCost += (float)$line->line_total;
+        }
+
+        if ($totalCost <= 0) return true;
+
+        $ccName = $isn->cost_center_name ?? ("Location ID: " . $isn->cost_center_id);
+        $description = "Issue Note #{$isn->issue_number} to {$ccName}";
+        $items = [
+            [
+                'account_id' => $expId,
+                'debit' => $totalCost,
+                'credit' => 0,
+                'notes' => $description
+            ],
+            [
+                'account_id' => $invId,
+                'debit' => 0,
+                'credit' => $totalCost,
+                'notes' => 'Inventory reduction'
+            ]
+        ];
+
+        return $journalModel->post([
+            'entry_date' => $isn->issued_at ?? date('Y-m-d H:i:s'),
+            'description' => $description,
+            'ref_type' => 'IssueNote',
+            'ref_id' => $issueNoteId,
+            'userId' => $isn->created_by,
+            'items' => $items
+        ]);
+    }
+
     public static function postExpenseVoucher($expenseId, $data) {
         require_once '../app/models/Journal.php';
         require_once '../app/models/Account.php';

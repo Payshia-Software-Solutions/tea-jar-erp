@@ -129,7 +129,7 @@ export default function StockAdjustmentPrintPage() {
               {/* Header */}
               <div className="flex justify-between items-center border-b-2 border-slate-900 pb-3 mb-5">
                 <div>
-                  <div className="text-xl font-black tracking-tighter text-slate-900 uppercase">ServiceBay</div>
+                  <div className="text-xl font-black tracking-tighter text-slate-900 uppercase">BizzFlow</div>
                   <div className="text-[9px] text-muted-foreground font-bold uppercase tracking-tight">
                     Inventory Control Division
                   </div>
@@ -260,7 +260,7 @@ export default function StockAdjustmentPrintPage() {
               {/* Minimal Footer */}
               <div className="mt-6 text-[7px] text-slate-400 border-t border-slate-50 pt-1.5 flex justify-between italic tracking-tighter">
                 <div>SYSTEM RECORD: ADJ-{id} | GENERATED: {new Date().toLocaleString()}</div>
-                <div>SERVICEBAY INVENTORY CONTROL</div>
+                <div>BIZZFLOW INVENTORY CONTROL</div>
               </div>
             </div>
           )}

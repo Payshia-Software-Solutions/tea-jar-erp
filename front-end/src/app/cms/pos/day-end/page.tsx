@@ -193,7 +193,7 @@ function ReceiptBody({ ledger, company, locationName, fmt, now }: any) {
   return (
     <>
       <div className="center">
-        <div className="shop-name">{company?.name || "ServiceBay"}</div>
+        <div className="shop-name">{company?.name || "BizzFlow"}</div>
         <div style={{ fontSize: '10px' }}>{locationName}</div>
         {company?.address && <div style={{ fontSize: '9px' }}>{company.address}</div>}
         <div className="hr-thick" />
@@ -271,7 +271,7 @@ function ReceiptBody({ ledger, company, locationName, fmt, now }: any) {
       <div className="hr" />
       <div className="center" style={{ marginTop: '15px', fontSize: '10px' }}>
         <div className="bold italic">--- END OF REPORT ---</div>
-        <div style={{ marginTop: '10px', fontSize: '8px' }}>Printed via ServiceBay POS Management</div>
+        <div style={{ marginTop: '10px', fontSize: '8px' }}>Printed via BizzFlow POS Management</div>
         <div style={{ marginTop: '4px', fontSize: '8px' }}>{now.toLocaleString()}</div>
       </div>
     </>

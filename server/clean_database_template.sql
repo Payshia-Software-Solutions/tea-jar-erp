@@ -9085,7 +9085,7 @@ CREATE TABLE `stock_movements` (
   `part_id` int(11) NOT NULL,
   `batch_id` int(11) DEFAULT NULL,
   `qty_change` decimal(12,3) NOT NULL,
-  `movement_type` enum('GRN','ORDER_ISSUE','ADJUSTMENT','TRANSFER_IN','TRANSFER_OUT','PRODUCTION_CONSUMPTION','PRODUCTION_RECEIPT','SALE','SALES_RETURN','PURCHASE_RETURN') NOT NULL,
+  `movement_type` enum('GRN','ORDER_ISSUE','ADJUSTMENT','TRANSFER_IN','TRANSFER_OUT','PRODUCTION_CONSUMPTION','PRODUCTION_RECEIPT','SALE','SALES_RETURN','PURCHASE_RETURN','MATERIAL_ISSUE') NOT NULL,
   `ref_table` varchar(64) DEFAULT NULL,
   `ref_id` int(11) DEFAULT NULL,
   `unit_cost` decimal(10,2) DEFAULT NULL,
@@ -9636,5 +9636,51 @@ CREATE TABLE `vehicles` (
   KEY `fk_vehicles_customer` (`customer_id`),
   CONSTRAINT `fk_vehicles_customer` FOREIGN KEY (`customer_id`) REFERENCES `customers` (`id`)
 ) ENGINE=InnoDB AUTO_INCREMENT=225 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- --------------------------------------------------------
+-- Table structure for table `issue_notes`
+-- --------------------------------------------------------
+DROP TABLE IF EXISTS `issue_notes`;
+CREATE TABLE `issue_notes` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `issue_number` varchar(50) NOT NULL,
+  `location_id` int(11) NOT NULL DEFAULT 1,
+  `cost_center_id` int(11) NOT NULL,
+  `status` enum('Draft','Issued','Cancelled') NOT NULL DEFAULT 'Draft',
+  `issued_at` datetime DEFAULT NULL,
+  `notes` text DEFAULT NULL,
+  `created_by` int(11) DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_issue_number` (`issue_number`),
+  KEY `idx_issue_loc` (`location_id`),
+  KEY `idx_issue_cc` (`cost_center_id`),
+  KEY `idx_issue_status` (`status`),
+  CONSTRAINT `fk_issue_notes_location` FOREIGN KEY (`location_id`) REFERENCES `service_locations` (`id`),
+  CONSTRAINT `fk_issue_notes_cost_center` FOREIGN KEY (`cost_center_id`) REFERENCES `service_locations` (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- --------------------------------------------------------
+-- Table structure for table `issue_note_items`
+-- --------------------------------------------------------
+DROP TABLE IF EXISTS `issue_note_items`;
+CREATE TABLE `issue_note_items` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `issue_note_id` int(11) NOT NULL,
+  `part_id` int(11) NOT NULL,
+  `batch_id` int(11) DEFAULT NULL,
+  `qty_issued` decimal(12,3) NOT NULL,
+  `unit_cost` decimal(10,2) NOT NULL,
+  `line_total` decimal(10,2) NOT NULL,
+  `notes` varchar(255) DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  PRIMARY KEY (`id`),
+  KEY `idx_ini_note` (`issue_note_id`),
+  KEY `idx_ini_part` (`part_id`),
+  KEY `idx_ini_batch` (`batch_id`),
+  CONSTRAINT `fk_ini_note` FOREIGN KEY (`issue_note_id`) REFERENCES `issue_notes` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_ini_part` FOREIGN KEY (`part_id`) REFERENCES `parts` (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 SET FOREIGN_KEY_CHECKS = 1;

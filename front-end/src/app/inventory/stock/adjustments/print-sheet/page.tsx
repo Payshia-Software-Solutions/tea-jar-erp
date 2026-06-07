@@ -142,7 +142,7 @@ export default function InventoryCountSheetPage() {
               {/* Header */}
               <div className="flex justify-between items-center border-b-2 border-slate-900 pb-3 mb-5">
                 <div>
-                  <div className="text-xl font-black tracking-tighter text-slate-900 uppercase">ServiceBay</div>
+                  <div className="text-xl font-black tracking-tighter text-slate-900 uppercase">BizzFlow</div>
                   <div className="text-[9px] text-muted-foreground font-bold uppercase tracking-tight">
                     Inventory Control Division
                   </div>
@@ -251,7 +251,7 @@ export default function InventoryCountSheetPage() {
               {/* Minimal Footer */}
               <div className="mt-8 text-[7px] text-slate-400 border-t border-slate-100 pt-2 flex justify-between italic tracking-tighter">
                 <div>AUDIT LOCATION: {selectedLocation?.name} | PAGE TYPE: {isBlind ? "BLIND" : "STANDARD"}</div>
-                <div>SERVICEBAY WAREHOUSE MANAGEMENT SYSTEM</div>
+                <div>BIZZFLOW WAREHOUSE MANAGEMENT SYSTEM</div>
               </div>
             </div>
           )}

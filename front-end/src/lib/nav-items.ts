@@ -99,6 +99,7 @@ export const inventoryItems: NavItem[] = [
   { icon: ClipboardListIcon, label: "Stock Counts", href: "/inventory/stock/counts", perm: "stock.read" },
   { icon: ArrowLeftRight, label: "Stock Adjustments", href: "/inventory/stock/adjustments", perm: "stock.read" },
   { icon: ArrowLeftRight, label: "Stock Transfers", href: "/inventory/transfers", perm: "transfer.read" },
+  { icon: ClipboardListIcon, label: "Issue Notes", href: "/inventory/issue-notes", perm: "parts.read" },
   { icon: FileText, label: "Purchase Orders", href: "/inventory/purchase-orders", perm: "purchase.read" },
   { icon: PackageCheck, label: "GRN", href: "/inventory/grn", perm: "grn.read" },
   { icon: ClipboardListIcon, label: "Stock Requests", href: "/inventory/stock-requests", perm: "transfer.read" },

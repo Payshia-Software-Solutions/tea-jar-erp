@@ -261,7 +261,7 @@ export default function MenuPage() {
             <LogOut className="w-5 h-5" />
             Sign Out
           </Button>
-          <p className="text-center text-[10px] text-muted-foreground uppercase tracking-widest font-bold">ServiceBay</p>
+          <p className="text-center text-[10px] text-muted-foreground uppercase tracking-widest font-bold">BizzFlow</p>
         </div>
       </div>
     </DashboardLayout>

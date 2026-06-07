@@ -308,11 +308,11 @@ export default function SystemSettingsPage() {
                   <div className="grid md:grid-cols-2 gap-4">
                     <div className="grid gap-2">
                       <Label htmlFor="mail_from_addr">From Email Address</Label>
-                      <Input id="mail_from_addr" placeholder="no-reply@servicebay.com" value={settings.mail_from_addr} onChange={(e) => handleChange('mail_from_addr', e.target.value)} />
+                      <Input id="mail_from_addr" placeholder="no-reply@bizzflow.com" value={settings.mail_from_addr} onChange={(e) => handleChange('mail_from_addr', e.target.value)} />
                     </div>
                     <div className="grid gap-2">
                       <Label htmlFor="mail_from_name">From Name</Label>
-                      <Input id="mail_from_name" placeholder="ServiceBay Notifications" value={settings.mail_from_name} onChange={(e) => handleChange('mail_from_name', e.target.value)} />
+                      <Input id="mail_from_name" placeholder="BizzFlow Notifications" value={settings.mail_from_name} onChange={(e) => handleChange('mail_from_name', e.target.value)} />
                     </div>
                   </div>
                 </div>
@@ -357,7 +357,7 @@ export default function SystemSettingsPage() {
                   </div>
                   <div className="grid gap-2">
                     <Label htmlFor="sms_sender_id">Sender ID</Label>
-                    <Input id="sms_sender_id" placeholder="SERVICEBAY" value={settings.sms_sender_id} onChange={(e) => handleChange('sms_sender_id', e.target.value)} />
+                    <Input id="sms_sender_id" placeholder="BIZZFLOW" value={settings.sms_sender_id} onChange={(e) => handleChange('sms_sender_id', e.target.value)} />
                   </div>
                 </div>
 

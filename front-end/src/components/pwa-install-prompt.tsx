@@ -102,7 +102,7 @@ export function PwaInstallPrompt() {
     }
   };
 
-  const title = deferred ? "Install ServiceBay" : "Add ServiceBay to Home Screen";
+  const title = deferred ? "Install BizzFlow" : "Add BizzFlow to Home Screen";
   const desc = deferred
     ? "Get faster access and offline-friendly loading."
     : "On iPhone/iPad: tap Share, then “Add to Home Screen”.";

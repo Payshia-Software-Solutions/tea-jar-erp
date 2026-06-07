@@ -20,7 +20,7 @@ export function Preloader() {
       
       {/* Loading text */}
       <div className="mt-6 flex flex-col items-center gap-2">
-        <h2 className="text-xl font-bold tracking-tight text-foreground">ServiceBay</h2>
+        <h2 className="text-xl font-bold tracking-tight text-foreground">BizzFlow</h2>
         <div className="flex gap-1">
           <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-accent" style={{ animationDelay: '0ms' }}></span>
           <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-accent" style={{ animationDelay: '150ms' }}></span>

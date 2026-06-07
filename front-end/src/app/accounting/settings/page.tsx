@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { DashboardLayout } from "@/components/dashboard-layout";
 import { 
   Card, 
@@ -319,5 +320,3 @@ export default function AccountingSettingsPage() {
     </DashboardLayout>
   );
 }
-
-import Link from "next/link";

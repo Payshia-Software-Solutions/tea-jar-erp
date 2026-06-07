@@ -102,7 +102,8 @@ class InventorySchema {
                 ('TR', 'TR-', 1, 6),
                 ('REQ', 'REQ-', 1, 6),
                 ('INV', 'INV/', 1, 6),
-                ('QT', 'EXPQT-', 1, 6)
+                ('QT', 'EXPQT-', 1, 6),
+                ('ISN', 'ISN-', 1, 6)
             ");
 
             // If this is an existing install, bump next_number to (MAX(id)+1) as a sensible default.
@@ -140,6 +141,15 @@ class InventorySchema {
                         UPDATE document_sequences
                         SET next_number = GREATEST(next_number, (SELECT IFNULL(MAX(id),0) + 1 FROM stock_transfer_requisitions))
                         WHERE doc_type = 'REQ'
+                    ");
+                }
+            } catch (Exception $e2) {}
+            try {
+                if (self::hasTable($pdo, 'issue_notes')) {
+                    $pdo->exec("
+                        UPDATE document_sequences
+                        SET next_number = GREATEST(next_number, (SELECT IFNULL(MAX(id),0) + 1 FROM issue_notes))
+                        WHERE doc_type = 'ISN'
                     ");
                 }
             } catch (Exception $e2) {}
@@ -633,7 +643,7 @@ class InventorySchema {
                     location_id INT NOT NULL DEFAULT 1,
                     part_id INT NOT NULL,
                     qty_change DECIMAL(12,3) NOT NULL,
-                    movement_type ENUM('GRN','ORDER_ISSUE','ADJUSTMENT','TRANSFER_IN','TRANSFER_OUT','PRODUCTION_CONSUMPTION','PRODUCTION_RECEIPT','SALE') NOT NULL,
+                    movement_type ENUM('GRN','ORDER_ISSUE','ADJUSTMENT','TRANSFER_IN','TRANSFER_OUT','PRODUCTION_CONSUMPTION','PRODUCTION_RECEIPT','SALE','MATERIAL_ISSUE') NOT NULL,
                     ref_table VARCHAR(64) NULL,
                     ref_id INT NULL,
                     unit_cost DECIMAL(10,2) NULL,
@@ -665,7 +675,7 @@ class InventorySchema {
                     $pdo->exec("
                         ALTER TABLE stock_movements
                         MODIFY COLUMN movement_type
-                        ENUM('GRN','ORDER_ISSUE','ADJUSTMENT','TRANSFER_IN','TRANSFER_OUT','PRODUCTION_CONSUMPTION','PRODUCTION_RECEIPT','SALE','SALES_RETURN','PURCHASE_RETURN')
+                        ENUM('GRN','ORDER_ISSUE','ADJUSTMENT','TRANSFER_IN','TRANSFER_OUT','PRODUCTION_CONSUMPTION','PRODUCTION_RECEIPT','SALE','SALES_RETURN','PURCHASE_RETURN','MATERIAL_ISSUE')
                         NOT NULL
                     ");
                 } catch (Exception $e2) {}
@@ -963,6 +973,47 @@ class InventorySchema {
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
                     FOREIGN KEY (parent_id) REFERENCES storefront_menus(id) ON DELETE CASCADE
+                )
+            ");
+
+            // Issue Notes (Material Consumption to Cost Centers)
+            $pdo->exec("
+                CREATE TABLE IF NOT EXISTS issue_notes (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    issue_number VARCHAR(50) NOT NULL,
+                    location_id INT NOT NULL DEFAULT 1,
+                    cost_center_id INT NOT NULL,
+                    status ENUM('Draft', 'Issued', 'Cancelled') NOT NULL DEFAULT 'Draft',
+                    issued_at DATETIME NULL,
+                    notes TEXT NULL,
+                    created_by INT NULL,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                    UNIQUE KEY uq_issue_number (issue_number),
+                    INDEX idx_issue_loc (location_id),
+                    INDEX idx_issue_cc (cost_center_id),
+                    INDEX idx_issue_status (status),
+                    FOREIGN KEY (location_id) REFERENCES service_locations(id),
+                    FOREIGN KEY (cost_center_id) REFERENCES service_locations(id)
+                )
+            ");
+
+            $pdo->exec("
+                CREATE TABLE IF NOT EXISTS issue_note_items (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    issue_note_id INT NOT NULL,
+                    part_id INT NOT NULL,
+                    batch_id INT NULL,
+                    qty_issued DECIMAL(12,3) NOT NULL,
+                    unit_cost DECIMAL(10,2) NOT NULL,
+                    line_total DECIMAL(10,2) NOT NULL,
+                    notes VARCHAR(255) NULL,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    INDEX idx_ini_note (issue_note_id),
+                    INDEX idx_ini_part (part_id),
+                    INDEX idx_ini_batch (batch_id),
+                    FOREIGN KEY (issue_note_id) REFERENCES issue_notes(id) ON DELETE CASCADE,
+                    FOREIGN KEY (part_id) REFERENCES parts(id)
                 )
             ");
 

@@ -203,7 +203,7 @@ class SyncHelper {
                 'status' => "ENUM('Draft','Sent','Partially Received','Received','Cancelled','Approved') NOT NULL DEFAULT 'Draft'"
             ],
             'stock_movements' => [
-                'movement_type' => "ENUM('GRN','ORDER_ISSUE','ADJUSTMENT','TRANSFER_IN','TRANSFER_OUT','PRODUCTION_CONSUMPTION','PRODUCTION_RECEIPT','SALE','SALES_RETURN','PURCHASE_RETURN') NOT NULL"
+                'movement_type' => "ENUM('GRN','ORDER_ISSUE','ADJUSTMENT','TRANSFER_IN','TRANSFER_OUT','PRODUCTION_CONSUMPTION','PRODUCTION_RECEIPT','SALE','SALES_RETURN','PURCHASE_RETURN','MATERIAL_ISSUE') NOT NULL"
             ],
             'invoices' => [
                 'status' => "ENUM('Unpaid','Partial','Paid','Cancelled') DEFAULT 'Unpaid'"

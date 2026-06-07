@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import React, { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
@@ -222,7 +222,7 @@ export default function DashboardPage() {
               Workshop Overview
             </div>
             <div className="mt-2 text-2xl sm:text-3xl font-bold tracking-tight">
-              ServiceBay Dashboard
+              BizzFlow Dashboard
             </div>
             <div className="mt-1 text-sm text-muted-foreground">
               Live data from your server. {lastUpdatedAt ? `Updated ${format(lastUpdatedAt, "HH:mm:ss")}` : ""}

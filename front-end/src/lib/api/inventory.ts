@@ -861,3 +861,77 @@ export const rejectStockCount = async (id: string | number) => {
   return res.json() as Promise<ApiSuccess<null>>;
 };
 
+// Issue Notes
+export interface IssueNoteRow {
+  id: number;
+  location_id: number;
+  issue_number: string;
+  cost_center: string;
+  status: 'Draft' | 'Issued' | 'Cancelled';
+  notes: string | null;
+  issued_at: string | null;
+  created_at: string;
+  created_by?: number;
+  created_by_name?: string;
+  location_name?: string;
+  line_count?: number;
+  total_qty_issued?: number;
+  total_amount?: number;
+}
+
+export interface IssueNoteItemRow {
+  id: number;
+  issue_note_id: number;
+  part_id: number;
+  batch_id: number | null;
+  qty_issued: number;
+  unit_cost: number;
+  line_total: number;
+  notes: string | null;
+  part_name?: string;
+  sku?: string;
+  unit?: string;
+  batch_number?: string | null;
+}
+
+export const fetchIssueNotes = async (q: string = '') => {
+  const qs = q ? `?q=${encodeURIComponent(q)}` : '';
+  const res = await api(`/api/issuenote/list${qs}`);
+  if (!res.ok) throw new Error('Failed to load issue notes');
+  const data = await res.json();
+  return data.status === 'success' ? (data.data as IssueNoteRow[]) : data;
+};
+
+export const fetchIssueNote = async (id: string | number) => {
+  const res = await api(`/api/issuenote/get/${id}`);
+  if (!res.ok) throw new Error('Failed to load issue note');
+  const data = await res.json();
+  return data.status === 'success' ? (data.data as { issue_note: IssueNoteRow; items: IssueNoteItemRow[] }) : data;
+};
+
+export const createIssueNote = async (payload: any) => {
+  const res = await api('/api/issuenote/create', { method: 'POST', body: JSON.stringify(payload) });
+  if (!res.ok) {
+    const j = await res.json().catch(() => null);
+    throw new Error(j?.message || 'Failed to create issue note');
+  }
+  return res.json() as Promise<ApiSuccess<{ id: number }>>;
+};
+
+export const commitIssueNote = async (id: string | number) => {
+  const res = await api(`/api/issuenote/commit/${id}`, { method: 'POST' });
+  if (!res.ok) {
+    const j = await res.json().catch(() => null);
+    throw new Error(j?.message || 'Failed to commit issue note');
+  }
+  return res.json();
+};
+
+export const cancelIssueNote = async (id: string | number) => {
+  const res = await api(`/api/issuenote/cancel/${id}`, { method: 'POST' });
+  if (!res.ok) {
+    const j = await res.json().catch(() => null);
+    throw new Error(j?.message || 'Failed to cancel issue note');
+  }
+  return res.json();
+};

@@ -46,7 +46,7 @@ export default function PrivacyPage() {
           </Link>
           <div className="flex items-center gap-2 text-primary">
             <Lock className="w-6 h-6" />
-            <span className="font-bold text-xl uppercase tracking-wider">ServiceBay Privacy</span>
+            <span className="font-bold text-xl uppercase tracking-wider">BizzFlow Privacy</span>
           </div>
         </div>
 
@@ -83,7 +83,7 @@ export default function PrivacyPage() {
         </Card>
 
         <p className="text-center text-xs text-muted-foreground py-4">
-          Your privacy is our priority. ServiceBay Systems.
+          Your privacy is our priority. BizzFlow Systems.
         </p>
       </div>
     </div>

@@ -2,7 +2,7 @@
 
 import React from 'react';
 import Link from 'next/link';
-import { ChevronLeft, Scale, Shield } from 'lucide-react';
+import { ChevronLeft, Scale } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
@@ -10,7 +10,7 @@ export default function TermsPage() {
   const terms = [
     {
       section: "1. Acceptance of Terms",
-      content: "By accessing and using ServiceBay, you agree to be bound by these Terms and Conditions. If you do not agree, please refrain from using the platform."
+      content: "By accessing and using BizzFlow, you agree to be bound by these Terms and Conditions. If you do not agree, please refrain from using the platform."
     },
     {
       section: "2. User Accounts",
@@ -18,15 +18,15 @@ export default function TermsPage() {
     },
     {
       section: "3. Service Usage",
-      content: "ServiceBay is provided for workshop management purposes. Any misuse, unauthorized access, or interference with the service is strictly prohibited."
+      content: "BizzFlow is provided for workshop management purposes. Any misuse, unauthorized access, or interference with the service is strictly prohibited."
     },
     {
       section: "4. Data Ownership",
-      content: "You retain ownership of the data you input into the system. ServiceBay reserves the right to use anonymized data for service improvements."
+      content: "You retain ownership of the data you input into the system. BizzFlow reserves the right to use anonymized data for service improvements."
     },
     {
       section: "5. Limitation of Liability",
-      content: "ServiceBay shall not be liable for any indirect, incidental, or consequential damages arising from the use or inability to use the service."
+      content: "BizzFlow shall not be liable for any indirect, incidental, or consequential damages arising from the use or inability to use the service."
     },
     {
       section: "6. Modifications",
@@ -46,7 +46,7 @@ export default function TermsPage() {
           </Link>
           <div className="flex items-center gap-2 text-primary">
             <Scale className="w-6 h-6" />
-            <span className="font-bold text-xl uppercase tracking-wider">ServiceBay Legal</span>
+            <span className="font-bold text-xl uppercase tracking-wider">BizzFlow Legal</span>
           </div>
         </div>
 
@@ -82,7 +82,7 @@ export default function TermsPage() {
         </Card>
 
         <p className="text-center text-xs text-muted-foreground py-4">
-          &copy; {new Date().getFullYear()} ServiceBay Systems. All rights reserved.
+          &copy; {new Date().getFullYear()} BizzFlow Systems. All rights reserved.
         </p>
       </div>
     </div>
