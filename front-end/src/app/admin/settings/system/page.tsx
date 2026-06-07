@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
-import { fetchSystemSettings, updateSystemSettings, testSms, fetchApiClients, createApiClient, deleteApiClient, regenerateApiClientKey, toggleApiClientStatus, ApiClientRow, fetchLocations, ServiceLocation, syncMorningMileage } from "@/lib/api";
+import { fetchSystemSettings, updateSystemSettings, testSms, fetchApiClients, createApiClient, deleteApiClient, regenerateApiClientKey, toggleApiClientStatus, ApiClientRow, fetchLocations, ServiceLocation, syncMorningMileage, checkDatabaseTables, runDatabaseMigrations, TableCheckRow } from "@/lib/api";
 import { Settings, Mail, MessageSquare, Save, Loader2, Link2, ShieldCheck, UserCheck, Smartphone, Globe, Copy, RotateCw, CheckCircle2, AlertCircle, Plus, Trash2, ExternalLink, Eye, EyeOff, CreditCard, Factory, Building2, Banknote, ShoppingCart, Code2, Terminal, Truck, MapPin } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -45,6 +45,39 @@ export default function SystemSettingsPage() {
   const [activeGateway, setActiveGateway] = useState<string | null>("payhere");
   const [isAddingGateway, setIsAddingGateway] = useState(false);
   
+  const [checkingTables, setCheckingTables] = useState(false);
+  const [migratingDb, setMigratingDb] = useState(false);
+  const [tableChecks, setTableChecks] = useState<TableCheckRow[]>([]);
+  const [missingTables, setMissingTables] = useState<string[]>([]);
+  const [checkMessage, setCheckMessage] = useState("");
+
+  const runTableChecks = async () => {
+    setCheckingTables(true);
+    try {
+      const res = await checkDatabaseTables();
+      setTableChecks(res.checks || []);
+      setMissingTables(res.missingTables || []);
+      setCheckMessage(res.message);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setCheckingTables(false);
+    }
+  };
+
+  const executeMigration = async () => {
+    setMigratingDb(true);
+    try {
+      const res = await runDatabaseMigrations();
+      toast({ title: "Migration Successful", description: res.message || "Database schema updated successfully." });
+      await runTableChecks();
+    } catch (err) {
+      toast({ title: "Migration Failed", description: (err as Error).message, variant: "destructive" });
+    } finally {
+      setMigratingDb(false);
+    }
+  };
+
   const [settings, setSettings] = useState<Record<string, string>>({
     mail_host: "",
     mail_port: "",
@@ -100,7 +133,7 @@ export default function SystemSettingsPage() {
 
   useEffect(() => {
     setLoading(true);
-    Promise.all([loadSettings(), loadApiClients(), loadLocations()]).finally(() => setLoading(false));
+    Promise.all([loadSettings(), loadApiClients(), loadLocations(), runTableChecks()]).finally(() => setLoading(false));
   }, []);
 
   const handleChange = (key: string, val: string) => {
@@ -222,7 +255,7 @@ export default function SystemSettingsPage() {
       </div>
 
       <Tabs defaultValue="mail" className="space-y-6">
-        <TabsList className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 w-full bg-muted/50 p-1 rounded-xl h-auto md:h-14 gap-1">
+        <TabsList className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 w-full bg-muted/50 p-1 rounded-xl h-auto md:h-14 gap-1">
           <TabsTrigger value="mail" className="rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm transition-all flex items-center gap-2">
             <Mail className="w-4 h-4" /> Email
           </TabsTrigger>
@@ -237,6 +270,9 @@ export default function SystemSettingsPage() {
           </TabsTrigger>
           <TabsTrigger value="external-apis" className="rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm transition-all flex items-center gap-2">
             <Terminal className="w-4 h-4" /> External APIs
+          </TabsTrigger>
+          <TabsTrigger value="updates" className="rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm transition-all flex items-center gap-2">
+            <RotateCw className="w-4 h-4" /> System Updates
           </TabsTrigger>
         </TabsList>
 
@@ -1048,6 +1084,101 @@ export default function SystemSettingsPage() {
                 Save API Configurations
               </Button>
             </CardFooter>
+          </Card>
+        </TabsContent>
+        
+        <TabsContent value="updates">
+          <Card className="border-none shadow-lg overflow-hidden">
+            <CardHeader className="bg-primary/[0.03] border-b pb-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-primary/10 rounded-lg text-primary">
+                    <RotateCw className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <CardTitle className="text-lg">System Updates & Database Reconcile</CardTitle>
+                    <CardDescription>
+                      Verify database table structures, check alignment against definitions, and execute updates.
+                    </CardDescription>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Button 
+                    variant="outline" 
+                    onClick={runTableChecks} 
+                    disabled={checkingTables}
+                    className="gap-2"
+                  >
+                    {checkingTables ? <Loader2 className="w-4 h-4 animate-spin" /> : <RotateCw className="w-4 h-4" />}
+                    Verify Tables
+                  </Button>
+                  <Button 
+                    onClick={executeMigration} 
+                    disabled={migratingDb}
+                    className="gap-2 bg-emerald-600 hover:bg-emerald-700 shadow-md text-white border-none"
+                  >
+                    {migratingDb ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
+                    Run Schema Migrations
+                  </Button>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent className="p-6 space-y-6">
+              {/* Status Alert */}
+              {missingTables.length > 0 ? (
+                <div className="p-4 bg-rose-50 border-2 border-rose-100 text-rose-700 rounded-2xl flex items-start gap-3">
+                  <AlertCircle className="w-5 h-5 mt-0.5 shrink-0 animate-pulse" />
+                  <div>
+                    <h4 className="font-bold text-sm">Database Schema Mismatch Detected</h4>
+                    <p className="text-xs mt-1 leading-relaxed text-rose-600">
+                      The system detected that {missingTables.length} required database table(s) are missing or outdated: <strong>{missingTables.join(', ')}</strong>. 
+                      Please execute schema migrations to align the database structures.
+                    </p>
+                  </div>
+                </div>
+              ) : (
+                <div className="p-4 bg-emerald-50 border-2 border-emerald-100 text-emerald-700 rounded-2xl flex items-start gap-3">
+                  <CheckCircle2 className="w-5 h-5 mt-0.5 shrink-0" />
+                  <div>
+                    <h4 className="font-bold text-sm">Database Schema is Up to Date</h4>
+                    <p className="text-xs mt-1 leading-relaxed text-emerald-600">
+                      All required business and administration tables are verified and present in the database.
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {/* Table List Checklist */}
+              <div className="space-y-3">
+                <div className="text-sm font-bold text-slate-800">Verified Database Tables ({tableChecks.length})</div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+                  {tableChecks.map((t) => (
+                    <div 
+                      key={t.name} 
+                      className={`flex items-center justify-between p-3 rounded-xl border transition-all ${
+                        t.available 
+                          ? "bg-emerald-500/[0.02] border-emerald-500/10 hover:border-emerald-500/20" 
+                          : "bg-rose-500/[0.02] border-rose-500/10 hover:border-rose-500/20"
+                      }`}
+                    >
+                      <div className="font-mono text-[11px] font-semibold text-slate-700 truncate mr-2">
+                        {t.name}
+                      </div>
+                      <Badge 
+                        variant="outline" 
+                        className={`text-[9px] uppercase tracking-wider px-1.5 py-0.5 shrink-0 ${
+                          t.available 
+                            ? "bg-emerald-500/10 text-emerald-700 border-emerald-500/20" 
+                            : "bg-rose-500/10 text-rose-700 border-rose-500/20"
+                        }`}
+                      >
+                        {t.available ? "OK" : "Missing"}
+                      </Badge>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </CardContent>
           </Card>
         </TabsContent>
       </Tabs>

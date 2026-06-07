@@ -304,3 +304,28 @@ export const uploadStorefrontIcon = async (formData: FormData) => {
   if (!res.ok) throw new Error('Failed to upload icon');
   return res.json();
 };
+
+export interface TableCheckRow {
+  name: string;
+  available: boolean;
+  message: string;
+}
+
+export const checkDatabaseTables = async (): Promise<{ status: string; message: string; checks: TableCheckRow[]; missingTables: string[] }> => {
+  const res = await api('/api/check/check');
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.message || 'Failed to check database tables');
+  }
+  return res.json();
+};
+
+export const runDatabaseMigrations = async (): Promise<any> => {
+  const res = await api('/api/check/migrate', { method: 'POST' });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.message || 'Failed to execute database migrations');
+  }
+  return res.json();
+};
+

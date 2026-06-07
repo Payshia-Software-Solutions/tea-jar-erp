@@ -4606,15 +4606,6 @@ class SchemaDefinition {
         'Default' => NULL,
         'Extra' => '',
       ),
-      'device_id' => 
-      array (
-        'Field' => 'device_id',
-        'Type' => 'varchar(100)',
-        'Null' => 'YES',
-        'Key' => '',
-        'Default' => NULL,
-        'Extra' => '',
-      ),
       'created_at' => 
       array (
         'Field' => 'created_at',
@@ -4622,6 +4613,15 @@ class SchemaDefinition {
         'Null' => 'NO',
         'Key' => '',
         'Default' => 'current_timestamp()',
+        'Extra' => '',
+      ),
+      'device_id' => 
+      array (
+        'Field' => 'device_id',
+        'Type' => 'varchar(100)',
+        'Null' => 'YES',
+        'Key' => '',
+        'Default' => NULL,
         'Extra' => '',
       ),
     ),
@@ -8565,24 +8565,6 @@ class SchemaDefinition {
         'Default' => 'retail',
         'Extra' => '',
       ),
-      'offline_id' => 
-      array (
-        'Field' => 'offline_id',
-        'Type' => 'varchar(100)',
-        'Null' => 'YES',
-        'Key' => '',
-        'Default' => NULL,
-        'Extra' => '',
-      ),
-      'device_id' => 
-      array (
-        'Field' => 'device_id',
-        'Type' => 'varchar(100)',
-        'Null' => 'YES',
-        'Key' => '',
-        'Default' => NULL,
-        'Extra' => '',
-      ),
       'table_id' => 
       array (
         'Field' => 'table_id',
@@ -8709,6 +8691,24 @@ class SchemaDefinition {
         'Default' => NULL,
         'Extra' => '',
       ),
+      'offline_id' => 
+      array (
+        'Field' => 'offline_id',
+        'Type' => 'varchar(100)',
+        'Null' => 'YES',
+        'Key' => '',
+        'Default' => NULL,
+        'Extra' => '',
+      ),
+      'device_id' => 
+      array (
+        'Field' => 'device_id',
+        'Type' => 'varchar(100)',
+        'Null' => 'YES',
+        'Key' => '',
+        'Default' => NULL,
+        'Extra' => '',
+      ),
     ),
     'indexes' => 
     array (
@@ -8782,6 +8782,278 @@ class SchemaDefinition {
         'Columns' => 
         array (
           0 => 'created_at',
+        ),
+      ),
+    ),
+  ),
+  'issue_note_items' => 
+  array (
+    'name' => 'issue_note_items',
+    'columns' => 
+    array (
+      'id' => 
+      array (
+        'Field' => 'id',
+        'Type' => 'int(11)',
+        'Null' => 'NO',
+        'Key' => 'PRI',
+        'Default' => NULL,
+        'Extra' => 'auto_increment',
+      ),
+      'issue_note_id' => 
+      array (
+        'Field' => 'issue_note_id',
+        'Type' => 'int(11)',
+        'Null' => 'NO',
+        'Key' => 'MUL',
+        'Default' => NULL,
+        'Extra' => '',
+      ),
+      'part_id' => 
+      array (
+        'Field' => 'part_id',
+        'Type' => 'int(11)',
+        'Null' => 'NO',
+        'Key' => 'MUL',
+        'Default' => NULL,
+        'Extra' => '',
+      ),
+      'batch_id' => 
+      array (
+        'Field' => 'batch_id',
+        'Type' => 'int(11)',
+        'Null' => 'YES',
+        'Key' => 'MUL',
+        'Default' => NULL,
+        'Extra' => '',
+      ),
+      'qty_issued' => 
+      array (
+        'Field' => 'qty_issued',
+        'Type' => 'decimal(12,3)',
+        'Null' => 'NO',
+        'Key' => '',
+        'Default' => NULL,
+        'Extra' => '',
+      ),
+      'unit_cost' => 
+      array (
+        'Field' => 'unit_cost',
+        'Type' => 'decimal(10,2)',
+        'Null' => 'NO',
+        'Key' => '',
+        'Default' => NULL,
+        'Extra' => '',
+      ),
+      'line_total' => 
+      array (
+        'Field' => 'line_total',
+        'Type' => 'decimal(10,2)',
+        'Null' => 'NO',
+        'Key' => '',
+        'Default' => NULL,
+        'Extra' => '',
+      ),
+      'notes' => 
+      array (
+        'Field' => 'notes',
+        'Type' => 'varchar(255)',
+        'Null' => 'YES',
+        'Key' => '',
+        'Default' => NULL,
+        'Extra' => '',
+      ),
+      'created_at' => 
+      array (
+        'Field' => 'created_at',
+        'Type' => 'timestamp',
+        'Null' => 'NO',
+        'Key' => '',
+        'Default' => 'current_timestamp()',
+        'Extra' => '',
+      ),
+    ),
+    'indexes' => 
+    array (
+      'PRIMARY' => 
+      array (
+        'Key_name' => 'PRIMARY',
+        'Non_unique' => 0,
+        'Columns' => 
+        array (
+          0 => 'id',
+        ),
+      ),
+      'idx_ini_note' => 
+      array (
+        'Key_name' => 'idx_ini_note',
+        'Non_unique' => 1,
+        'Columns' => 
+        array (
+          0 => 'issue_note_id',
+        ),
+      ),
+      'idx_ini_part' => 
+      array (
+        'Key_name' => 'idx_ini_part',
+        'Non_unique' => 1,
+        'Columns' => 
+        array (
+          0 => 'part_id',
+        ),
+      ),
+      'idx_ini_batch' => 
+      array (
+        'Key_name' => 'idx_ini_batch',
+        'Non_unique' => 1,
+        'Columns' => 
+        array (
+          0 => 'batch_id',
+        ),
+      ),
+    ),
+  ),
+  'issue_notes' => 
+  array (
+    'name' => 'issue_notes',
+    'columns' => 
+    array (
+      'id' => 
+      array (
+        'Field' => 'id',
+        'Type' => 'int(11)',
+        'Null' => 'NO',
+        'Key' => 'PRI',
+        'Default' => NULL,
+        'Extra' => 'auto_increment',
+      ),
+      'issue_number' => 
+      array (
+        'Field' => 'issue_number',
+        'Type' => 'varchar(50)',
+        'Null' => 'NO',
+        'Key' => 'UNI',
+        'Default' => NULL,
+        'Extra' => '',
+      ),
+      'location_id' => 
+      array (
+        'Field' => 'location_id',
+        'Type' => 'int(11)',
+        'Null' => 'NO',
+        'Key' => 'MUL',
+        'Default' => '1',
+        'Extra' => '',
+      ),
+      'status' => 
+      array (
+        'Field' => 'status',
+        'Type' => 'enum(\'Draft\',\'Issued\',\'Cancelled\')',
+        'Null' => 'NO',
+        'Key' => 'MUL',
+        'Default' => 'Draft',
+        'Extra' => '',
+      ),
+      'issued_at' => 
+      array (
+        'Field' => 'issued_at',
+        'Type' => 'datetime',
+        'Null' => 'YES',
+        'Key' => '',
+        'Default' => NULL,
+        'Extra' => '',
+      ),
+      'notes' => 
+      array (
+        'Field' => 'notes',
+        'Type' => 'text',
+        'Null' => 'YES',
+        'Key' => '',
+        'Default' => NULL,
+        'Extra' => '',
+      ),
+      'created_by' => 
+      array (
+        'Field' => 'created_by',
+        'Type' => 'int(11)',
+        'Null' => 'YES',
+        'Key' => '',
+        'Default' => NULL,
+        'Extra' => '',
+      ),
+      'created_at' => 
+      array (
+        'Field' => 'created_at',
+        'Type' => 'timestamp',
+        'Null' => 'NO',
+        'Key' => '',
+        'Default' => 'current_timestamp()',
+        'Extra' => '',
+      ),
+      'updated_at' => 
+      array (
+        'Field' => 'updated_at',
+        'Type' => 'timestamp',
+        'Null' => 'NO',
+        'Key' => '',
+        'Default' => 'current_timestamp()',
+        'Extra' => 'on update current_timestamp()',
+      ),
+      'cost_center_id' => 
+      array (
+        'Field' => 'cost_center_id',
+        'Type' => 'int(11)',
+        'Null' => 'NO',
+        'Key' => 'MUL',
+        'Default' => NULL,
+        'Extra' => '',
+      ),
+    ),
+    'indexes' => 
+    array (
+      'PRIMARY' => 
+      array (
+        'Key_name' => 'PRIMARY',
+        'Non_unique' => 0,
+        'Columns' => 
+        array (
+          0 => 'id',
+        ),
+      ),
+      'uq_issue_number' => 
+      array (
+        'Key_name' => 'uq_issue_number',
+        'Non_unique' => 0,
+        'Columns' => 
+        array (
+          0 => 'issue_number',
+        ),
+      ),
+      'idx_issue_loc' => 
+      array (
+        'Key_name' => 'idx_issue_loc',
+        'Non_unique' => 1,
+        'Columns' => 
+        array (
+          0 => 'location_id',
+        ),
+      ),
+      'idx_issue_status' => 
+      array (
+        'Key_name' => 'idx_issue_status',
+        'Non_unique' => 1,
+        'Columns' => 
+        array (
+          0 => 'status',
+        ),
+      ),
+      'fk_issue_notes_cost_center' => 
+      array (
+        'Key_name' => 'fk_issue_notes_cost_center',
+        'Non_unique' => 1,
+        'Columns' => 
+        array (
+          0 => 'cost_center_id',
         ),
       ),
     ),
@@ -17698,7 +17970,7 @@ class SchemaDefinition {
       'movement_type' => 
       array (
         'Field' => 'movement_type',
-        'Type' => 'enum(\'GRN\',\'ORDER_ISSUE\',\'ADJUSTMENT\',\'TRANSFER_IN\',\'TRANSFER_OUT\',\'PRODUCTION_CONSUMPTION\',\'PRODUCTION_RECEIPT\',\'SALE\',\'SALES_RETURN\',\'PURCHASE_RETURN\')',
+        'Type' => 'enum(\'GRN\',\'ORDER_ISSUE\',\'ADJUSTMENT\',\'TRANSFER_IN\',\'TRANSFER_OUT\',\'PRODUCTION_CONSUMPTION\',\'PRODUCTION_RECEIPT\',\'SALE\',\'SALES_RETURN\',\'PURCHASE_RETURN\',\'MATERIAL_ISSUE\')',
         'Null' => 'NO',
         'Key' => 'MUL',
         'Default' => NULL,
