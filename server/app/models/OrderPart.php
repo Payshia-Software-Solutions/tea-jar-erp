@@ -53,7 +53,7 @@ class OrderPart extends Model {
             $recipeType = (string)($p->recipe_type ?? 'Standard');
 
             // Stock Check for physical items
-            if (!$isService && $recipeType !== 'A La Carte') {
+            if (!$isService && $recipeType !== 'A La Carte' && $recipeType !== 'Buffet') {
                 $this->db->query("
                     SELECT COALESCE(SUM(qty_change), 0) AS qty
                     FROM stock_movements
@@ -122,6 +122,27 @@ class OrderPart extends Model {
                 $this->db->bind(':qty', $qty);
                 $this->db->bind(':id', $pid);
                 $this->db->execute();
+            }
+            
+            if ($recipeType === 'Buffet') {
+                $lineTotal = ($unitPrice !== null) ? round($unitPrice * $qty, 2) : null;
+                $this->db->query("
+                    INSERT INTO order_parts (order_id, part_id, quantity, unit_cost, unit_price, line_total, created_by, updated_by)
+                    VALUES (:order_id, :part_id, :qty, :unit_cost, :unit_price, :line_total, :created_by, :updated_by)
+                ");
+                $this->db->bind(':order_id', $oid);
+                $this->db->bind(':part_id', $pid);
+                $this->db->bind(':qty', $qty);
+                $this->db->bind(':unit_cost', $unitCost);
+                $this->db->bind(':unit_price', $unitPrice);
+                $this->db->bind(':line_total', $lineTotal);
+                $this->db->bind(':created_by', $userId);
+                $this->db->bind(':updated_by', $userId);
+                $this->db->execute();
+                $lineId = (int)$this->db->lastInsertId();
+
+                $this->db->commit();
+                return $lineId;
             }
             
             if ($isFifo && $qty > 0) {

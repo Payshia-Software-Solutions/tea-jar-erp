@@ -323,9 +323,11 @@ class Invoice extends Model {
                             $this->deductStock($pid, -1 * $qty, $invoiceLocationId, $invoiceId, $costPrice, null, 'A La Carte Assembly', 'PRODUCTION_RECEIPT', $userId);
                         }
 
-                        // Always deduct the main item if it's a part and $shouldDeduct is true
-                        // This handles both Standard and A La Carte (which now has an offsetting plus entry above)
-                        $this->deductStock($pid, $qty, $invoiceLocationId, $invoiceId, $item['unit_price'], $item['selected_batches'] ?? null, 'Retail Sale', 'SALE', $userId);
+                        if ($recipeType !== 'Buffet') {
+                            // Always deduct the main item if it's a part and $shouldDeduct is true
+                            // This handles both Standard and A La Carte (which now has an offsetting plus entry above)
+                            $this->deductStock($pid, $qty, $invoiceLocationId, $invoiceId, $item['unit_price'], $item['selected_batches'] ?? null, 'Retail Sale', 'SALE', $userId);
+                        }
                     }
                 }
             }

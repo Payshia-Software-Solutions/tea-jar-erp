@@ -260,7 +260,7 @@ class InventorySchema {
                     'item_type' => "ENUM('Part', 'Service') NOT NULL DEFAULT 'Part'",
                     'is_fifo' => "TINYINT(1) NOT NULL DEFAULT 0",
                     'is_expiry' => "TINYINT(1) NOT NULL DEFAULT 0",
-                    'recipe_type' => "ENUM('Standard', 'A La Carte', 'Recipe') NOT NULL DEFAULT 'Standard'",
+                    'recipe_type' => "ENUM('Standard', 'A La Carte', 'Recipe', 'Buffet') NOT NULL DEFAULT 'Standard'",
                     'default_location_id' => "INT NULL",
                     'allowed_locations' => "TEXT NULL",
                     'wholesale_price' => "DECIMAL(10,2) NULL",

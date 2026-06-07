@@ -7726,7 +7726,7 @@ CREATE TABLE `parts` (
   `item_type` enum('Part','Service') NOT NULL DEFAULT 'Part',
   `is_fifo` tinyint(1) NOT NULL DEFAULT 0,
   `is_expiry` tinyint(1) NOT NULL DEFAULT 0,
-  `recipe_type` enum('Standard','A La Carte','Recipe') NOT NULL DEFAULT 'Standard',
+  `recipe_type` enum('Standard','A La Carte','Recipe','Buffet') NOT NULL DEFAULT 'Standard',
   `default_location_id` int(11) DEFAULT NULL,
   `allowed_locations` text DEFAULT NULL,
   `wholesale_price` decimal(10,2) DEFAULT NULL,
