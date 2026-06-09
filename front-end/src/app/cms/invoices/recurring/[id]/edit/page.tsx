@@ -443,7 +443,8 @@ export default function EditRecurringTemplatePage() {
                               }}
                               options={allParts.map(p => ({
                                 value: String(p.id),
-                                label: formatPartLabel(p), 'quantity', e.target.value)}
+                                label: formatPartLabel(p)
+                              }))}
                               className="text-right border-none shadow-none focus-visible:ring-1"
                             />
                           </td>
