@@ -141,6 +141,23 @@
                         </Button.Template>
                     </Button>
 
+                    <Button DockPanel.Dock="Right" Margin="10,0,0,0" Padding="12,0" Height="38"
+                            Background="{DynamicResource BgCard}" Foreground="{DynamicResource TextPrimary}"
+                            BorderBrush="{DynamicResource BorderPrimary}" BorderThickness="1"
+                            Cursor="Hand" Click="ToggleAutoAdd_Click" ToolTip="Scanner Auto-Add">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock x:Name="ToggleAutoAddIcon" Text="⚡" Margin="0,0,6,0" VerticalAlignment="Center"/>
+                            <TextBlock x:Name="ToggleAutoAddText" Text="Auto Add: ON" VerticalAlignment="Center" FontSize="13" FontWeight="SemiBold"/>
+                        </StackPanel>
+                        <Button.Template>
+                            <ControlTemplate TargetType="Button">
+                                <Border Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="8">
+                                    <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                </Border>
+                            </ControlTemplate>
+                        </Button.Template>
+                    </Button>
+
                     <!-- Search Bar -->
                     <Border Background="{DynamicResource BgCard}" CornerRadius="8" Padding="12,0" Height="38">
                         <DockPanel>

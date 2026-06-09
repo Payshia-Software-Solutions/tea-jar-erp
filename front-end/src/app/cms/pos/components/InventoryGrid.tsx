@@ -16,7 +16,8 @@ import {
   RefreshCw,
   Filter,
   LayoutDashboard,
-  FileText 
+  FileText,
+  Barcode 
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -46,12 +47,27 @@ export const InventoryGrid: React.FC = () => {
     vKeyboardEnabled,
     setVKeyboardEnabled,
     setVKeyboardActiveInput,
+    autoAddOnScan,
+    setAutoAddOnScan,
     setTableManagementOpen,
     reloadData,
     loading: dataLoading,
     collections,
     selectedCollectionId,
-    setSelectedCollectionId
+    setSelectedCollectionId,
+    posActiveFilters,
+    selectedBrandName,
+    setSelectedBrandName,
+    selectedItemType,
+    setSelectedItemType,
+    selectedSectionName,
+    setSelectedSectionName,
+    selectedDepartmentName,
+    setSelectedDepartmentName,
+    selectedCategoryName,
+    setSelectedCategoryName,
+    selectedSupplierName,
+    setSelectedSupplierName
   } = usePOS();
 
   const [colSearch, setColSearch] = React.useState("");
@@ -66,7 +82,9 @@ export const InventoryGrid: React.FC = () => {
       filtered = filtered.filter(p => 
         p.part_name?.toLowerCase().includes(q) || 
         p.sku?.toLowerCase().includes(q) || 
-        p.brand?.toLowerCase().includes(q)
+        p.brand?.toLowerCase().includes(q) ||
+        p.barcode_number?.toLowerCase().includes(q) ||
+        `item-${p.id}`.includes(q)
       );
     }
 
@@ -83,14 +101,81 @@ export const InventoryGrid: React.FC = () => {
       filtered = filtered.filter(p => p.recipe_type === selectedRecipeType);
     }
 
+    // Brand filter
+    if (selectedBrandName) {
+      filtered = filtered.filter(p => (p.brand_name || p.brand) === selectedBrandName);
+    }
+
+    // Item Type filter
+    if (selectedItemType) {
+      filtered = filtered.filter(p => p.item_type === selectedItemType);
+    }
+
+    // Section filter
+    if (selectedSectionName) {
+      filtered = filtered.filter(p => p.section_name === selectedSectionName);
+    }
+
+    // Department filter
+    if (selectedDepartmentName) {
+      filtered = filtered.filter(p => p.department_name === selectedDepartmentName);
+    }
+
+    // Category filter
+    if (selectedCategoryName) {
+      filtered = filtered.filter(p => p.category_name === selectedCategoryName);
+    }
+
+    // Supplier filter
+    if (selectedSupplierName) {
+      filtered = filtered.filter(p => {
+        if (!p.suppliers || !Array.isArray(p.suppliers)) return false;
+        return p.suppliers.some((s: any) => s.name === selectedSupplierName);
+      });
+    }
+
     return filtered;
-  }, [inventory, searchQuery, selectedCollectionId, selectedRecipeType]);
+  }, [
+    inventory, searchQuery, selectedCollectionId, selectedRecipeType, 
+    selectedBrandName, selectedItemType, selectedSectionName, 
+    selectedDepartmentName, selectedCategoryName, selectedSupplierName
+  ]);
 
   const filteredCollections = useMemo(() => {
     if (!colSearch.trim()) return collections;
     const q = colSearch.toLowerCase();
     return collections.filter(c => c.name?.toLowerCase().includes(q));
   }, [collections, colSearch]);
+
+  const uniqueBrands = useMemo(() => {
+    const brands = inventory.map(p => p.brand_name || p.brand).filter(Boolean);
+    return Array.from(new Set(brands)).sort();
+  }, [inventory]);
+
+  const uniqueItemTypes = useMemo(() => {
+    const types = inventory.map(p => p.item_type).filter(Boolean);
+    return Array.from(new Set(types)).sort();
+  }, [inventory]);
+
+  const uniqueSections = useMemo(() => {
+    const sections = inventory.map(p => p.section_name).filter(Boolean);
+    return Array.from(new Set(sections)).sort();
+  }, [inventory]);
+
+  const uniqueDepartments = useMemo(() => {
+    const deps = inventory.map(p => p.department_name).filter(Boolean);
+    return Array.from(new Set(deps)).sort();
+  }, [inventory]);
+
+  const uniqueCategories = useMemo(() => {
+    const cats = inventory.map(p => p.category_name).filter(Boolean);
+    return Array.from(new Set(cats)).sort();
+  }, [inventory]);
+
+  const uniqueSuppliers = useMemo(() => {
+    const sups = inventory.flatMap(p => p.suppliers?.map((s: any) => s.name) || []).filter(Boolean);
+    return Array.from(new Set(sups)).sort();
+  }, [inventory]);
 
   const handleProductClick = (product: any) => {
     setSelectedProduct(product);
@@ -133,6 +218,17 @@ export const InventoryGrid: React.FC = () => {
             >
               <Keyboard className="w-5 h-5 font-bold" />
               {isMobileMenu && <span>Virtual Keyboard</span>}
+            </Button>
+
+            <Button
+              variant="outline"
+              size={isMobileMenu ? "default" : "icon"}
+              className={`${btnClass} border-2 ${autoAddOnScan ? 'bg-primary/10 border-primary text-primary shadow-sm' : ''} ${!isMobileMenu && !autoAddOnScan ? 'text-slate-500' : ''}`}
+              onClick={() => setAutoAddOnScan(!autoAddOnScan)}
+              title="Scanner: Auto Add to Cart"
+            >
+              <Barcode className="w-5 h-5 font-bold" />
+              {isMobileMenu && <span>Scanner Auto-Add</span>}
             </Button>
 
             <Button
@@ -228,49 +324,183 @@ export const InventoryGrid: React.FC = () => {
             onClick={() => {
               setSelectedCollectionId(null);
               setSelectedRecipeType(null);
+              setSelectedBrandName(null);
+              setSelectedItemType(null);
+              setSelectedSectionName(null);
+              setSelectedDepartmentName(null);
+              setSelectedCategoryName(null);
+              setSelectedSupplierName(null);
             }}
-            className={`w-full justify-start gap-3 h-11 px-3 font-bold rounded-xl transition-all ${selectedCollectionId === null && selectedRecipeType === null ? 'bg-primary text-white shadow-md shadow-primary/20 hover:bg-primary' : 'hover:bg-slate-100 dark:hover:bg-slate-900 text-slate-600 dark:text-slate-400'}`}
+            className={`w-full justify-start gap-3 h-11 px-3 font-bold rounded-xl transition-all ${[selectedCollectionId, selectedRecipeType, selectedBrandName, selectedItemType, selectedSectionName, selectedDepartmentName, selectedCategoryName, selectedSupplierName].every(v => v === null) ? 'bg-primary text-white shadow-md shadow-primary/20 hover:bg-primary' : 'hover:bg-slate-100 dark:hover:bg-slate-900 text-slate-600 dark:text-slate-400'}`}
           >
-            <Filter className={`w-4 h-4 ${selectedCollectionId === null && selectedRecipeType === null ? 'text-white' : 'text-slate-400'}`} />
+            <Filter className={`w-4 h-4 ${[selectedCollectionId, selectedRecipeType, selectedBrandName, selectedItemType, selectedSectionName, selectedDepartmentName, selectedCategoryName, selectedSupplierName].every(v => v === null) ? 'text-white' : 'text-slate-400'}`} />
             All Items
           </Button>
           
-          <div className="pt-2 pb-1 px-1">
-             <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Recipe Types</p>
-          </div>
-          
-          {['Standard', 'A La Carte', 'Recipe'].map(type => (
-            <Button
-              key={type}
-              variant="ghost"
-              onClick={() => setSelectedRecipeType(type === selectedRecipeType ? null : type)}
-              className={`w-full justify-start gap-3 h-11 px-3 font-bold rounded-xl transition-all ${selectedRecipeType === type ? 'bg-amber-500 text-white shadow-md shadow-amber-500/20 hover:bg-amber-500' : 'hover:bg-slate-100 dark:hover:bg-slate-900 text-slate-600 dark:text-slate-400'}`}
-            >
-              <div className={`w-2 h-2 rounded-full ${selectedRecipeType === type ? 'bg-white' : 'bg-amber-400'}`} />
-              <span className="truncate">{type}</span>
-            </Button>
-          ))}
+          {posActiveFilters?.includes('recipe_types') && (
+            <>
+              <div className="pt-2 pb-1 px-1">
+                 <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Recipe Types</p>
+              </div>
+              
+              {['Standard', 'A La Carte', 'Recipe'].map(type => (
+                <Button
+                  key={type}
+                  variant="ghost"
+                  onClick={() => setSelectedRecipeType(type === selectedRecipeType ? null : type)}
+                  className={`w-full justify-start gap-3 h-11 px-3 font-bold rounded-xl transition-all ${selectedRecipeType === type ? 'bg-amber-500 text-white shadow-md shadow-amber-500/20 hover:bg-amber-500' : 'hover:bg-slate-100 dark:hover:bg-slate-900 text-slate-600 dark:text-slate-400'}`}
+                >
+                  <div className={`w-2 h-2 rounded-full ${selectedRecipeType === type ? 'bg-white' : 'bg-amber-400'}`} />
+                  <span className="truncate">{type}</span>
+                </Button>
+              ))}
+            </>
+          )}
 
-          <div className="pt-4 pb-1 px-1">
-             <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Collections</p>
-          </div>
-          
-          {filteredCollections.map(col => (
-            <Button
-              key={col.id}
-              variant="ghost"
-              onClick={() => setSelectedCollectionId(col.id)}
-              className={`w-full justify-start gap-3 h-11 px-3 font-bold rounded-xl transition-all ${selectedCollectionId === col.id ? 'bg-primary text-white shadow-md shadow-primary/20 hover:bg-primary' : 'hover:bg-slate-100 dark:hover:bg-slate-900 text-slate-600 dark:text-slate-400'}`}
-            >
-              <div className={`w-2 h-2 rounded-full ${selectedCollectionId === col.id ? 'bg-white' : 'bg-slate-300 dark:bg-slate-700'}`} />
-              <span className="truncate">{col.name}</span>
-            </Button>
-          ))}
-          
-          {filteredCollections.length === 0 && colSearch && (
-            <div className="py-10 text-center px-4">
-              <p className="text-xs text-muted-foreground font-bold uppercase tracking-tight">No results</p>
-            </div>
+          {posActiveFilters?.includes('collections') && (
+            <>
+              <div className="pt-4 pb-1 px-1">
+                 <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Collections</p>
+              </div>
+              
+              {filteredCollections.map(col => (
+                <Button
+                  key={col.id}
+                  variant="ghost"
+                  onClick={() => setSelectedCollectionId(col.id)}
+                  className={`w-full justify-start gap-3 h-11 px-3 font-bold rounded-xl transition-all ${selectedCollectionId === col.id ? 'bg-primary text-white shadow-md shadow-primary/20 hover:bg-primary' : 'hover:bg-slate-100 dark:hover:bg-slate-900 text-slate-600 dark:text-slate-400'}`}
+                >
+                  <div className={`w-2 h-2 rounded-full ${selectedCollectionId === col.id ? 'bg-white' : 'bg-slate-300 dark:bg-slate-700'}`} />
+                  <span className="truncate">{col.name}</span>
+                </Button>
+              ))}
+              
+              {filteredCollections.length === 0 && colSearch && (
+                <div className="py-10 text-center px-4">
+                  <p className="text-xs text-muted-foreground font-bold uppercase tracking-tight">No results</p>
+                </div>
+              )}
+            </>
+          )}
+
+          {posActiveFilters?.includes('brands') && uniqueBrands.length > 0 && (
+            <>
+              <div className="pt-4 pb-1 px-1">
+                 <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Brands</p>
+              </div>
+              
+              {uniqueBrands.map((b: any) => (
+                <Button
+                  key={b}
+                  variant="ghost"
+                  onClick={() => setSelectedBrandName(b === selectedBrandName ? null : b)}
+                  className={`w-full justify-start gap-3 h-11 px-3 font-bold rounded-xl transition-all ${selectedBrandName === b ? 'bg-indigo-500 text-white shadow-md shadow-indigo-500/20 hover:bg-indigo-500' : 'hover:bg-slate-100 dark:hover:bg-slate-900 text-slate-600 dark:text-slate-400'}`}
+                >
+                  <div className={`w-2 h-2 rounded-full ${selectedBrandName === b ? 'bg-white' : 'bg-indigo-400'}`} />
+                  <span className="truncate">{b}</span>
+                </Button>
+              ))}
+            </>
+          )}
+
+          {posActiveFilters?.includes('item_type') && uniqueItemTypes.length > 0 && (
+            <>
+              <div className="pt-4 pb-1 px-1">
+                 <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Item Type</p>
+              </div>
+              
+              {uniqueItemTypes.map((t: any) => (
+                <Button
+                  key={t}
+                  variant="ghost"
+                  onClick={() => setSelectedItemType(t === selectedItemType ? null : t)}
+                  className={`w-full justify-start gap-3 h-11 px-3 font-bold rounded-xl transition-all ${selectedItemType === t ? 'bg-violet-500 text-white shadow-md shadow-violet-500/20 hover:bg-violet-500' : 'hover:bg-slate-100 dark:hover:bg-slate-900 text-slate-600 dark:text-slate-400'}`}
+                >
+                  <div className={`w-2 h-2 rounded-full ${selectedItemType === t ? 'bg-white' : 'bg-violet-400'}`} />
+                  <span className="truncate">{t}</span>
+                </Button>
+              ))}
+            </>
+          )}
+
+          {posActiveFilters?.includes('sections') && uniqueSections.length > 0 && (
+            <>
+              <div className="pt-4 pb-1 px-1">
+                 <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Sections</p>
+              </div>
+              
+              {uniqueSections.map((s: any) => (
+                <Button
+                  key={s}
+                  variant="ghost"
+                  onClick={() => setSelectedSectionName(s === selectedSectionName ? null : s)}
+                  className={`w-full justify-start gap-3 h-11 px-3 font-bold rounded-xl transition-all ${selectedSectionName === s ? 'bg-emerald-500 text-white shadow-md shadow-emerald-500/20 hover:bg-emerald-500' : 'hover:bg-slate-100 dark:hover:bg-slate-900 text-slate-600 dark:text-slate-400'}`}
+                >
+                  <div className={`w-2 h-2 rounded-full ${selectedSectionName === s ? 'bg-white' : 'bg-emerald-400'}`} />
+                  <span className="truncate">{s}</span>
+                </Button>
+              ))}
+            </>
+          )}
+
+          {posActiveFilters?.includes('departments') && uniqueDepartments.length > 0 && (
+            <>
+              <div className="pt-4 pb-1 px-1">
+                 <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Departments</p>
+              </div>
+              
+              {uniqueDepartments.map((d: any) => (
+                <Button
+                  key={d}
+                  variant="ghost"
+                  onClick={() => setSelectedDepartmentName(d === selectedDepartmentName ? null : d)}
+                  className={`w-full justify-start gap-3 h-11 px-3 font-bold rounded-xl transition-all ${selectedDepartmentName === d ? 'bg-sky-500 text-white shadow-md shadow-sky-500/20 hover:bg-sky-500' : 'hover:bg-slate-100 dark:hover:bg-slate-900 text-slate-600 dark:text-slate-400'}`}
+                >
+                  <div className={`w-2 h-2 rounded-full ${selectedDepartmentName === d ? 'bg-white' : 'bg-sky-400'}`} />
+                  <span className="truncate">{d}</span>
+                </Button>
+              ))}
+            </>
+          )}
+
+          {posActiveFilters?.includes('categories') && uniqueCategories.length > 0 && (
+            <>
+              <div className="pt-4 pb-1 px-1">
+                 <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Categories</p>
+              </div>
+              
+              {uniqueCategories.map((c: any) => (
+                <Button
+                  key={c}
+                  variant="ghost"
+                  onClick={() => setSelectedCategoryName(c === selectedCategoryName ? null : c)}
+                  className={`w-full justify-start gap-3 h-11 px-3 font-bold rounded-xl transition-all ${selectedCategoryName === c ? 'bg-rose-500 text-white shadow-md shadow-rose-500/20 hover:bg-rose-500' : 'hover:bg-slate-100 dark:hover:bg-slate-900 text-slate-600 dark:text-slate-400'}`}
+                >
+                  <div className={`w-2 h-2 rounded-full ${selectedCategoryName === c ? 'bg-white' : 'bg-rose-400'}`} />
+                  <span className="truncate">{c}</span>
+                </Button>
+              ))}
+            </>
+          )}
+
+          {posActiveFilters?.includes('suppliers') && uniqueSuppliers.length > 0 && (
+            <>
+              <div className="pt-4 pb-1 px-1">
+                 <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Suppliers</p>
+              </div>
+              
+              {uniqueSuppliers.map((s: any) => (
+                <Button
+                  key={s}
+                  variant="ghost"
+                  onClick={() => setSelectedSupplierName(s === selectedSupplierName ? null : s)}
+                  className={`w-full justify-start gap-3 h-11 px-3 font-bold rounded-xl transition-all ${selectedSupplierName === s ? 'bg-fuchsia-500 text-white shadow-md shadow-fuchsia-500/20 hover:bg-fuchsia-500' : 'hover:bg-slate-100 dark:hover:bg-slate-900 text-slate-600 dark:text-slate-400'}`}
+                >
+                  <div className={`w-2 h-2 rounded-full ${selectedSupplierName === s ? 'bg-white' : 'bg-fuchsia-400'}`} />
+                  <span className="truncate">{s}</span>
+                </Button>
+              ))}
+            </>
           )}
         </div>
 
@@ -365,7 +595,14 @@ export const InventoryGrid: React.FC = () => {
                       )}
                     </div>
                     <div>
-                      {product.sku && <p className="text-[8px] lg:text-[10px] text-muted-foreground font-mono mb-1">{product.sku}</p>}
+                      <div className="flex items-center gap-2 mb-1">
+                        {product.sku && <p className="text-[8px] lg:text-[10px] text-muted-foreground font-mono">{product.sku}</p>}
+                        {(product.brand_name || product.brand) && (
+                          <span className="text-[8px] lg:text-[10px] text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded truncate max-w-[100px]">
+                            {product.brand_name || product.brand}
+                          </span>
+                        )}
+                      </div>
                       <h4 className="font-bold text-slate-800 dark:text-slate-100 leading-tight group-hover:text-primary transition-colors line-clamp-2 text-xs lg:text-sm">{product.part_name}</h4>
                     </div>
                     <div className="mt-2 lg:mt-4 pt-2 lg:pt-4 border-t border-border flex justify-between items-center">

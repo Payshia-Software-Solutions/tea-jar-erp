@@ -32,6 +32,7 @@ import {
   fetchBanks, 
   fetchPartBatches, 
   api as apiHelper 
+  formatPartLabel
 } from "@/lib/api";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -558,7 +559,7 @@ export default function CreateOnlineInvoicePage() {
                     }}
                     options={allParts.map(p => ({
                       value: String(p.id),
-                      label: `${p.part_name}${p.sku ? ` (${p.sku})` : ''}`,
+                      label: formatPartLabel(p),
                       keywords: `${p.part_name} ${p.sku || ''}`
                     }))}
                     placeholder="🔍 Add more items from inventory..."

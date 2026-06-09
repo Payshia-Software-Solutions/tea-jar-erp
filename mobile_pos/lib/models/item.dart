@@ -9,6 +9,7 @@ class Item {
   final String? sku;
   final String? itemType;
   final String? recipeType;
+  final String? barcodeNumber;
 
   Item({
     required this.id,
@@ -19,6 +20,7 @@ class Item {
     this.sku,
     this.itemType,
     this.recipeType,
+    this.barcodeNumber,
   });
 
   factory Item.fromJson(Map<String, dynamic> json) {
@@ -43,6 +45,7 @@ class Item {
       sku: json['sku']?.toString(),
       itemType: json['item_type']?.toString(),
       recipeType: json['recipe_type']?.toString(),
+      barcodeNumber: json['barcode_number']?.toString(),
     );
   }
 

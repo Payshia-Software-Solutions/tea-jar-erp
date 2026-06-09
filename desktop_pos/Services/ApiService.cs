@@ -382,6 +382,7 @@ namespace DesktopPOS.Services
         public string? name { get; set; }
         
         public string? sku { get; set; }
+        public string? barcode_number { get; set; }
         public double price { get; set; }
         public double stock_level { get; set; }
         public string? item_type { get; set; }

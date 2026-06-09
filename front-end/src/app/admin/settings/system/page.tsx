@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { fetchSystemSettings, updateSystemSettings, testSms, fetchApiClients, createApiClient, deleteApiClient, regenerateApiClientKey, toggleApiClientStatus, ApiClientRow, fetchLocations, ServiceLocation, syncMorningMileage, checkDatabaseTables, runDatabaseMigrations, TableCheckRow, fetchMigrationLogs, MigrationLog } from "@/lib/api";
-import { Settings, Mail, MessageSquare, Save, Loader2, Link2, ShieldCheck, UserCheck, Smartphone, Globe, Copy, RotateCw, CheckCircle2, AlertCircle, Plus, Trash2, ExternalLink, Eye, EyeOff, CreditCard, Factory, Building2, Banknote, ShoppingCart, Code2, Terminal, Truck, MapPin } from "lucide-react";
+import { Settings, Mail, MessageSquare, Save, Loader2, Link2, ShieldCheck, UserCheck, Smartphone, Globe, Copy, RotateCw, CheckCircle2, AlertCircle, Plus, Trash2, ExternalLink, Eye, EyeOff, CreditCard, Factory, Building2, Banknote, ShoppingCart, Code2, Terminal, Truck, MapPin, Filter } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
@@ -119,7 +119,8 @@ export default function SystemSettingsPage() {
     FLEET_API_URL: "",
     FLEET_API_TOKEN: "",
     MILEAGE_API_URL: "",
-    MILEAGE_API_TOKEN: ""
+    MILEAGE_API_TOKEN: "",
+    pos_active_filters: "collections,recipe_types"
   });
 
   const loadSettings = async () => {
@@ -269,7 +270,7 @@ export default function SystemSettingsPage() {
       </div>
 
       <Tabs defaultValue="mail" className="space-y-6">
-        <TabsList className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 w-full bg-muted/50 p-1 rounded-xl h-auto md:h-14 gap-1">
+        <TabsList className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-7 w-full bg-muted/50 p-1 rounded-xl h-auto md:h-14 gap-1">
           <TabsTrigger value="mail" className="rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm transition-all flex items-center gap-2">
             <Mail className="w-4 h-4" /> Email
           </TabsTrigger>
@@ -288,8 +289,71 @@ export default function SystemSettingsPage() {
           <TabsTrigger value="updates" className="rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm transition-all flex items-center gap-2">
             <RotateCw className="w-4 h-4" /> System Updates
           </TabsTrigger>
+          <TabsTrigger value="pos" className="rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm transition-all flex items-center gap-2">
+            <ShoppingCart className="w-4 h-4" /> POS
+          </TabsTrigger>
         </TabsList>
 
+        <TabsContent value="pos">
+          <Card className="border-none shadow-lg overflow-hidden">
+            <CardHeader className="bg-primary/[0.03] border-b pb-4">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-primary/10 rounded-lg text-primary">
+                  <ShoppingCart className="w-5 h-5" />
+                </div>
+                <div>
+                  <CardTitle className="text-lg">POS Configuration</CardTitle>
+                  <CardDescription>Configure Point of Sale interface settings and filters.</CardDescription>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent className="p-6">
+              <div className="space-y-4 max-w-md">
+                <h3 className="text-sm font-black uppercase tracking-widest text-muted-foreground/60 border-b pb-2 flex items-center gap-2">
+                  <Filter className="w-3.5 h-3.5" />
+                  Active Sidebar Filters
+                </h3>
+                <p className="text-xs text-muted-foreground mb-4">Select which filter options are available in the POS left sidebar.</p>
+                
+                <div className="space-y-3">
+                  {[
+                    { id: 'collections', label: 'Collections' },
+                    { id: 'recipe_types', label: 'Recipe Types' },
+                    { id: 'item_type', label: 'Item Type (Part/Service)' },
+                    { id: 'sections', label: 'Sections' },
+                    { id: 'departments', label: 'Departments' },
+                    { id: 'categories', label: 'Categories' },
+                    { id: 'brands', label: 'Brands' },
+                    { id: 'suppliers', label: 'Suppliers' },
+                  ].map(f => {
+                    const isActive = settings.pos_active_filters?.includes(f.id);
+                    return (
+                      <div key={f.id} className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/50 transition-colors">
+                        <Label htmlFor={`filter-${f.id}`} className="font-bold cursor-pointer flex-1">{f.label}</Label>
+                        <Switch
+                          id={`filter-${f.id}`}
+                          checked={isActive}
+                          onCheckedChange={(checked) => {
+                            let arr = (settings.pos_active_filters || "").split(",").filter(Boolean);
+                            if (checked && !arr.includes(f.id)) arr.push(f.id);
+                            if (!checked) arr = arr.filter(x => x !== f.id);
+                            handleChange('pos_active_filters', arr.join(','));
+                          }}
+                        />
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+            </CardContent>
+            <CardFooter className="bg-muted/30 border-t p-6 flex justify-end">
+              <Button onClick={save} disabled={saving} size="lg" className="px-8 shadow-md">
+                {saving ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Save className="w-4 h-4 mr-2" />}
+                Save POS Settings
+              </Button>
+            </CardFooter>
+          </Card>
+        </TabsContent>
         <TabsContent value="mail">
           <Card className="border-none shadow-lg overflow-hidden">
             <CardHeader className="bg-primary/[0.03] border-b pb-4">

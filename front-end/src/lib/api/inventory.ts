@@ -947,3 +947,12 @@ export const cancelIssueNote = async (id: string | number) => {
   }
   return res.json();
 };
+
+export const formatPartLabel = (p: PartRow) => {
+  const brand = p.brand_name ? ` - ${p.brand_name}` : '';
+  const price = p.price !== undefined && p.price !== null ? ` - LKR ${Number(p.price).toLocaleString()}` : '';
+  const unit = p.unit ? ` - ${p.unit}` : '';
+  const barcode = p.barcode_number ? `, ${p.barcode_number}` : '';
+  const sku = p.sku ? ` (${p.sku})` : '';
+  return `${p.part_name}${sku}${brand}${price}${unit}${barcode}`;
+};

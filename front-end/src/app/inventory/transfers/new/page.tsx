@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { createTransfer, fetchLocations, fetchParts, fetchPartLocationStock, fetchRequisition, fetchRequisitions, fetchInventoryBatches, type LocationStock, type ServiceLocationRow, type PartRow, type StockRequisitionRow } from "@/lib/api";
+import { createTransfer, fetchLocations, fetchParts, fetchPartLocationStock, fetchRequisition, fetchRequisitions, fetchInventoryBatches, type LocationStock, type ServiceLocationRow, type PartRow, type StockRequisitionRow , formatPartLabel } from "@/lib/api";
 import { Plus, Trash2, Layers } from "lucide-react";
 import { SearchableSelect } from "@/components/ui/searchable-select";
 
@@ -87,7 +87,7 @@ export default function NewTransferPage() {
   const partOptions = useMemo(() => {
     return (parts ?? []).map((p) => ({
       value: String(p.id),
-      label: p.sku ? `${p.part_name} (${p.sku})` : p.part_name,
+      label: formatPartLabel(p),
       keywords: `${p.part_name} ${p.sku ?? ""} ${(p as any).part_number ?? ""} ${(p as any).barcode_number ?? ""}`,
     }));
   }, [parts]);

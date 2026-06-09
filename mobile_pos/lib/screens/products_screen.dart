@@ -10,6 +10,7 @@ import '../services/printer_service.dart';
 import '../services/db_service.dart';
 import '../components/guest_receipt_dialog.dart';
 import '../components/kot_receipt_dialog.dart';
+import 'qr_scanner_screen.dart';
 
 class ProductsScreen extends StatefulWidget {
   final Customer? customer;
@@ -908,14 +909,44 @@ class _ProductsScreenState extends State<ProductsScreen> {
               decoration: InputDecoration(
                 hintText: 'Search products by name...',
                 prefixIcon: const Icon(Icons.search),
-                suffixIcon: _searchController.text.isNotEmpty
-                    ? IconButton(
+                suffixIcon: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (_searchController.text.isNotEmpty)
+                      IconButton(
                         icon: const Icon(Icons.clear),
                         onPressed: () {
                           _searchController.clear();
                         },
-                      )
-                    : null,
+                      ),
+                    IconButton(
+                      icon: const Icon(Icons.qr_code_scanner, color: Colors.blueAccent),
+                      tooltip: 'Scan Barcode',
+                      onPressed: () async {
+                        final code = await Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (context) => const QRScannerScreen()),
+                        );
+                        if (code != null && code is String && code.isNotEmpty) {
+                          // Find item by barcode, SKU, or id
+                          final item = _items.where((i) => 
+                            i.barcodeNumber?.toLowerCase() == code.toLowerCase() ||
+                            i.sku?.toLowerCase() == code.toLowerCase() ||
+                            'item-${i.id}' == code.toLowerCase()
+                          ).firstOrNull;
+
+                          if (item != null) {
+                            _showItemDialog(item);
+                          } else {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(content: Text('Item not found for barcode: $code')),
+                            );
+                          }
+                        }
+                      },
+                    ),
+                  ],
+                ),
                 filled: true,
                 fillColor: Theme.of(context).cardColor,
                 border: OutlineInputBorder(

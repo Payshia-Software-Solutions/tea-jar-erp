@@ -25,6 +25,7 @@ import {
   type ServiceLocationRow,
   type SupplierRow,
   type TaxRow,
+  formatPartLabel
 } from "@/lib/api";
 import { ArrowLeft, ClipboardCheck, Loader2, PackageCheck, Plus, RefreshCw, Sparkles, Trash2 } from "lucide-react";
 import { calculateTaxes } from "@/lib/tax-calc";
@@ -94,7 +95,7 @@ export default function NewGrnPage() {
     () =>
       parts.map((p) => ({
         value: String(p.id),
-        label: p.sku ? `${p.part_name} (${p.sku})` : p.part_name,
+        label: formatPartLabel(p),
         keywords: `${p.sku ?? ""} ${p.part_number ?? ""} ${p.barcode_number ?? ""}`,
       })),
     [parts]

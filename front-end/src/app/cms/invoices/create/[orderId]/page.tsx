@@ -19,7 +19,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import { fetchOrder, createInvoice, fetchOrderParts, fetchParts, fetchTaxes, fetchLocations, fetchCustomers, createCustomer, fetchCompany, fetchBanks, fetchPartBatches, api as apiHelper } from "@/lib/api";
+import { fetchOrder, createInvoice, fetchOrderParts, fetchParts, fetchTaxes, fetchLocations, fetchCustomers, createCustomer, fetchCompany, fetchBanks, fetchPartBatches, api as apiHelper , formatPartLabel } from "@/lib/api";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
@@ -744,7 +744,7 @@ export default function CreateInvoicePage() {
                     }}
                     options={allParts.map(p => ({
                       value: String(p.id),
-                      label: `${p.part_name}${p.sku ? ` (${p.sku})` : ''}`,
+                      label: formatPartLabel(p),
                       keywords: `${p.part_name} ${p.sku || ''}`
                     }))}
                     placeholder="🔍 Select from inventory to add item..."

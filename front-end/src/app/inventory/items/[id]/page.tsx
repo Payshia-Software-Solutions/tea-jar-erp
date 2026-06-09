@@ -18,6 +18,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
+import { SearchableSelect } from "@/components/ui/searchable-select";
 import { useToast } from "@/hooks/use-toast";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { 
@@ -527,12 +528,12 @@ export default function ItemDetailPage() {
                     </div>
                     <div className="space-y-2">
                       <Label>Brand</Label>
-                      <Select value={form.brand_id} onValueChange={(v) => setForm((p) => ({ ...p, brand_id: v }))}>
-                        <SelectTrigger><SelectValue placeholder="Select brand..." /></SelectTrigger>
-                        <SelectContent>
-                          {brands.map((b) => <SelectItem key={b.id} value={String(b.id)}>{b.name}</SelectItem>)}
-                        </SelectContent>
-                      </Select>
+                      <SearchableSelect
+                        value={form.brand_id}
+                        onValueChange={(v) => setForm((p) => ({ ...p, brand_id: v }))}
+                        options={brands.map((b) => ({ value: String(b.id), label: b.name }))}
+                        placeholder="Select brand..."
+                      />
                     </div>
                     <div className="space-y-2">
                       <Label>Barcode</Label>

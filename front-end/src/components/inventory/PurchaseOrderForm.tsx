@@ -23,6 +23,7 @@ import {
   type SupplierRow, 
   type TaxRow,
   type InventoryCollectionRow
+  formatPartLabel
 } from "@/lib/api";
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import { calculateTaxes } from "@/lib/tax-calc";
@@ -355,7 +356,7 @@ export function PurchaseOrderForm({ editId, initialData }: PurchaseOrderFormProp
                             }}
                             options={parts.map(p => ({
                               value: String(p.id),
-                              label: p.sku ? `${p.part_name} (${p.sku})` : p.part_name,
+                              label: formatPartLabel(p),
                               keywords: p.sku || ""
                             }))}
                             placeholder="Search item..."

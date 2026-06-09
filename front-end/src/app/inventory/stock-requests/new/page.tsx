@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { createRequisition, fetchLocations, fetchParts, type PartRow, type ServiceLocationRow } from "@/lib/api";
+import { createRequisition, fetchLocations, fetchParts, type PartRow, type ServiceLocationRow , formatPartLabel } from "@/lib/api";
 import { Plus, Trash2 } from "lucide-react";
 import { SearchableSelect } from "@/components/ui/searchable-select";
 
@@ -70,7 +70,7 @@ export default function NewStockRequestPage() {
   const partOptions = useMemo(() => {
     return (parts ?? []).map((p) => ({
       value: String(p.id),
-      label: p.sku ? `${p.part_name} (${p.sku})` : p.part_name,
+      label: formatPartLabel(p),
       keywords: `${p.part_name} ${p.sku ?? ""} ${(p as any).part_number ?? ""} ${(p as any).barcode_number ?? ""}`,
     }));
   }, [parts]);

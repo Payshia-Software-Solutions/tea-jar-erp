@@ -12,6 +12,7 @@ namespace DesktopPOS.Services
         public string DefaultCustomerName { get; set; } = "Walk-in Customer";
         public bool IsDarkTheme { get; set; } = true;
         public bool IsTaxInclusive { get; set; } = false;
+        public bool AutoAddOnScan { get; set; } = true;
     }
 
     public static class SettingsService
