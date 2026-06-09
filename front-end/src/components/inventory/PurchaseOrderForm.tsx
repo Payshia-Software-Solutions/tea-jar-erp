@@ -22,7 +22,7 @@ import {
   type ServiceLocationRow,
   type SupplierRow, 
   type TaxRow,
-  type InventoryCollectionRow
+  type InventoryCollectionRow,
   formatPartLabel
 } from "@/lib/api";
 import { SearchableSelect } from "@/components/ui/searchable-select";
