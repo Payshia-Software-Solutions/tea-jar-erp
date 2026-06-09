@@ -31,7 +31,7 @@ import {
   fetchCompany, 
   fetchBanks, 
   fetchPartBatches, 
-  api as apiHelper 
+  api as apiHelper,
   formatPartLabel
 } from "@/lib/api";
 import { Badge } from "@/components/ui/badge";

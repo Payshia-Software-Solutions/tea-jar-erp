@@ -31,7 +31,7 @@ import {
   fetchLocations, 
   fetchCustomers, 
   createRecurringInvoice,
-  fetchCompany
+  fetchCompany,
   formatPartLabel
 } from "@/lib/api";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
