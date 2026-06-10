@@ -7,6 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Printer, RefreshCw, Save, Info, Globe } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
+import { api } from "@/lib/api";
 
 const PRINTER_TYPES = [
     { key: 'Receipt', label: 'Main Receipt Printer' },
@@ -24,7 +25,7 @@ export default function PrinterSettingsPage() {
 
     const fetchSettings = async () => {
         try {
-            const res = await fetch('http://localhost/rapair-management/server/public/api/printer/get_settings');
+            const res = await api('/printer/get_settings');
             const data = await res.json();
             if (data.success) {
                 setSettings(data.data || []);
@@ -67,7 +68,7 @@ export default function PrinterSettingsPage() {
 
     const handleSave = async () => {
         try {
-            const res = await fetch('http://localhost/rapair-management/server/public/api/printer/save_settings', {
+            const res = await api('/printer/save_settings', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({

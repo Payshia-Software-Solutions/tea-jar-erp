@@ -11,6 +11,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Printer, FileText, FileSpreadsheet, Loader2 } from "lucide-react";
 import { usePOS } from "../../context/POSContext";
+import { api } from "@/lib/api";
 
 export const PrintGuestSelectionDialog: React.FC = () => {
   const { 
@@ -36,7 +37,7 @@ export const PrintGuestSelectionDialog: React.FC = () => {
 
     try {
         // 1. Lookup the printer name mapping AND Global Printing Mode
-        const settingsRes = await fetch('http://localhost/rapair-management/server/public/api/printer/get_settings');
+        const settingsRes = await api('/printer/get_settings');
         const settingsData = await settingsRes.json();
         
         let printingMode = "Silent";

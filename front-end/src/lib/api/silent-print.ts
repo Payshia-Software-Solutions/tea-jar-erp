@@ -2,6 +2,7 @@
  * Silent Print Utility
  * Sends HTML content to the local print service
  */
+import { api } from "@/lib/api";
 export const silentPrint = async (html: string, printerNameOrType?: string, paperWidth: '80mm' | '58mm' = '80mm', docName: string = 'BizzFlow Print Job') => {
   // Detect if we are on Android
   const isAndroid = /Android/i.test(navigator.userAgent);
@@ -10,8 +11,7 @@ export const silentPrint = async (html: string, printerNameOrType?: string, pape
   // If a Type is provided (e.g., 'KOT', 'Receipt') instead of a hardware name, fetch the mapping from ERP
   if (printerNameOrType && ['Receipt', 'KOT', 'Bar', 'Label'].includes(printerNameOrType)) {
       try {
-          const res = await fetch(`http://localhost/rapair-management/server/public/api/printer/get_settings`);
-          const data = await res.json();
+          const data = await api('/printer/get_settings');
           if (data.success) {
               const mapping = data.data.find((s: any) => s.printer_type === printerNameOrType);
               if (mapping) {
