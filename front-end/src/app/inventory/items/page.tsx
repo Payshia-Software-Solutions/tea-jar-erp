@@ -339,6 +339,11 @@ export default function InventoryItemsListPage() {
                                     <div className="text-[10px] text-muted-foreground uppercase tracking-widest font-bold truncate">
                                       {p.sku ? `SKU: ${p.sku}` : `ITEM ID: #${p.id}`}
                                     </div>
+                                    {(p.brand_name || p.brand) && (
+                                      <div className="text-xs text-muted-foreground mt-0.5 truncate">
+                                        {p.brand_name || p.brand}
+                                      </div>
+                                    )}
                                   </div>
                                 </Link>
                               </TableCell>
@@ -392,6 +397,11 @@ export default function InventoryItemsListPage() {
                                   </div>
                                   <div className="min-w-0">
                                     <div className="font-bold truncate">{p.part_name}</div>
+                                    {(p.brand_name || p.brand) && (
+                                      <div className="text-[11px] text-muted-foreground truncate mb-1">
+                                        {p.brand_name || p.brand}
+                                      </div>
+                                    )}
                                     <div className="flex items-center gap-2">
                                       <div className="text-xs text-muted-foreground truncate">{p.sku ? p.sku : `#${p.id}`}</div>
                                       <Badge variant="outline" className={`text-[9px] py-0 h-4 ${p.item_type === 'Service' ? 'bg-amber-50 text-amber-700 border-amber-200' : 'bg-slate-50 text-slate-700 border-slate-200'}`}>

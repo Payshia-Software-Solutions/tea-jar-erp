@@ -536,17 +536,23 @@ export default function NewStockAdjustmentPage() {
                         filteredAddParts.map((p) => {
                           const label = p.sku ? `${p.part_name} (${p.sku})` : p.part_name;
                           const selected = lines.some((l) => String(l.part_id) === String(p.id));
+                          const brand = p.brand_name || p.brand || "";
+                          const price = p.price || p.cost_price || 0;
                           return (
                             <button
                               key={p.id}
                               type="button"
                               onClick={() => addPart(Number(p.id))}
                               className={cn(
-                                "w-full text-left rounded-xl border px-3 py-3 transition-colors",
+                                "w-full flex flex-col text-left rounded-xl border px-3 py-2 transition-colors",
                                 selected ? "bg-primary/5 border-primary/40" : "hover:bg-muted/40 border-transparent"
                               )}
                             >
-                              <div className="font-semibold">{label}</div>
+                              <div className="flex justify-between items-start w-full">
+                                <div className="font-semibold text-sm">{label}</div>
+                                <div className="font-bold text-sm tabular-nums">LKR {Number(price).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+                              </div>
+                              {brand && <div className="text-xs text-muted-foreground mt-0.5">{brand}</div>}
                             </button>
                           );
                         })
@@ -661,16 +667,24 @@ export default function NewStockAdjustmentPage() {
                                   </div>
                                   <ScrollArea className="h-[320px] pr-2">
                                     <div className="space-y-1">
-                                      {filteredEditParts.map((p) => (
+                                      {filteredEditParts.map((p) => {
+                                        const label = p.sku ? `${p.part_name} (${p.sku})` : p.part_name;
+                                        const brand = p.brand_name || p.brand || "";
+                                        const price = p.price || p.cost_price || 0;
+                                        return (
                                         <button
                                           key={p.id}
                                           type="button"
                                           onClick={() => changePart(l.key, Number(p.id))}
-                                          className="w-full text-left rounded-xl border px-3 py-3 hover:bg-muted/40 border-transparent"
+                                          className="w-full flex flex-col text-left rounded-xl border px-3 py-2 hover:bg-muted/40 border-transparent transition-colors"
                                         >
-                                          {p.part_name}
+                                          <div className="flex justify-between items-start w-full">
+                                            <div className="font-semibold text-sm">{label}</div>
+                                            <div className="font-bold text-sm tabular-nums">LKR {Number(price).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+                                          </div>
+                                          {brand && <div className="text-xs text-muted-foreground mt-0.5">{brand}</div>}
                                         </button>
-                                      ))}
+                                      )})}
                                     </div>
                                   </ScrollArea>
                                 </PopoverContent>

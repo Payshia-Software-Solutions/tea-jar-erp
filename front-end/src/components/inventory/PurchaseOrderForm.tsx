@@ -354,11 +354,25 @@ export function PurchaseOrderForm({ editId, initialData }: PurchaseOrderFormProp
                                 ),
                               }));
                             }}
-                            options={parts.map(p => ({
-                              value: String(p.id),
-                              label: formatPartLabel(p),
-                              keywords: p.sku || ""
-                            }))}
+                            options={parts.map(p => {
+                              const title = formatPartLabel(p);
+                              const brand = p.brand_name || p.brand || "";
+                              const price = p.price || p.cost_price || 0;
+                              return {
+                                value: String(p.id),
+                                displayLabel: title,
+                                label: (
+                                  <div className="flex flex-col w-full text-left">
+                                    <div className="flex justify-between items-start w-full gap-2">
+                                      <div className="font-semibold text-sm truncate">{title}</div>
+                                      <div className="font-bold text-sm tabular-nums shrink-0">LKR {Number(price).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+                                    </div>
+                                    {brand && <div className="text-xs text-muted-foreground mt-0.5 font-normal">{brand}</div>}
+                                  </div>
+                                ),
+                                keywords: `${title} ${brand} ${p.sku ?? ""} ${p.part_number ?? ""} ${p.barcode_number ?? ""}`,
+                              };
+                            })}
                             placeholder="Search item..."
                           />
                           {selected && <div className="text-[11px] text-muted-foreground">Unit Cost hint: {selected.cost_price?.toLocaleString()}</div>}

@@ -11,6 +11,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 export type SearchableSelectOption = {
   value: string;
   label: React.ReactNode;
+  displayLabel?: React.ReactNode;
   keywords?: string;
 };
 
@@ -71,7 +72,7 @@ export function SearchableSelect({
               triggerClassName
             )}
           >
-            <span className="truncate text-slate-900 dark:text-slate-100 font-bold">{selected ? selected.label : placeholder}</span>
+            <span className="truncate text-slate-900 dark:text-slate-100 font-bold">{selected ? (selected.displayLabel || selected.label) : placeholder}</span>
             <ChevronDown className="ml-2 h-4 w-4 opacity-70 shrink-0" />
           </Button>
         </PopoverTrigger>

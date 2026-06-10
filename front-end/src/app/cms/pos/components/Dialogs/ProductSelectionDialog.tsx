@@ -179,6 +179,26 @@ export const ProductSelectionDialog: React.FC = () => {
                 </DialogHeader>
                 
                 <div className="space-y-4">
+                  {/* Item Details */}
+                  <div className="grid grid-cols-2 gap-3">
+                     <div className="flex flex-col p-3 bg-white dark:bg-slate-900 rounded-xl border border-border shadow-sm">
+                       <span className="text-[10px] text-muted-foreground font-black uppercase tracking-wider">Price</span>
+                       <span className="text-sm font-black text-foreground">LKR {Number(selectedProduct.price || selectedProduct.cost_price || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                     </div>
+                     {(selectedProduct.brand_name || selectedProduct.brand) && (
+                     <div className="flex flex-col p-3 bg-white dark:bg-slate-900 rounded-xl border border-border shadow-sm">
+                       <span className="text-[10px] text-muted-foreground font-black uppercase tracking-wider">Brand</span>
+                       <span className="text-sm font-bold text-foreground">{selectedProduct.brand_name || selectedProduct.brand}</span>
+                     </div>
+                     )}
+                     {(selectedProduct.category_name || selectedProduct.category) && (
+                     <div className="flex flex-col p-3 bg-white dark:bg-slate-900 rounded-xl border border-border shadow-sm">
+                       <span className="text-[10px] text-muted-foreground font-black uppercase tracking-wider">Category</span>
+                       <span className="text-sm font-bold text-foreground">{selectedProduct.category_name || selectedProduct.category}</span>
+                     </div>
+                     )}
+                  </div>
+
                   {selectedProduct.item_type !== 'Service' && selectedProduct.recipe_type !== 'A La Carte' && (
                     <div className="pt-4 border-t border-border">
                       <p className="text-[10px] text-muted-foreground uppercase tracking-[0.2em] font-black mb-3">Inventory Status</p>
@@ -186,7 +206,9 @@ export const ProductSelectionDialog: React.FC = () => {
                         // Safety: If we've loaded batches and they show a different total than the product card,
                         // the product card is likely stale. Use the batch sum as the source of truth.
                         const batchTotal = batches.reduce((acc, b) => acc + Number(b.quantity_on_hand), 0);
-                        const displayQty = (batches.length > 0 || !loadingBatches) ? batchTotal : (selectedProduct.stock_quantity || 0);
+                        const displayQty = (selectedProduct.is_fifo || selectedProduct.is_expiry)
+                          ? ((batches.length > 0 || !loadingBatches) ? batchTotal : (selectedProduct.stock_quantity || 0))
+                          : (selectedProduct.stock_quantity || 0);
                         const isOutOfStock = displayQty <= 0;
 
                         return (
@@ -204,7 +226,9 @@ export const ProductSelectionDialog: React.FC = () => {
 
                       {(() => {
                         const batchTotal = batches.reduce((acc, b) => acc + Number(b.quantity_on_hand), 0);
-                        const displayQty = (batches.length > 0 || !loadingBatches) ? batchTotal : (selectedProduct.stock_quantity || 0);
+                        const displayQty = (selectedProduct.is_fifo || selectedProduct.is_expiry)
+                          ? ((batches.length > 0 || !loadingBatches) ? batchTotal : (selectedProduct.stock_quantity || 0))
+                          : (selectedProduct.stock_quantity || 0);
                         if (displayQty <= 0 && selectedProduct.item_type === 'Part') {
                           return (
                             <div className="mt-4 p-4 bg-rose-50 dark:bg-rose-500/10 border border-rose-200 dark:border-rose-500/30 rounded-2xl flex items-center gap-3">
@@ -361,11 +385,11 @@ export const ProductSelectionDialog: React.FC = () => {
             size="lg" 
             className="w-full h-16 sm:h-20 rounded-2xl text-lg sm:text-xl font-black tracking-[0.1em] uppercase shadow-2xl bg-primary hover:bg-primary/90 text-white"
             onClick={confirmAddToCart}
-            disabled={!selectedProduct || parseFloat(modalQty) <= 0 || (selectedProduct?.item_type !== 'Service' && selectedProduct?.recipe_type !== 'A La Carte' && parseFloat(modalQty) > (batches.reduce((acc, b) => acc + Number(b.quantity_on_hand), 0) || selectedProduct?.stock_quantity))}
+            disabled={!selectedProduct || parseFloat(modalQty) <= 0 || (selectedProduct?.item_type !== 'Service' && selectedProduct?.recipe_type !== 'A La Carte' && parseFloat(modalQty) > ((selectedProduct?.is_fifo || selectedProduct?.is_expiry) ? ((batches.length > 0 || !loadingBatches) ? batches.reduce((acc, b) => acc + Number(b.quantity_on_hand), 0) : (selectedProduct?.stock_quantity || 0)) : (selectedProduct?.stock_quantity || 0)))}
           >
             <ShoppingCart className="w-6 h-6 mr-4" /> Add to Shopping Cart
           </Button>
-          {selectedProduct && selectedProduct.item_type !== 'Service' && selectedProduct.recipe_type !== 'A La Carte' && parseFloat(modalQty) > selectedProduct.stock_quantity && (
+          {selectedProduct && selectedProduct.item_type !== 'Service' && selectedProduct.recipe_type !== 'A La Carte' && parseFloat(modalQty) > ((selectedProduct?.is_fifo || selectedProduct?.is_expiry) ? ((batches.length > 0 || !loadingBatches) ? batches.reduce((acc, b) => acc + Number(b.quantity_on_hand), 0) : (selectedProduct?.stock_quantity || 0)) : (selectedProduct?.stock_quantity || 0)) && (
             <p className="text-center text-[10px] font-bold text-rose-500 uppercase tracking-widest mt-2 px-4">Cannot exceed available stock</p>
           )}
         </div>
