@@ -14,7 +14,7 @@ class StockcountController extends Controller {
     private $auditModel;
 
     public function __construct() {
-        InventorySchema::ensure(true);
+        // InventorySchema::ensure();
         $this->model = $this->model('StockCount');
         $this->auditModel = $this->model('AuditLog');
     }

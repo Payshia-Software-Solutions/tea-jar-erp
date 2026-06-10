@@ -9,7 +9,7 @@ class StorefrontMenuController extends Controller {
     public function __construct() {
         $this->menuModel = $this->model('StorefrontMenu');
         require_once '../app/helpers/InventorySchema.php';
-        InventorySchema::ensure();
+        // InventorySchema::ensure();
     }
 
     // GET /api/storefront/menus

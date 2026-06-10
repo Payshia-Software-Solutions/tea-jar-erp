@@ -12,7 +12,7 @@ class StockadjustmentController extends Controller {
     private $auditModel;
 
     public function __construct() {
-        InventorySchema::ensure(true);
+        // InventorySchema::ensure();
         $this->model = $this->model('StockAdjustment');
         $this->auditModel = $this->model('AuditLog');
     }

@@ -10,7 +10,7 @@ class PartController extends Controller {
         $this->partModel = $this->model('Part');
         $this->auditModel = $this->model('AuditLog');
         require_once '../app/helpers/InventorySchema.php';
-        InventorySchema::ensure();
+        // InventorySchema::ensure();
     }
 
     // GET /api/part/list?q=
@@ -501,7 +501,7 @@ class PartController extends Controller {
         $this->requirePermission('stock.read');
         if ($_SERVER['REQUEST_METHOD'] !== 'GET') $this->error('Method Not Allowed', 405);
 
-        InventorySchema::ensure();
+        // InventorySchema::ensure();
 
         $partId = isset($_GET['part_id']) ? (int)$_GET['part_id'] : 0;
         $limit = isset($_GET['limit']) ? (int)$_GET['limit'] : 200;
