@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useMemo, useState } from "react";
+import React, { useMemo, useState, useEffect, useRef } from "react";
 import { 
   Search, 
   Plus, 
@@ -17,7 +17,8 @@ import {
   Filter,
   LayoutDashboard,
   FileText,
-  Barcode 
+  Barcode,
+  Loader2
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -72,6 +73,35 @@ export const InventoryGrid: React.FC = () => {
 
   const [colSearch, setColSearch] = React.useState("");
   const [selectedRecipeType, setSelectedRecipeType] = useState<string | null>(null);
+  
+  const [visibleCount, setVisibleCount] = useState(50);
+  const observerTarget = useRef(null);
+
+  // Reset visible count when filters change
+  useEffect(() => {
+    setVisibleCount(50);
+  }, [searchQuery, selectedCollectionId, selectedRecipeType, selectedBrandName, selectedItemType, selectedSectionName, selectedDepartmentName, selectedCategoryName, selectedSupplierName]);
+
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      entries => {
+        if (entries[0].isIntersecting) {
+          setVisibleCount(prev => prev + 50);
+        }
+      },
+      { threshold: 0.1 }
+    );
+    
+    if (observerTarget.current) {
+      observer.observe(observerTarget.current);
+    }
+    
+    return () => {
+      if (observerTarget.current) {
+        observer.unobserve(observerTarget.current);
+      }
+    };
+  }, [observerTarget.current]);
 
   const filteredInventory = useMemo(() => {
     let filtered = [...inventory];
@@ -569,7 +599,7 @@ export const InventoryGrid: React.FC = () => {
             </div>
           ) : (
             <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-2 lg:gap-4">
-              {filteredInventory.map(product => {
+              {filteredInventory.slice(0, visibleCount).map(product => {
                 const outOfStock = product.stock_quantity <= 0 && product.item_type !== 'Service' && product.recipe_type !== 'A La Carte';
                 return (
                   <div 
@@ -614,6 +644,11 @@ export const InventoryGrid: React.FC = () => {
                   </div>
                 );
               })}
+            </div>
+          )}
+          {visibleCount < filteredInventory.length && (
+            <div ref={observerTarget} className="h-20 w-full flex items-center justify-center mt-4">
+               <Loader2 className="w-6 h-6 animate-spin text-muted-foreground opacity-50" />
             </div>
           )}
         </div>

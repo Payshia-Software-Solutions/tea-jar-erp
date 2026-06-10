@@ -106,7 +106,7 @@ class Mailer {
             $mail->addAddress($to, $name);
             self::addCCAddresses($mail, $ccEmail);
             $mail->isHTML(true);
-            $mail->Subject = "New Invoice #$invoiceNumber for $period - $name | Nebulync";
+            $mail->Subject = "New Invoice #$invoiceNumber for $period from Nebulynch in nexus portal - $name";
             
             $mail->Body = "
                 <div style=\"font-family: sans-serif; color: #1e293b; max-width: 600px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 16px; overflow: hidden;\">

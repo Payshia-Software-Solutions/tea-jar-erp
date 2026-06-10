@@ -89,7 +89,7 @@ export const CheckoutDialog: React.FC = () => {
       isSplit: isSplitPayment,
       splitPayments: splitPayments,
       method: paymentMethod,
-      amount: amountReceived,
+      amount: Math.min(amountReceived, totals.grandTotal),
       cardType, cardLast4, cardAuthCode,
       chequeNo, chequeBankName, chequeBranchName, chequeDate, chequePayee
     };

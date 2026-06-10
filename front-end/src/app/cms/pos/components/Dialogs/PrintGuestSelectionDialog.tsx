@@ -48,11 +48,13 @@ export const PrintGuestSelectionDialog: React.FC = () => {
             if (modeSetting) printingMode = modeSetting.printer_name;
         }
 
-        // IF GLOBAL SETTING IS 'BROWSER', or bridge is down, or not Windows
         if (printingMode === 'Browser' || !bridgeAvailable || !isWindows) {
             // Add autoprint=1 ONLY for browser mode so it opens the dialog automatically
             const browserUrl = url.includes('?') ? `${url}&autoprint=1` : `${url}?autoprint=1`;
-            window.open(browserUrl, '_blank');
+            const w = 400; const h = 600;
+            const left = (window.screen.width / 2) - (w / 2);
+            const top = (window.screen.height / 2) - (h / 2);
+            window.open(browserUrl, 'GuestReceiptPrint', `width=${w},height=${h},top=${top},left=${left}`);
             setIsPrinting(null);
             setGuestPrintSelectionOpen(false);
             return;
@@ -98,7 +100,11 @@ export const PrintGuestSelectionDialog: React.FC = () => {
         setTimeout(() => setGuestPrintSelectionOpen(false), 500);
     } catch (error) {
         console.error("Print failed:", error);
-        window.open(url.includes('?') ? `${url}&autoprint=1` : `${url}?autoprint=1`, '_blank');
+        const browserUrl = url.includes('?') ? `${url}&autoprint=1` : `${url}?autoprint=1`;
+        const w = 400; const h = 600;
+        const left = (window.screen.width / 2) - (w / 2);
+        const top = (window.screen.height / 2) - (h / 2);
+        window.open(browserUrl, 'GuestReceiptPrint', `width=${w},height=${h},top=${top},left=${left}`);
     } finally {
         setIsPrinting(null);
     }

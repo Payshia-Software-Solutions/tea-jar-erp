@@ -295,6 +295,11 @@ export default function StockPage() {
                               <div className="min-w-0">
                                 <p className="font-bold truncate">{p.part_name}</p>
                                 <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-bold">{p.sku ? `SKU: ${p.sku}` : `ITEM ID: #${p.id}`}</p>
+                                {((p as any).brand_name || (p as any).brand) ? (
+                                  <p className="text-xs text-muted-foreground mt-0.5 truncate">
+                                    {(p as any).brand_name || (p as any).brand}
+                                  </p>
+                                ) : null}
                               </div>
                               {low ? <Badge variant="destructive" className="text-[10px] ml-2">Low</Badge> : null}
                             </div>

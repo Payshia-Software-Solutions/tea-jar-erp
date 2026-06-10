@@ -48,6 +48,7 @@ export const SidebarCart: React.FC = () => {
   const {
     cart,
     locations,
+    inventory,
     selectedLocation,
     setSelectedLocation,
     customers,
@@ -358,14 +359,28 @@ export const SidebarCart: React.FC = () => {
                         step="any"
                         className="w-10 lg:w-12 text-center text-[10px] lg:text-xs font-black tabular-nums bg-transparent border-none focus:ring-0 focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                         value={item.quantity}
-                        onChange={(e) => updateCartLine(index, 'quantity', parseFloat(e.target.value) || 0)}
+                        onChange={(e) => {
+                          let val = parseFloat(e.target.value) || 0;
+                          const invItem = inventory.find(p => p.id === item.id);
+                          if (invItem && invItem.item_type !== 'Service' && invItem.recipe_type !== 'A La Carte') {
+                             if (val > invItem.stock_quantity) val = invItem.stock_quantity;
+                          }
+                          updateCartLine(index, 'quantity', val);
+                        }}
                         onFocus={(e) => e.target.select()}
                       />
                       <Button 
                         variant="ghost" 
                         size="icon" 
                         className="w-6 h-6 lg:w-7 lg:h-7 rounded-md text-primary" 
-                        onClick={() => updateCartLine(index, 'quantity', Number(item.quantity) + 1)}
+                        onClick={() => {
+                          let val = Number(item.quantity) + 1;
+                          const invItem = inventory.find(p => p.id === item.id);
+                          if (invItem && invItem.item_type !== 'Service' && invItem.recipe_type !== 'A La Carte') {
+                             if (val > invItem.stock_quantity) val = invItem.stock_quantity;
+                          }
+                          updateCartLine(index, 'quantity', val);
+                        }}
                       >
                         <Plus className="w-2.5 h-2.5 lg:w-3 lg:h-3" />
                       </Button>
