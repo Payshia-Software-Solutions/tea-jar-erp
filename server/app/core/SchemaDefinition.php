@@ -3,6 +3,124 @@
 class SchemaDefinition {
     public static function get() {
         return array (
+  'customer_notes' => 
+  array (
+    'name' => 'customer_notes',
+    'columns' => 
+    array (
+      'id' => 
+      array (
+        'Field' => 'id',
+        'Type' => 'int(11)',
+        'Null' => 'NO',
+        'Key' => 'PRI',
+        'Default' => NULL,
+        'Extra' => 'auto_increment',
+      ),
+      'note_no' => 
+      array (
+        'Field' => 'note_no',
+        'Type' => 'varchar(30)',
+        'Null' => 'NO',
+        'Key' => 'UNI',
+        'Default' => NULL,
+        'Extra' => '',
+      ),
+      'type' => 
+      array (
+        'Field' => 'type',
+        'Type' => 'enum(\'Credit Note\',\'Debit Note\')',
+        'Null' => 'NO',
+        'Key' => '',
+        'Default' => NULL,
+        'Extra' => '',
+      ),
+      'customer_id' => 
+      array (
+        'Field' => 'customer_id',
+        'Type' => 'int(11)',
+        'Null' => 'NO',
+        'Key' => '',
+        'Default' => NULL,
+        'Extra' => '',
+      ),
+      'location_id' => 
+      array (
+        'Field' => 'location_id',
+        'Type' => 'int(11)',
+        'Null' => 'YES',
+        'Key' => '',
+        'Default' => '1',
+        'Extra' => '',
+      ),
+      'date' => 
+      array (
+        'Field' => 'date',
+        'Type' => 'date',
+        'Null' => 'NO',
+        'Key' => '',
+        'Default' => NULL,
+        'Extra' => '',
+      ),
+      'amount' => 
+      array (
+        'Field' => 'amount',
+        'Type' => 'decimal(12,2)',
+        'Null' => 'NO',
+        'Key' => '',
+        'Default' => NULL,
+        'Extra' => '',
+      ),
+      'reason' => 
+      array (
+        'Field' => 'reason',
+        'Type' => 'varchar(255)',
+        'Null' => 'YES',
+        'Key' => '',
+        'Default' => NULL,
+        'Extra' => '',
+      ),
+      'created_by' => 
+      array (
+        'Field' => 'created_by',
+        'Type' => 'int(11)',
+        'Null' => 'YES',
+        'Key' => '',
+        'Default' => NULL,
+        'Extra' => '',
+      ),
+      'created_at' => 
+      array (
+        'Field' => 'created_at',
+        'Type' => 'timestamp',
+        'Null' => 'YES',
+        'Key' => '',
+        'Default' => 'current_timestamp()',
+        'Extra' => '',
+      ),
+    ),
+    'indexes' => 
+    array (
+      'PRIMARY' => 
+      array (
+        'Key_name' => 'PRIMARY',
+        'Non_unique' => 0,
+        'Columns' => 
+        array (
+          0 => 'id',
+        ),
+      ),
+      'note_no' => 
+      array (
+        'Key_name' => 'note_no',
+        'Non_unique' => 0,
+        'Columns' => 
+        array (
+          0 => 'note_no',
+        ),
+      ),
+    ),
+  ),
   'acc_accounts' => 
   array (
     'name' => 'acc_accounts',

@@ -150,9 +150,9 @@ export default function OverallDashboardPage() {
   const salesStats = useMemo(() => {
     if (!salesData) return null;
     return {
-      today: salesData.kpis?.today?.totalRevenue || 0,
-      count: salesData.kpis?.today?.orderCount || 0,
-      month: salesData.kpis?.month?.totalRevenue || 0,
+      today: salesData.kpis?.today?.revenue || 0,
+      count: salesData.kpis?.today?.count || 0,
+      month: salesData.kpis?.month?.revenue || 0,
     };
   }, [salesData]);
 

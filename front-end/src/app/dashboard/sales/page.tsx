@@ -124,6 +124,14 @@ export default function SalesDashboardPage() {
       bg: "bg-emerald-50"
     },
     {
+      label: "Today Collections",
+      value: formatCurrency(data?.kpis?.today?.collection || 0),
+      sub: "Payments received today",
+      icon: CreditCard,
+      color: "text-indigo-600",
+      bg: "bg-indigo-50"
+    },
+    {
       label: "MTD Collections",
       value: formatCurrency(data?.kpis?.month?.collection || 0),
       sub: "Payments received this month",
@@ -177,7 +185,7 @@ export default function SalesDashboardPage() {
         )}
 
         {/* KPI Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
           {kpis.map((k, i) => (
             <Card key={i} className="border-none shadow-sm hover:shadow-md transition-shadow overflow-hidden">
               <CardContent className="p-6">

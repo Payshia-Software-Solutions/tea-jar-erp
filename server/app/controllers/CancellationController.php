@@ -22,8 +22,11 @@ class CancellationController extends Controller {
         switch ($type) {
             case 'Invoice':
                 require_once '../app/models/Invoice.php';
-                $this->db->query("SELECT i.id, i.invoice_no as number, c.name, i.grand_total as amount, i.issue_date as date, i.status, i.cancelled_at, i.cancellation_reason 
-                                 FROM invoices i LEFT JOIN customers c ON i.customer_id = c.id WHERE i.invoice_no = :num OR i.id = :num LIMIT 1");
+                $query = "SELECT i.id, i.invoice_no as number, c.name, i.grand_total as amount, i.issue_date as date, i.status, i.cancelled_at, i.cancellation_reason 
+                                 FROM invoices i LEFT JOIN customers c ON i.customer_id = c.id WHERE i.invoice_no = :num";
+                if (is_numeric($number)) $query .= " OR i.id = :num";
+                $query .= " LIMIT 1";
+                $this->db->query($query);
                 $this->db->bind(':num', $number);
                 $result = $this->db->single();
                 if($result) {
@@ -35,8 +38,11 @@ class CancellationController extends Controller {
 
             case 'GRN':
                 require_once '../app/models/GoodsReceiveNote.php';
-                $this->db->query("SELECT g.id, g.grn_number as number, s.name, g.total_amount as amount, g.received_at as date, g.status, g.cancelled_at, g.cancellation_reason 
-                                 FROM goods_receive_notes g LEFT JOIN suppliers s ON g.supplier_id = s.id WHERE g.grn_number = :num OR g.id = :num LIMIT 1");
+                $query = "SELECT g.id, g.grn_number as number, s.name, g.total_amount as amount, g.received_at as date, g.status, g.cancelled_at, g.cancellation_reason 
+                                 FROM goods_receive_notes g LEFT JOIN suppliers s ON g.supplier_id = s.id WHERE g.grn_number = :num";
+                if (is_numeric($number)) $query .= " OR g.id = :num";
+                $query .= " LIMIT 1";
+                $this->db->query($query);
                 $this->db->bind(':num', $number);
                 $result = $this->db->single();
                 if($result) {
@@ -49,32 +55,44 @@ class CancellationController extends Controller {
 
             case 'Expense':
                 require_once '../app/models/Expense.php';
-                $this->db->query("SELECT id, voucher_no as number, payee_name as name, amount, payment_date as date, status, cancelled_at, cancellation_reason 
-                                 FROM acc_expenses WHERE voucher_no = :num OR id = :num LIMIT 1");
+                $query = "SELECT id, voucher_no as number, payee_name as name, amount, payment_date as date, status, cancelled_at, cancellation_reason 
+                                 FROM acc_expenses WHERE voucher_no = :num";
+                if (is_numeric($number)) $query .= " OR id = :num";
+                $query .= " LIMIT 1";
+                $this->db->query($query);
                 $this->db->bind(':num', $number);
                 $result = $this->db->single();
                 break;
 
             case 'PaymentReceipt':
                 require_once '../app/models/PaymentReceipt.php';
-                $this->db->query("SELECT p.id, p.receipt_no as number, c.name as name, p.amount, p.payment_date as date, p.status, p.cancelled_at, p.cancellation_reason 
-                                 FROM payment_receipts p LEFT JOIN customers c ON p.customer_id = c.id WHERE p.receipt_no = :num OR p.id = :num LIMIT 1");
+                $query = "SELECT p.id, p.receipt_no as number, c.name as name, p.amount, p.payment_date as date, p.status, p.cancelled_at, p.cancellation_reason 
+                                 FROM payment_receipts p LEFT JOIN customers c ON p.customer_id = c.id WHERE p.receipt_no = :num";
+                if (is_numeric($number)) $query .= " OR p.id = :num";
+                $query .= " LIMIT 1";
+                $this->db->query($query);
                 $this->db->bind(':num', $number);
                 $result = $this->db->single();
                 break;
 
             case 'VendorPayment':
                 require_once '../app/models/SupplierPayment.php';
-                $this->db->query("SELECT p.id, p.reference_no as number, s.name, p.amount, p.payment_date as date, p.status, p.cancelled_at, p.cancellation_reason 
-                                 FROM acc_supplier_payments p JOIN suppliers s ON p.supplier_id = s.id WHERE p.reference_no = :num OR p.id = :num LIMIT 1");
+                $query = "SELECT p.id, p.reference_no as number, s.name, p.amount, p.payment_date as date, p.status, p.cancelled_at, p.cancellation_reason 
+                                 FROM acc_supplier_payments p JOIN suppliers s ON p.supplier_id = s.id WHERE p.reference_no = :num";
+                if (is_numeric($number)) $query .= " OR p.id = :num";
+                $query .= " LIMIT 1";
+                $this->db->query($query);
                 $this->db->bind(':num', $number);
                 $result = $this->db->single();
                 break;
 
             case 'Reservation':
                 require_once '../app/models/Reservation.php';
-                $this->db->query("SELECT res.id, res.reservation_no as number, c.name, res.total_amount as amount, res.check_in as date, res.status, res.cancelled_at, res.cancellation_reason 
-                                 FROM hotel_reservations res JOIN customers c ON res.customer_id = c.id WHERE res.reservation_no = :num OR res.id = :num LIMIT 1");
+                $query = "SELECT res.id, res.reservation_no as number, c.name, res.total_amount as amount, res.check_in as date, res.status, res.cancelled_at, res.cancellation_reason 
+                                 FROM hotel_reservations res JOIN customers c ON res.customer_id = c.id WHERE res.reservation_no = :num";
+                if (is_numeric($number)) $query .= " OR res.id = :num";
+                $query .= " LIMIT 1";
+                $this->db->query($query);
                 $this->db->bind(':num', $number);
                 $result = $this->db->single();
                 break;

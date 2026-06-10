@@ -105,15 +105,20 @@ export default function ReportsPage() {
       { title: "Vehicles", desc: "Vehicle register and filters", href: "/reports/vehicles", icon: Car },
       { title: "Maintenance History", desc: "Pick a vehicle to view job history", href: "/reports/maintenance-history", icon: FileText },
     ];
-    const sales: ReportLink[] = [
+      const sales: ReportLink[] = [
       { title: "Sale Summary", desc: "Daily/Monthly aggregation of sales totals", href: "/reports/sales/summary", icon: TrendingUp },
+      { title: "Customer Statement", desc: "Detailed ledger of invoices, payments, and balances", href: "/reports/sales/statement", icon: FileText },
+      { title: "Accounts Receivable Aging", desc: "Outstanding balances grouped by age (0-30, 30-60, etc)", href: "/reports/sales/aging", icon: AlertTriangle },
+      { title: "Credit Sale Summary", desc: "Outstanding balances and credit days count", href: "/reports/sales/credit-summary", icon: TrendingUp },
       { title: "Invoice Report", desc: "Detailed list of invoices with status", href: "/reports/sales/invoices", icon: FileText },
       { title: "Payment Receipts", desc: "List of payment receipts by method", href: "/reports/sales/receipts", icon: Receipt },
       { title: "Day End Report", desc: "Comprehensive report for a specific day", href: "/reports/sales/day-end", icon: Clock },
       { title: "Location Sales", desc: "Sales performance by location", href: "/reports/sales/locations", icon: MapPin },
       { title: "Top Selling Items", desc: "Most popular products and services", href: "/reports/sales/top-items", icon: BarChart3 },
       { title: "Customer Sales", desc: "Sales totals per customer", href: "/reports/sales/customers", icon: Users },
+      { title: "Item Wise Sales", desc: "Detailed sales data grouped by item", href: "/reports/sales/item-wise", icon: BarChart3 },
       { title: "Tax Report", desc: "Summary of taxes collected", href: "/reports/sales/tax", icon: Percent },
+      { title: "Cancellations Report", desc: "Detailed list of all cancelled documents", href: "/reports/sales/cancellations", icon: AlertTriangle },
     ];
       return [
         { id: "overview", label: "Overview", icon: BarChart3, items: [] as ReportLink[] },

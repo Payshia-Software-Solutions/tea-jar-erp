@@ -11,7 +11,8 @@ import { Badge } from "@/components/ui/badge";
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import { useToast } from "@/hooks/use-toast";
 import { fetchLocations, fetchTopSellingItemsReport, type ServiceLocationRow } from "@/lib/api";
-import { Download, Loader2, TrendingUp } from "lucide-react";
+import { Download, FileSpreadsheet, Loader2, TrendingUp } from "lucide-react";
+import { downloadExcelGeneric as downloadCsv } from "@/lib/excel-export";
 
 function money(n: number) {
   return (Number.isFinite(n) ? n : 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -27,24 +28,6 @@ function todayLocalDate() {
   const d = new Date();
   const pad = (n: number) => String(n).padStart(2, "0");
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
-}
-
-function downloadCsv(filename: string, rows: Array<Record<string, any>>) {
-  if (rows.length === 0) return;
-  const cols = Object.keys(rows[0]);
-  const esc = (v: any) => {
-    const s = v === null || v === undefined ? "" : String(v);
-    if (/[\",\n]/.test(s)) return `"${s.replace(/\"/g, "\"\"")}"`;
-    return s;
-  };
-  const lines = [cols.join(","), ...rows.map((r) => cols.map((c) => esc(r[c])).join(","))].join("\n");
-  const blob = new Blob([lines], { type: "text/csv;charset=utf-8" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = filename;
-  a.click();
-  URL.revokeObjectURL(url);
 }
 
 export default function TopItemsReportPage() {

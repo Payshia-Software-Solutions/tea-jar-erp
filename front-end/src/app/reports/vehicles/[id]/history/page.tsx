@@ -10,32 +10,11 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { fetchReportVehicleHistory, fetchVehicle, type VehicleRow } from "@/lib/api";
-import { Download, ExternalLink, Loader2 } from "lucide-react";
+import { Download, FileSpreadsheet, ExternalLink, Loader2 } from "lucide-react";
+import { downloadExcelGeneric as downloadCsv } from "@/lib/excel-export";
 
 function money(n: number) {
   return (Number.isFinite(n) ? n : 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-}
-
-function downloadCsv(filename: string, rows: Array<Record<string, any>>) {
-  const cols = Array.from(
-    rows.reduce((s, r) => {
-      Object.keys(r).forEach((k) => s.add(k));
-      return s;
-    }, new Set<string>())
-  );
-  const esc = (v: any) => {
-    const s = v === null || v === undefined ? "" : String(v);
-    if (/[\",\n]/.test(s)) return `"${s.replace(/\"/g, "\"\"")}"`;
-    return s;
-  };
-  const lines = [cols.join(","), ...rows.map((r) => cols.map((c) => esc(r[c])).join(","))].join("\n");
-  const blob = new Blob([lines], { type: "text/csv;charset=utf-8" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = filename;
-  a.click();
-  URL.revokeObjectURL(url);
 }
 
 export default function VehicleHistoryReportPage() {
@@ -125,8 +104,8 @@ export default function VehicleHistoryReportPage() {
             </div>
             <div className="md:col-span-6 flex justify-end gap-2">
               <Button variant="outline" onClick={() => downloadCsv(`vehicle-${id}-history.csv`, rows)} disabled={loading || rows.length === 0}>
-                <Download className="w-4 h-4" />
-                Export CSV
+                <FileSpreadsheet className="w-4 h-4" />
+                Export Excel
               </Button>
               <Button onClick={() => void load()} disabled={loading}>
                 {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : null}

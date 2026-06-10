@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { Utensils, ShoppingBag, Store, ArrowRight, ChevronLeft, User, LayoutGrid, Clock, FilePlus, History, FileText, Undo2, Banknote, MoreHorizontal, LayoutDashboard, Home, Printer } from "lucide-react";
 import { usePOS } from "../context/POSContext";
+import { fetchPosDayLedger } from "@/lib/api";
 import {
     Dialog,
     DialogContent,
@@ -32,7 +33,9 @@ export const OrderTypeSelector: React.FC = () => {
         setPendingInvoicesDialogOpen,
         setReservationDialogOpen,
         setGuestPrintSelectionOpen,
-        setGuestPrintOrderId
+        setGuestPrintOrderId,
+        setDayLedger,
+        setLoadingLedger
     } = usePOS();
 
     const [step, setStep] = useState<'choice' | 'mode' | 'table' | 'steward' | 'held'>('choice');
@@ -202,7 +205,17 @@ export const OrderTypeSelector: React.FC = () => {
                                 <div className="grid grid-cols-3 sm:grid-cols-6 gap-3">
                                     {[
                                         { label: 'ERP Hub', icon: <LayoutDashboard className="w-5 h-5" />, color: 'indigo', action: () => { window.location.href = '../../dashboard'; } },
-                                        { label: 'Summary', icon: <FileText className="w-5 h-5" />, color: 'blue', action: () => { setOrderTypeDialogOpen(false); setLedgerDialogOpen(true); } },
+                                        { label: 'Summary', icon: <FileText className="w-5 h-5" />, color: 'blue', action: async () => { 
+                                            setOrderTypeDialogOpen(false); 
+                                            setLedgerDialogOpen(true); 
+                                            setLoadingLedger(true);
+                                            try {
+                                                const data = await fetchPosDayLedger(selectedLocation);
+                                                setDayLedger(data);
+                                            } finally {
+                                                setLoadingLedger(false);
+                                            }
+                                        } },
                                         { label: 'Pending', icon: <FileText className="w-5 h-5" />, color: 'amber', action: () => { setOrderTypeDialogOpen(false); setPendingInvoicesDialogOpen(true); } },
                                         { label: 'Return', icon: <Undo2 className="w-5 h-5" />, color: 'purple', action: () => { setOrderTypeDialogOpen(false); setReturnDialogOpen(true); } },
                                         { label: 'Refund', icon: <Banknote className="w-5 h-5" />, color: 'rose', action: () => { setOrderTypeDialogOpen(false); setRefundDialogOpen(true); } },

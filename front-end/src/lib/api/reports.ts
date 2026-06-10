@@ -160,6 +160,81 @@ export const fetchLocationSalesReport = async (params: { from?: string; to?: str
   return data.status === 'success' ? data.data : data;
 };
 
+export interface CreditSaleSummaryRow {
+  id: number;
+  invoice_no: string;
+  issue_date: string;
+  due_date: string | null;
+  grand_total: number;
+  paid_amount: number;
+  balance: number;
+  credit_days: number;
+  customer_name: string;
+  customer_phone: string | null;
+  location_name: string | null;
+}
+
+export const fetchCreditSalesSummary = async (params: { location_id?: string; customer_id?: string; from?: string; to?: string } = {}) => {
+  const qs = new URLSearchParams();
+  if (params.location_id) qs.set('location_id', params.location_id);
+  if (params.customer_id) qs.set('customer_id', params.customer_id);
+  if (params.from) qs.set('from', params.from);
+  if (params.to) qs.set('to', params.to);
+
+  const res = await api(`/api/report/credit_sales_summary?${qs.toString()}`);
+  if (!res.ok) throw new Error('Failed to load credit sales summary');
+  const data = await res.json();
+  return data.status === 'success' ? (data.data as CreditSaleSummaryRow[]) : [];
+};
+
+export interface AgingReportRow {
+  customer_id: number;
+  customer_name: string;
+  customer_phone: string | null;
+  total_outstanding: number;
+  days_0_30: number;
+  days_31_60: number;
+  days_61_90: number;
+  days_over_90: number;
+}
+
+export const fetchAgingReport = async (params: { location_id?: string; date?: string } = {}) => {
+  const qs = new URLSearchParams();
+  if (params.location_id) qs.set('location_id', params.location_id);
+  if (params.date) qs.set('date', params.date);
+
+  const res = await api(`/api/report/aging_report?${qs.toString()}`);
+  if (!res.ok) throw new Error('Failed to load aging report');
+  const data = await res.json();
+  return data.status === 'success' ? (data.data as AgingReportRow[]) : [];
+};
+
+export interface CustomerStatementTransaction {
+  doc_type: string;
+  date: string;
+  reference: string;
+  description: string;
+  debit: number;
+  credit: number;
+}
+
+export interface CustomerStatementResult {
+  opening_balance: number;
+  transactions: CustomerStatementTransaction[];
+}
+
+export const fetchCustomerStatement = async (params: { customer_id: string; from?: string; to?: string }) => {
+  const qs = new URLSearchParams();
+  qs.set('customer_id', params.customer_id);
+  if (params.from) qs.set('from', params.from);
+  if (params.to) qs.set('to', params.to);
+
+  const res = await api(`/api/report/customer_statement?${qs.toString()}`);
+  if (!res.ok) throw new Error('Failed to load customer statement');
+  const data = await res.json();
+  return data.status === 'success' ? (data.data as CustomerStatementResult) : { opening_balance: 0, transactions: [] };
+};
+
 export const fetchTopSellingItemsReport = async (params: { location_id?: string; from?: string; to?: string; limit?: number } = {}) => {
   const qs = new URLSearchParams();
   if (params.location_id) qs.set('location_id', params.location_id);
@@ -252,3 +327,34 @@ export const fetchReportItemMovements = fetchItemMovements;
 
 export const fetchMaintenanceHistory = fetchVehicleHistory;
 export const fetchReportOverview = fetchDashboardDetails;
+
+export const fetchCancellationsReport = async (params: { type: string; location_id?: string; from?: string; to?: string }) => {
+  const qs = new URLSearchParams();
+  qs.set('type', params.type);
+  if (params.location_id) qs.set('location_id', params.location_id);
+  if (params.from) qs.set('from', params.from);
+  if (params.to) qs.set('to', params.to);
+
+  const res = await api(`/api/report/cancellations_report?${qs.toString()}`);
+  if (!res.ok) throw new Error('Failed to load cancellations report');
+  const data = await res.json();
+  return data.status === 'success' ? data.data : data;
+};
+
+export const fetchItemWiseSalesReport = async (params: { location_id?: string; from?: string; to?: string; brand_id?: string; category_id?: string; department_id?: string; section_id?: string; supplier_id?: string; collection_id?: string }) => {
+  const qs = new URLSearchParams();
+  if (params.location_id) qs.set('location_id', params.location_id);
+  if (params.from) qs.set('from', params.from);
+  if (params.to) qs.set('to', params.to);
+  if (params.brand_id) qs.set('brand_id', params.brand_id);
+  if (params.category_id) qs.set('category_id', params.category_id);
+  if (params.department_id) qs.set('department_id', params.department_id);
+  if (params.section_id) qs.set('section_id', params.section_id);
+  if (params.supplier_id) qs.set('supplier_id', params.supplier_id);
+  if (params.collection_id) qs.set('collection_id', params.collection_id);
+
+  const res = await api(`/api/report/item_wise_sales?${qs.toString()}`);
+  if (!res.ok) throw new Error('Failed to load item wise sales report');
+  const data = await res.json();
+  return data.status === 'success' ? data.data : data;
+};

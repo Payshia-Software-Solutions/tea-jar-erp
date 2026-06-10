@@ -11,7 +11,8 @@ import { Badge } from "@/components/ui/badge";
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import { useToast } from "@/hooks/use-toast";
 import { fetchLocations, fetchReportStockTransfers, type ServiceLocationRow } from "@/lib/api";
-import { Download, ExternalLink, Loader2 } from "lucide-react";
+import { Download, FileSpreadsheet, ExternalLink, Loader2 } from "lucide-react";
+import { downloadExcelGeneric as downloadCsv } from "@/lib/excel-export";
 
 function qtyFmt(n: number) {
   return (Number.isFinite(n) ? n : 0).toLocaleString(undefined, { minimumFractionDigits: 3, maximumFractionDigits: 3 });
@@ -25,28 +26,6 @@ function todayLocalDate() {
   const d = new Date();
   const pad = (n: number) => String(n).padStart(2, "0");
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
-}
-
-function downloadCsv(filename: string, rows: Array<Record<string, any>>) {
-  const cols = Array.from(
-    rows.reduce((s, r) => {
-      Object.keys(r).forEach((k) => s.add(k));
-      return s;
-    }, new Set<string>())
-  );
-  const esc = (v: any) => {
-    const s = v === null || v === undefined ? "" : String(v);
-    if (/[\",\n]/.test(s)) return `"${s.replace(/\"/g, "\"\"")}"`;
-    return s;
-  };
-  const lines = [cols.join(","), ...rows.map((r) => cols.map((c) => esc(r[c])).join(","))].join("\n");
-  const blob = new Blob([lines], { type: "text/csv;charset=utf-8" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = filename;
-  a.click();
-  URL.revokeObjectURL(url);
 }
 
 export default function StockTransferReportPage() {
@@ -218,8 +197,8 @@ export default function StockTransferReportPage() {
               <Badge variant="outline">Value (info): {money(totals.value)}</Badge>
             </div>
             <Button variant="outline" onClick={() => downloadCsv(`stock-transfers-${todayLocalDate()}.csv`, rows)} disabled={loading || rows.length === 0}>
-              <Download className="w-4 h-4" />
-              Export CSV
+              <FileSpreadsheet className="w-4 h-4" />
+              Export Excel
             </Button>
           </div>
         </CardContent>
