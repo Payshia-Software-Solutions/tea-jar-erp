@@ -32,7 +32,7 @@ class PosController extends Controller {
             SELECT i.id, i.invoice_no as doc_no, c.name as customer_name, i.grand_total as amount, i.created_at, 'Invoice' as type
             FROM invoices i
             JOIN customers c ON i.customer_id = c.id
-            WHERE i.location_id = :locId AND DATE(i.created_at) = CURDATE()
+            WHERE i.location_id = :locId AND DATE(i.created_at) = CURDATE() AND i.status NOT IN ('Cancelled', 'CANCELLED')
             ORDER BY i.created_at DESC
         ");
         $db->bind(':locId', $locationId);
@@ -47,7 +47,7 @@ class PosController extends Controller {
             LEFT JOIN invoices i ON sr.invoice_id = i.id
             LEFT JOIN customers c_i ON i.customer_id = c_i.id
             LEFT JOIN customers c_sr ON sr.customer_id = c_sr.id
-            WHERE sr.location_id = :locId AND DATE(sr.created_at) = CURDATE()
+            WHERE sr.location_id = :locId AND DATE(sr.created_at) = CURDATE() AND sr.status = 'Completed'
             ORDER BY sr.created_at DESC
         ");
         $db->bind(':locId', $locationId);
