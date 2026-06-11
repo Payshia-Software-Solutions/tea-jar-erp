@@ -698,10 +698,10 @@ class ReportController extends Controller {
         // Transactions (Debits & Credits)
         $sql_transactions = "
             SELECT 
-                'Invoice' AS doc_type,
+                CAST('Invoice' AS CHAR) AS doc_type,
                 issue_date AS date,
-                invoice_no AS reference,
-                'Sales Invoice' AS description,
+                CAST(invoice_no AS CHAR) AS reference,
+                CAST('Sales Invoice' AS CHAR) AS description,
                 grand_total AS debit,
                 0 AS credit
             FROM invoices 
@@ -710,10 +710,10 @@ class ReportController extends Controller {
             UNION ALL
             
             SELECT 
-                'Receipt' AS doc_type,
+                CAST('Receipt' AS CHAR) AS doc_type,
                 payment_date AS date,
-                receipt_no AS reference,
-                CONCAT('Payment - ', payment_method) AS description,
+                CAST(receipt_no AS CHAR) AS reference,
+                CAST(CONCAT('Payment - ', payment_method) AS CHAR) AS description,
                 0 AS debit,
                 amount AS credit
             FROM payment_receipts
@@ -722,10 +722,10 @@ class ReportController extends Controller {
             UNION ALL
             
             SELECT 
-                'Debit Note' AS doc_type,
+                CAST('Debit Note' AS CHAR) AS doc_type,
                 date,
-                note_no AS reference,
-                reason AS description,
+                CAST(note_no AS CHAR) AS reference,
+                CAST(reason AS CHAR) AS description,
                 amount AS debit,
                 0 AS credit
             FROM customer_notes
@@ -734,10 +734,10 @@ class ReportController extends Controller {
             UNION ALL
             
             SELECT 
-                'Credit Note' AS doc_type,
+                CAST('Credit Note' AS CHAR) AS doc_type,
                 date,
-                note_no AS reference,
-                reason AS description,
+                CAST(note_no AS CHAR) AS reference,
+                CAST(reason AS CHAR) AS description,
                 0 AS debit,
                 amount AS credit
             FROM customer_notes
