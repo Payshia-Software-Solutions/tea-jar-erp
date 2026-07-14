@@ -333,7 +333,11 @@ HTML;
             }
         } elseif ($_SERVER['REQUEST_METHOD'] === 'GET') {
             // Get all orders (for Admin)
-            $orders = $model->getAllOrders();
+            $status = $_GET['status'] ?? null;
+            $page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
+            $limit = isset($_GET['limit']) ? (int)$_GET['limit'] : 10;
+            if ($status === 'All') $status = null;
+            $orders = $model->getAllOrders($status, $page, $limit);
             echo json_encode($orders);
         } elseif ($_SERVER['REQUEST_METHOD'] === 'PUT' || $_SERVER['REQUEST_METHOD'] === 'PATCH') {
             // Update status

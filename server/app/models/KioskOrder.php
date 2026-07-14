@@ -34,15 +34,50 @@ class KioskOrder {
         return $this->db->execute();
     }
 
-    public function getAllOrders() {
+    public function getAllOrders($status = null, $page = 1, $limit = 20) {
+        $offset = ($page - 1) * $limit;
+        
+        $where = '';
+        if ($status) {
+            $where = 'WHERE status = :status';
+        }
+
+        // Get total count
+        $this->db->query("SELECT COUNT(*) as total FROM kiosk_orders $where");
+        if ($status) {
+            $this->db->bind(':status', $status);
+        }
+        $countRow = $this->db->single();
+        $totalRecords = $countRow ? $countRow->total : 0;
+        $totalPages = ceil($totalRecords / $limit);
+
         // Fetch orders
-        $this->db->query('
+        $this->db->query("
             SELECT * FROM kiosk_orders 
+            $where
             ORDER BY created_at DESC
-        ');
+            LIMIT :limit OFFSET :offset
+        ");
+        if ($status) {
+            $this->db->bind(':status', $status);
+        }
+        // bind limit and offset as integers manually because PDO sometimes quotes them
+        $this->db->bind(':limit', (int)$limit, PDO::PARAM_INT);
+        $this->db->bind(':offset', (int)$offset, PDO::PARAM_INT);
+        
         $orders = $this->db->resultSet();
 
-        if (empty($orders)) return [];
+        if (empty($orders)) {
+            return [
+                'data' => [],
+                'pagination' => [
+                    'current_page' => $page,
+                    'total_pages' => $totalPages,
+                    'total_records' => $totalRecords,
+                    'limit' => $limit
+                ]
+            ];
+        }
 
         // Collect order IDs
         $orderIds = array_column($orders, 'id');
@@ -68,7 +103,15 @@ class KioskOrder {
             $order->items = $itemsByOrder[$order->id] ?? [];
         }
 
-        return $orders;
+        return [
+            'data' => $orders,
+            'pagination' => [
+                'current_page' => $page,
+                'total_pages' => $totalPages,
+                'total_records' => $totalRecords,
+                'limit' => $limit
+            ]
+        ];
     }
 
     public function updateStatus($id, $status) {
