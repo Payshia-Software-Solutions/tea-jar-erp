@@ -7,7 +7,8 @@ import {
   Save,
   Loader2,
   ArrowLeft,
-  MapPin
+  MapPin,
+  Locate
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -132,14 +133,6 @@ function CustomerFormContent() {
     e.preventDefault();
     if (!formData.name) {
       toast({ title: "Error", description: "Customer name is required", variant: "destructive" });
-      return;
-    }
-    if (!formData.latitude || !formData.longitude) {
-      toast({
-        title: "Error",
-        description: "Coordinates are required to save a customer. Please wait for location to be fetched or enter manually.",
-        variant: "destructive",
-      });
       return;
     }
 
@@ -332,7 +325,23 @@ function CustomerFormContent() {
             </div>
 
             <div className="space-y-2 col-span-1 md:col-span-2">
-              <Label>Coordinates *</Label>
+              <div className="flex items-center justify-between">
+                <Label>Coordinates</Label>
+                <Button 
+                  type="button" 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={handleGetLocation}
+                  disabled={isFetchingLocation}
+                  className="h-8 px-2 text-xs"
+                >
+                  {isFetchingLocation ? (
+                    <><Loader2 className="w-3 h-3 animate-spin mr-1" /> Fetching...</>
+                  ) : (
+                    <><Locate className="w-3 h-3 mr-1" /> Fetch Location</>
+                  )}
+                </Button>
+              </div>
               <div className="flex gap-2 items-center">
                 <div className="relative flex-1">
                   <MapPin className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
@@ -352,11 +361,6 @@ function CustomerFormContent() {
                     className="bg-muted pl-8"
                   />
                 </div>
-                {isFetchingLocation && (
-                  <span className="text-xs text-muted-foreground flex items-center gap-1 min-w-[80px]">
-                    <Loader2 className="w-3 h-3 animate-spin" /> Fetching...
-                  </span>
-                )}
               </div>
               {formData.latitude && formData.longitude && !isFetchingLocation && (
                 <div className="mt-2">

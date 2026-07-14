@@ -325,6 +325,106 @@ class InvoiceController extends Controller {
         }
     }
 
+    public function addBulkPayment() {
+        $u = $this->requirePermission('invoices.write');
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            $this->error('Method Not Allowed', 405);
+            return;
+        }
+
+        $raw = file_get_contents('php://input');
+        $data = json_decode($raw, true);
+        $data['userId'] = $u['sub'];
+
+        if (empty($data['payments']) || !is_array($data['payments'])) {
+            $this->error('Payments array required', 400);
+            return;
+        }
+
+        require_once '../app/models/PaymentReceipt.php';
+        $receiptModel = new PaymentReceipt();
+
+        $db = new Database();
+        try {
+            $db->beginTransaction();
+
+            $receiptIds = [];
+
+            foreach ($data['payments'] as $pay) {
+                $invoiceId = $pay['invoice_id'];
+                $amount = floatval($pay['amount']);
+                if ($amount <= 0) {
+                    continue;
+                }
+
+                $invoice = $this->invoiceModel->getById($invoiceId);
+                if (!$invoice) {
+                    throw new Exception("Invoice ID $invoiceId not found.");
+                }
+
+                $receiptData = [
+                    'invoice_id' => $invoiceId,
+                    'invoice_no' => $invoice->invoice_no,
+                    'customer_id' => $invoice->customer_id,
+                    'customer_name' => $invoice->customer_name,
+                    'location_id' => $this->currentLocationId($u),
+                    'amount' => $amount,
+                    'payment_method' => $data['payment_method'] ?? 'Cash',
+                    'payment_date' => $data['payment_date'],
+                    'reference_no' => $data['reference_no'] ?? $data['cheque_no'] ?? null,
+                    'notes' => $data['notes'] ?? null,
+                    'card_type' => $data['card_type'] ?? null,
+                    'card_last4' => $data['card_last4'] ?? null,
+                    'card_auth_code' => $data['card_auth_code'] ?? null,
+                    'bank_id' => $data['bank_id'] ?? null,
+                    'card_category' => $data['card_category'] ?? null,
+                    'cheque' => $data['cheque'] ?? null,
+                    'created_by' => $u['sub']
+                ];
+
+                $receiptNo = $receiptModel->create($receiptData);
+                if (!$receiptNo) {
+                    throw new Exception("Failed to record payment receipt for invoice $invoiceId");
+                }
+
+                $receiptIds[] = $receiptNo;
+
+                $this->auditModel->write([
+                    'user_id' => (int)$u['sub'],
+                    'action' => 'payment',
+                    'entity' => 'invoice',
+                    'entity_id' => (int)$invoiceId,
+                    'method' => 'POST',
+                    'path' => $_SERVER['REQUEST_URI'] ?? '',
+                    'ip' => $_SERVER['REMOTE_ADDR'] ?? '',
+                    'user_agent' => $_SERVER['HTTP_USER_AGENT'] ?? '',
+                    'details' => json_encode([
+                        'amount' => $amount, 
+                        'method' => $data['payment_method'] ?? 'Cash', 
+                        'receipt_id' => $receiptNo,
+                        'is_bulk' => true
+                    ]),
+                ]);
+            }
+
+            $db->commit();
+
+            $this->json([
+                'status' => 'success',
+                'message' => 'Bulk payment processed successfully',
+                'receipt_ids' => $receiptIds
+            ]);
+
+        } catch (Exception $e) {
+            try {
+                $db->rollBack();
+            } catch (Exception $e2) {}
+            error_log("Bulk Checkout Error: " . $e->getMessage() . " at " . $e->getFile() . ":" . $e->getLine());
+            $this->error($e->getMessage());
+        }
+    }
+
+
     public function cancel($id = null) {
         $u = $this->requirePermission('invoices.write');
         if ($_SERVER['REQUEST_METHOD'] !== 'POST') {

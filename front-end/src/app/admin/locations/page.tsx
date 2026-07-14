@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { deleteLocation, fetchLocations, ServiceLocation } from "@/lib/api";
-import { Loader2, MapPin, Plus, Trash2, Pencil, Search } from "lucide-react";
+import { Loader2, MapPin, Plus, Trash2, Pencil, Search, Copy, Check } from "lucide-react";
 import {
   Table,
   TableBody,
@@ -24,6 +24,7 @@ export default function AdminLocationsPage() {
   const [rows, setRows] = useState<ServiceLocation[]>([]);
   const [loading, setLoading] = useState(true);
   const [query, setQuery] = useState("");
+  const [copiedId, setCopiedId] = useState<number | null>(null);
 
   const load = async () => {
     setLoading(true);
@@ -62,6 +63,16 @@ export default function AdminLocationsPage() {
     } catch (err: any) {
       toast({ title: "Error", description: err.message, variant: "destructive" });
     }
+  };
+
+  const copyKioskUrl = (id: number) => {
+    // Determine the kiosk domain (for now default to localhost or an example)
+    // You can update this domain later when deploying
+    const url = `http://localhost:5173/?loc=${id}`;
+    navigator.clipboard.writeText(url);
+    setCopiedId(id);
+    toast({ title: "Copied!", description: "Kiosk URL copied to clipboard" });
+    setTimeout(() => setCopiedId(null), 2000);
   };
 
   return (
@@ -119,6 +130,7 @@ export default function AdminLocationsPage() {
                   <TableHead>Location Details</TableHead>
                   <TableHead>Type</TableHead>
                   <TableHead>Capabilities</TableHead>
+                  <TableHead>Kiosk URL</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
@@ -146,6 +158,20 @@ export default function AdminLocationsPage() {
                                 {r.allow_production ? "PRODUCTION" : "NO PROD"}
                             </Badge>
                         </div>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-2">
+                        <code className="text-xs bg-muted px-2 py-1 rounded">?loc={r.id}</code>
+                        <Button 
+                          variant="ghost" 
+                          size="icon" 
+                          className="h-6 w-6 text-muted-foreground hover:text-primary"
+                          onClick={() => copyKioskUrl(r.id)}
+                          title="Copy Full Kiosk URL"
+                        >
+                          {copiedId === r.id ? <Check className="w-3 h-3 text-emerald-500" /> : <Copy className="w-3 h-3" />}
+                        </Button>
+                      </div>
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="inline-flex items-center gap-1">

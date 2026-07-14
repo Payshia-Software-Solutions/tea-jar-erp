@@ -1,6 +1,6 @@
 -- ========================================================
 -- Clean Database Template for ERP / Repair Management System
--- Generated on: 2026-06-06 13:09:00
+-- Generated on: 2026-07-14 21:01:31
 -- ========================================================
 
 SET FOREIGN_KEY_CHECKS = 0;
@@ -400,7 +400,7 @@ CREATE TABLE `audit_logs` (
   KEY `idx_audit_action` (`action`),
   KEY `idx_audit_created` (`created_at`),
   KEY `idx_audit_location` (`location_id`)
-) ENGINE=InnoDB AUTO_INCREMENT=527 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=529 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- --------------------------------------------------------
 -- Table structure for table `bank_branches`
@@ -6642,12 +6642,6 @@ CREATE TABLE `departments` (
 
 -- Dumping data for table `departments`
 INSERT INTO `departments` (`id`, `location_id`, `name`, `created_by`, `updated_by`, `created_at`, `updated_at`) VALUES
-('1', '1', 'Galpadithenna Tea Factory', NULL, '1', '2026-04-08 16:58:55', '2026-04-08 17:21:26'),
-('2', '1', 'KDU Exports Pvt Ltd', '1', '1', '2026-04-08 17:21:15', '2026-04-08 22:23:11'),
-('3', '1', 'Kuttapitiya Tea Factory', '1', '1', '2026-04-08 22:21:37', '2026-04-08 22:21:37'),
-('4', '1', 'Silver Ray', '1', '1', '2026-04-08 22:21:47', '2026-04-08 22:21:47'),
-('5', '1', 'Matuwagala Tea Factory', '1', '1', '2026-04-08 22:22:01', '2026-04-08 22:22:01'),
-('6', '1', 'Madampe Tea Factory', '1', '1', '2026-04-08 22:22:18', '2026-04-08 22:22:18'),
 ('8', '1', 'General', NULL, NULL, '2026-04-09 17:49:41', '2026-04-09 17:49:41');
 
 -- --------------------------------------------------------
@@ -7365,6 +7359,52 @@ CREATE TABLE `invoices` (
   CONSTRAINT `invoices_ibfk_1` FOREIGN KEY (`order_id`) REFERENCES `repair_orders` (`id`) ON DELETE SET NULL,
   CONSTRAINT `invoices_ibfk_2` FOREIGN KEY (`customer_id`) REFERENCES `customers` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB AUTO_INCREMENT=147 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- --------------------------------------------------------
+-- Table structure for table `issue_note_items`
+-- --------------------------------------------------------
+DROP TABLE IF EXISTS `issue_note_items`;
+CREATE TABLE `issue_note_items` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `issue_note_id` int(11) NOT NULL,
+  `part_id` int(11) NOT NULL,
+  `batch_id` int(11) DEFAULT NULL,
+  `qty_issued` decimal(12,3) NOT NULL,
+  `unit_cost` decimal(10,2) NOT NULL,
+  `line_total` decimal(10,2) NOT NULL,
+  `notes` varchar(255) DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  PRIMARY KEY (`id`),
+  KEY `idx_ini_note` (`issue_note_id`),
+  KEY `idx_ini_part` (`part_id`),
+  KEY `idx_ini_batch` (`batch_id`),
+  CONSTRAINT `fk_ini_note` FOREIGN KEY (`issue_note_id`) REFERENCES `issue_notes` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_ini_part` FOREIGN KEY (`part_id`) REFERENCES `parts` (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- --------------------------------------------------------
+-- Table structure for table `issue_notes`
+-- --------------------------------------------------------
+DROP TABLE IF EXISTS `issue_notes`;
+CREATE TABLE `issue_notes` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `issue_number` varchar(50) NOT NULL,
+  `location_id` int(11) NOT NULL DEFAULT 1,
+  `cost_center_id` int(11) NOT NULL,
+  `status` enum('Draft','Issued','Cancelled') NOT NULL DEFAULT 'Draft',
+  `issued_at` datetime DEFAULT NULL,
+  `notes` text DEFAULT NULL,
+  `created_by` int(11) DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_issue_number` (`issue_number`),
+  KEY `idx_issue_loc` (`location_id`),
+  KEY `idx_issue_cc` (`cost_center_id`),
+  KEY `idx_issue_status` (`status`),
+  CONSTRAINT `fk_issue_notes_cost_center` FOREIGN KEY (`cost_center_id`) REFERENCES `service_locations` (`id`),
+  CONSTRAINT `fk_issue_notes_location` FOREIGN KEY (`location_id`) REFERENCES `service_locations` (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- --------------------------------------------------------
 -- Table structure for table `item_categories`
@@ -8754,15 +8794,7 @@ CREATE TABLE `service_locations` (
 
 -- Dumping data for table `service_locations`
 INSERT INTO `service_locations` (`id`, `name`, `location_type`, `address`, `phone`, `tax_no`, `tax_label`, `created_by`, `updated_by`, `created_at`, `updated_at`, `allow_service_charge`, `service_charge_rate`, `allow_dine_in`, `allow_take_away`, `allow_retail`, `is_pos_active`, `allow_production`, `allow_online`, `google_analytics_code`, `facebook_pixel_code`, `allowed_taxes_json`, `tax_mode`, `default_customer_id`, `branch_code`) VALUES
-('1', 'Peak view Service Center', 'service', NULL, NULL, 'BR-VAT-001', NULL, NULL, '1', '2026-04-08 16:58:54', '2026-05-15 14:05:14', '1', '10.00', '1', '1', '1', '1', '1', '1', NULL, NULL, '[2,1]', 'inclusive', '4', 'BR01'),
-('2', 'Madampe', 'service', NULL, NULL, NULL, NULL, '1', '1', '2026-04-08 17:12:59', '2026-04-18 10:33:39', '0', '0.00', '1', '1', '1', '0', '0', '0', NULL, NULL, NULL, 'exclusive', NULL, 'BR01'),
-('3', 'Matuwagala', 'service', NULL, NULL, NULL, NULL, '1', '1', '2026-04-08 17:13:05', '2026-04-18 10:33:45', '0', '0.00', '1', '1', '1', '0', '0', '0', NULL, NULL, NULL, 'exclusive', NULL, 'BR01'),
-('4', 'General Stores', 'warehouse', 'Galpadithenna Tea Factory', '0770481252', NULL, NULL, '1', '1', '2026-04-09 14:01:51', '2026-04-18 10:33:33', '0', '0.00', '1', '1', '1', '0', '0', '0', NULL, NULL, NULL, 'exclusive', NULL, 'BR01'),
-('5', 'Test Location', 'service', NULL, NULL, NULL, NULL, NULL, NULL, '2026-04-26 20:16:00', '2026-05-13 17:10:06', '0', '0.00', '1', '1', '1', '1', '0', '0', 'GA-123', 'PIXEL-456', '[1,2]', 'exclusive', NULL, 'BR01'),
-('7', 'Test Loc 3c18a0fb', 'service', NULL, NULL, NULL, NULL, NULL, '1', '2026-04-26 20:16:23', '2026-04-26 20:19:36', '0', '0.00', '1', '1', '1', '1', '0', '0', 'GA-1236+5+66', 'PIXEL-456', NULL, 'exclusive', NULL, 'BR01'),
-('8', 'Test Loc 41784193', 'service', NULL, NULL, NULL, NULL, NULL, NULL, '2026-04-26 20:16:35', '2026-04-26 20:16:35', '0', '0.00', '1', '1', '1', '1', '0', '0', 'GA-123', 'PIXEL-456', NULL, 'exclusive', NULL, 'BR01'),
-('9', 'Test Loc 896934d8', 'service', NULL, NULL, NULL, NULL, NULL, NULL, '2026-04-26 20:16:49', '2026-04-26 20:16:49', '0', '0.00', '1', '1', '1', '1', '0', '0', 'GA-123', 'PIXEL-456', NULL, 'exclusive', NULL, 'BR01'),
-('10', 'Test Loc d33a2e15', 'service', NULL, NULL, NULL, NULL, NULL, NULL, '2026-04-26 20:17:02', '2026-04-26 20:17:02', '0', '0.00', '1', '1', '1', '1', '0', '0', 'GA-123', 'PIXEL-456', NULL, 'exclusive', NULL, 'BR01');
+('1', 'Main', 'service', NULL, NULL, NULL, NULL, NULL, '1', '2026-04-08 16:58:54', '2026-07-14 21:01:16', '1', '10.00', '1', '1', '1', '1', '1', '1', NULL, NULL, '[2,1]', 'inclusive', '4', 'BR01');
 
 -- --------------------------------------------------------
 -- Table structure for table `shipping_carriers`
@@ -9636,51 +9668,5 @@ CREATE TABLE `vehicles` (
   KEY `fk_vehicles_customer` (`customer_id`),
   CONSTRAINT `fk_vehicles_customer` FOREIGN KEY (`customer_id`) REFERENCES `customers` (`id`)
 ) ENGINE=InnoDB AUTO_INCREMENT=225 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
--- --------------------------------------------------------
--- Table structure for table `issue_notes`
--- --------------------------------------------------------
-DROP TABLE IF EXISTS `issue_notes`;
-CREATE TABLE `issue_notes` (
-  `id` int(11) NOT NULL AUTO_INCREMENT,
-  `issue_number` varchar(50) NOT NULL,
-  `location_id` int(11) NOT NULL DEFAULT 1,
-  `cost_center_id` int(11) NOT NULL,
-  `status` enum('Draft','Issued','Cancelled') NOT NULL DEFAULT 'Draft',
-  `issued_at` datetime DEFAULT NULL,
-  `notes` text DEFAULT NULL,
-  `created_by` int(11) DEFAULT NULL,
-  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
-  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
-  PRIMARY KEY (`id`),
-  UNIQUE KEY `uq_issue_number` (`issue_number`),
-  KEY `idx_issue_loc` (`location_id`),
-  KEY `idx_issue_cc` (`cost_center_id`),
-  KEY `idx_issue_status` (`status`),
-  CONSTRAINT `fk_issue_notes_location` FOREIGN KEY (`location_id`) REFERENCES `service_locations` (`id`),
-  CONSTRAINT `fk_issue_notes_cost_center` FOREIGN KEY (`cost_center_id`) REFERENCES `service_locations` (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
--- --------------------------------------------------------
--- Table structure for table `issue_note_items`
--- --------------------------------------------------------
-DROP TABLE IF EXISTS `issue_note_items`;
-CREATE TABLE `issue_note_items` (
-  `id` int(11) NOT NULL AUTO_INCREMENT,
-  `issue_note_id` int(11) NOT NULL,
-  `part_id` int(11) NOT NULL,
-  `batch_id` int(11) DEFAULT NULL,
-  `qty_issued` decimal(12,3) NOT NULL,
-  `unit_cost` decimal(10,2) NOT NULL,
-  `line_total` decimal(10,2) NOT NULL,
-  `notes` varchar(255) DEFAULT NULL,
-  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
-  PRIMARY KEY (`id`),
-  KEY `idx_ini_note` (`issue_note_id`),
-  KEY `idx_ini_part` (`part_id`),
-  KEY `idx_ini_batch` (`batch_id`),
-  CONSTRAINT `fk_ini_note` FOREIGN KEY (`issue_note_id`) REFERENCES `issue_notes` (`id`) ON DELETE CASCADE,
-  CONSTRAINT `fk_ini_part` FOREIGN KEY (`part_id`) REFERENCES `parts` (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 SET FOREIGN_KEY_CHECKS = 1;

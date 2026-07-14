@@ -88,7 +88,10 @@ class PubliclocationController extends Controller {
 
         $client = $this->validatePublicApiKey();
         
-        if (empty($client->location_id)) {
+        $requestedLocId = isset($_GET['location_id']) ? (int)$_GET['location_id'] : 0;
+        $locId = $requestedLocId > 0 ? $requestedLocId : $client->location_id;
+
+        if (empty($locId)) {
             $this->error('API Client is not linked to any location', 400);
         }
 
@@ -97,14 +100,14 @@ class PubliclocationController extends Controller {
         $taxModel = new Tax();
         $settingsModel = new StorefrontSetting();
 
-        $location = $this->locationModel->getById($client->location_id);
+        $location = $this->locationModel->getById($locId);
         if (!$location) {
             $this->error('Location not found', 404);
         }
 
         $taxIds = !empty($location->allowed_taxes_json) ? json_decode($location->allowed_taxes_json, true) : [];
         $taxes = $taxModel->getByIds($taxIds);
-        $settings = $settingsModel->getAll($client->location_id);
+        $settings = $settingsModel->getAll($locId);
 
         $this->success([
             'location_id' => (int)$location->id,
@@ -112,7 +115,16 @@ class PubliclocationController extends Controller {
             'google_analytics_code' => (string)$location->google_analytics_code,
             'facebook_pixel_code' => (string)$location->facebook_pixel_code,
             'taxes' => $taxes,
-            'tax_inclusive' => ($settings['ecom_tax_inclusive'] ?? '0') === '1'
+            'tax_inclusive' => ($settings['ecom_tax_inclusive'] ?? '0') === '1',
+            'kiosk_settings' => [
+                'welcome_title' => $settings['kiosk_welcome_title'] ?? 'Welcome to Your Stay',
+                'welcome_subtitle' => $settings['kiosk_welcome_subtitle'] ?? 'Select a service below to elevate your experience',
+                'dining_title' => $settings['kiosk_dining_title'] ?? 'Order Products',
+                'dining_subtitle' => $settings['kiosk_dining_subtitle'] ?? 'Explore our culinary offerings and order directly to your room.',
+                'exp_title' => $settings['kiosk_exp_title'] ?? 'Book an Experience',
+                'exp_subtitle' => $settings['kiosk_exp_subtitle'] ?? 'Discover and book spa treatments, tours, and premium services.',
+                'logo_url' => $settings['kiosk_logo_url'] ?? '',
+            ]
         ]);
     }
 }

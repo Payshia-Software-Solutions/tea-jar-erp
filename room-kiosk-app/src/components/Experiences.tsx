@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Loader2, Sparkles, ChevronRight, ArrowLeft } from 'lucide-react';
+import { Sparkles, ChevronRight, ArrowLeft } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useLanguageStore } from '../store/useLanguageStore';
-import { useCartStore, getDiscountedPrice } from '../store/useCartStore';
+import { getDiscountedPrice } from '../store/useCartStore';
 import type { Product } from '../store/useCartStore';
 
 const API_URL   = import.meta.env.VITE_API_URL   ?? 'http://localhost/rapair-management/server';

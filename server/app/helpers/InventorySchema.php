@@ -64,6 +64,23 @@ class InventorySchema {
                     )
                 ");
             }
+            
+            if (!self::hasTable($pdo, 'kiosk_contents')) {
+                $pdo->exec("
+                    CREATE TABLE IF NOT EXISTS kiosk_contents (
+                        id INT AUTO_INCREMENT PRIMARY KEY,
+                        part_id INT NULL,
+                        title VARCHAR(255) NULL,
+                        content_html TEXT NULL,
+                        video_url VARCHAR(500) NULL,
+                        created_by INT NULL,
+                        updated_by INT NULL,
+                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                        FOREIGN KEY (part_id) REFERENCES parts(id) ON DELETE CASCADE
+                    )
+                ");
+            }
         } catch (Exception $e) {}
 
         // Persistent cache flag to avoid running expensive SHOW TABLES/ALTER TABLE on every request.
@@ -896,10 +913,13 @@ class InventorySchema {
 
             // E-Commerce Rich Data Support
             if (!self::hasColumn($pdo, 'parts', 'is_online')) {
-                $pdo->exec("ALTER TABLE parts ADD COLUMN is_online TINYINT(1) NOT NULL DEFAULT 1");
+                $pdo->exec("ALTER TABLE parts ADD COLUMN is_online TINYINT(1) NOT NULL DEFAULT 0");
             }
             if (!self::hasColumn($pdo, 'parts', 'public_description')) {
                 $pdo->exec("ALTER TABLE parts ADD COLUMN public_description TEXT NULL");
+            }
+            if (!self::hasColumn($pdo, 'parts', 'kiosk_module')) {
+                $pdo->exec("ALTER TABLE parts ADD COLUMN kiosk_module VARCHAR(50) NOT NULL DEFAULT 'None'");
             }
 
             // Product Gallery

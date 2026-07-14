@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useCartStore } from '../store/useCartStore';
-import { CheckCircle2, AlertCircle, ArrowLeft, Download } from 'lucide-react';
+import { CheckCircle2, ArrowLeft, Download } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useLanguageStore } from '../store/useLanguageStore';
 import html2canvas from 'html2canvas';

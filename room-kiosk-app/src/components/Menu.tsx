@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Plus, Loader2, Search, Filter, X, ChevronDown, LayoutGrid, List, ArrowLeft } from 'lucide-react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Plus, Search, Filter, X, LayoutGrid, List, ArrowLeft } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { useLanguageStore } from '../store/useLanguageStore';
-import { useCartStore, getDiscountedPrice } from '../store/useCartStore';
+import { getDiscountedPrice } from '../store/useCartStore';
 import type { Product } from '../store/useCartStore';
 import ProductModal from './ProductModal';
 
@@ -16,14 +16,9 @@ const API_URL   = import.meta.env.VITE_API_URL   ?? 'http://localhost/rapair-man
 const API_KEY   = import.meta.env.VITE_API_KEY   ?? '';
 const LOC_DEFAULT = import.meta.env.VITE_DEFAULT_LOCATION_ID ?? '1';
 
-interface Props {
-  onCartOpen: () => void;
-}
-
-export default function Menu({ onCartOpen }: Props) {
+export default function Menu() {
   const { t } = useTranslation();
   const language = useLanguageStore((state) => state.language);
-  const addItem = useCartStore((s) => s.addItem);
   const navigate = useNavigate();
 
   const [collections, setCollections]         = useState<Collection[]>([]);

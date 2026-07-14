@@ -44,7 +44,8 @@ import {
   TrendingUp,
   Gift,
   Building2,
-  ShoppingCart
+  ShoppingCart,
+  Ticket
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
@@ -90,7 +91,8 @@ import {
   frontOfficeItems,
   banquetItems,
   marketingItems,
-  ecommerceItems
+  ecommerceItems,
+  kioskItems
 } from "@/lib/nav-items";
 
 export function DashboardLayout({ children, fullWidth = true, title }: { children: React.ReactNode; fullWidth?: boolean; title?: string }) {
@@ -137,6 +139,7 @@ export function DashboardLayout({ children, fullWidth = true, title }: { childre
   const [isFrontOfficeOpen, setIsFrontOfficeOpen] = useSidebarState('FrontOffice', false);
   const [isBanquetOpen, setIsBanquetOpen] = useSidebarState('Banquet', false);
   const [isEcommerceOpen, setIsEcommerceOpen] = useSidebarState('Ecommerce', false);
+  const [isKioskOpen, setIsKioskOpen] = useSidebarState('Kiosk', false);
   const [isAdminOpen, setIsAdminOpen] = useSidebarState('Admin', false);
   
   const [theme, setTheme] = useState<'light' | 'dark'>('light');
@@ -461,6 +464,8 @@ export function DashboardLayout({ children, fullWidth = true, title }: { childre
   const visibleEcommerceItems = ecommerceItems.filter((it) => hasPerm((it as any).perm));
   const canSeeEcommerce = isModuleAllowed('ecommerce') && visibleEcommerceItems.length > 0;
 
+  const visibleKioskItems = kioskItems.filter((it) => hasPerm((it as any).perm));
+  const canSeeKiosk = visibleKioskItems.length > 0;
 
   const adminItems = userRole.toLowerCase() === 'admin' ? adminNavItems : [];
   const canSeeAdmin = adminItems.length > 0;
@@ -469,7 +474,7 @@ export function DashboardLayout({ children, fullWidth = true, title }: { childre
     return [
       ...mainNavItems, ...serviceCenterItems, ...vendorItems, ...inventoryItems,
       ...crmItems, ...salesItems, ...masterDataItems, ...accountingItems,
-      ...productionItems, ...hrmItems, ...frontOfficeItems, ...banquetItems, ...ecommerceItems, ...adminItems
+      ...productionItems, ...hrmItems, ...frontOfficeItems, ...banquetItems, ...ecommerceItems, ...kioskItems, ...adminItems
     ].map(i => i.href);
   }, [adminItems]);
 
@@ -503,7 +508,8 @@ export function DashboardLayout({ children, fullWidth = true, title }: { childre
     if (pathname.startsWith('/front-office')) setIsFrontOfficeOpen(true);
     if (pathname.startsWith('/banquet')) setIsBanquetOpen(true);
     if (pathname.startsWith('/ecommerce')) setIsEcommerceOpen(true);
-    if (pathname.startsWith('/admin')) setIsAdminOpen(true);
+    if (pathname.startsWith('/kiosk')) setIsKioskOpen(true);
+    if (pathname.startsWith('/admin') || pathname === '/settings') setIsAdminOpen(true);
   }, [pathname, permissionKeys, userRole]);
 
   const coreFeaturesOpen = isCoreFeaturesOpen;
@@ -889,6 +895,51 @@ export function DashboardLayout({ children, fullWidth = true, title }: { childre
                       {ecommerceOpen ? (
                         <SidebarMenuSub>
                           {visibleEcommerceItems.map((item) => (
+                            <SidebarMenuSubItem key={item.href}>
+                              <SidebarMenuSubButton asChild isActive={isActiveRoute(item.href)}>
+                                <Link href={item.href}>
+                                  <item.icon className="w-4 h-4" />
+                                  <span>{item.label}</span>
+                                </Link>
+                              </SidebarMenuSubButton>
+                            </SidebarMenuSubItem>
+                          ))}
+                        </SidebarMenuSub>
+                      ) : null}
+                    </SidebarMenuItem>
+                </SidebarMenu>
+              </SidebarGroupContent>
+            </SidebarGroup>
+            )}
+
+            {!canSeeKiosk ? null : (
+            <SidebarGroup className="p-0">
+              <SidebarGroupContent>
+                <SidebarMenu>
+                  <SidebarMenuItem>
+                      <SidebarMenuButton
+                        type="button"
+                        onClick={() => setIsKioskOpen((v) => !v)}
+                        isActive={isKioskOpen}
+                        tooltip="Kiosk Module"
+                        className={cn(
+                          "transition-all duration-200 py-6 sm:py-2 text-white/80 hover:text-white",
+                          isKioskOpen ? "bg-sidebar-accent text-white" : "hover:bg-sidebar-accent/50"
+                        )}
+                      >
+                        <Ticket className="w-5 h-5" />
+                        <span className="text-base sm:text-sm font-medium">Kiosk</span>
+                        <ChevronRight
+                          className={cn(
+                            "ml-auto w-4 h-4 transition-transform group-data-[collapsible=icon]:hidden",
+                            isKioskOpen ? "rotate-90" : "rotate-0"
+                          )}
+                        />
+                      </SidebarMenuButton>
+
+                      {isKioskOpen ? (
+                        <SidebarMenuSub>
+                          {visibleKioskItems.map((item) => (
                             <SidebarMenuSubItem key={item.href}>
                               <SidebarMenuSubButton asChild isActive={isActiveRoute(item.href)}>
                                 <Link href={item.href}>

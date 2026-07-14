@@ -72,6 +72,13 @@ export const addInvoicePayment = async (id: string | number, payload: any) => {
   return res.json();
 };
 
+export const addBulkInvoicePayments = async (payload: any) => {
+  const res = await api('/api/invoice/addBulkPayment', { method: 'POST', body: JSON.stringify(payload) });
+  if (!res.ok) throw new Error('Failed to record bulk payments');
+  return res.json();
+};
+
+
 export const cancelInvoice = async (id: number, reason: string) => {
   const res = await api(`/api/invoice/cancel/${id}`, {
     method: 'POST',

@@ -58,10 +58,20 @@ class StorefrontSchema {
                 ['bank_name', '', 'Bank Name', 'payments', 'text'],
                 ['bank_account_name', '', 'Account Name', 'payments', 'text'],
                 ['bank_account_number', '', 'Account Number', 'payments', 'text'],
-                ['bank_branch', '', 'Branch Name', 'payments', 'text'],
+                ['bank_branch', '', 'Bank Branch', 'payments', 'text'],
+                ['kiosk_welcome_title', 'Welcome to Your Stay', 'Welcome Title', 'kiosk', 'text'],
+                ['kiosk_welcome_subtitle', 'Select a service below to elevate your experience', 'Welcome Subtitle', 'kiosk', 'textarea'],
+                ['kiosk_dining_title', 'Order Products', 'Dining Card Title', 'kiosk', 'text'],
+                ['kiosk_dining_subtitle', 'Explore our culinary offerings and order directly to your room.', 'Dining Card Subtitle', 'kiosk', 'textarea'],
+                ['kiosk_exp_title', 'Book an Experience', 'Experience Card Title', 'kiosk', 'text'],
+                ['kiosk_exp_subtitle', 'Discover and book spa treatments, tours, and premium services.', 'Experience Card Subtitle', 'kiosk', 'textarea'],
+                ['kiosk_logo_url', '', 'Kiosk Logo URL', 'kiosk', 'url'],
+                ['kiosk_notify_email_enabled', '0', 'Enable Email Notifications', 'kiosk', 'text'],
+                ['kiosk_notify_email_addr', '', 'Management Email Address', 'kiosk', 'text'],
+                ['kiosk_notify_sms_enabled', '0', 'Enable SMS Notifications', 'kiosk', 'text'],
+                ['kiosk_notify_sms_phone', '', 'Management Phone Number', 'kiosk', 'text'],
                 ['shipping_enabled', '0', 'Enable Shipping Charges', 'shipping', 'text'],
                 ['shipping_flat_rate', '0', 'Flat Rate Amount', 'shipping', 'text'],
-
             ];
 
             $stmt = $pdo->prepare("INSERT IGNORE INTO storefront_settings (`key`, `value`, `label`, `group`, `type`) VALUES (?, ?, ?, ?, ?)");

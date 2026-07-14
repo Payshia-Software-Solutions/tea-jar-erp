@@ -145,6 +145,7 @@ class Part extends Model {
                    p.is_fifo,
                    p.is_expiry,
                    p.recipe_type,
+                   p.kiosk_module,
                    p.discount_type,
                    p.discount_value,
                    (SELECT COALESCE(SUM(qty_change), 0) FROM stock_movements WHERE part_id = p.id) AS system_stock_quantity,
@@ -303,9 +304,9 @@ class Part extends Model {
 
         $this->db->query("
             INSERT INTO {$this->table}
-            (sku, part_number, barcode_number, part_name, slug, unit, brand_id, item_section_id, item_department_id, item_category_id, stock_quantity, cost_price, price, discount_type, discount_value, wholesale_price, min_selling_price, price_2, reorder_level, is_active, is_fifo, is_expiry, image_filename, item_type, recipe_type, default_location_id, allowed_locations, created_by, updated_by, net_weight_kg, gross_weight_kg, units_per_carton, packing_type, hs_code, carton_length_cm, carton_width_cm, carton_height_cm, volume_cbm, carton_tare_weight_kg, is_online, out_of_stock, public_description)
+            (sku, part_number, barcode_number, part_name, slug, unit, brand_id, item_section_id, item_department_id, item_category_id, stock_quantity, cost_price, price, discount_type, discount_value, wholesale_price, min_selling_price, price_2, reorder_level, is_active, is_fifo, is_expiry, image_filename, item_type, recipe_type, default_location_id, allowed_locations, created_by, updated_by, net_weight_kg, gross_weight_kg, units_per_carton, packing_type, hs_code, carton_length_cm, carton_width_cm, carton_height_cm, volume_cbm, carton_tare_weight_kg, is_online, out_of_stock, public_description, kiosk_module)
             VALUES
-            (:sku, :part_number, :barcode_number, :part_name, :slug, :unit, :brand_id, :item_section_id, :item_department_id, :item_category_id, :stock_quantity, :cost_price, :price, :discount_type, :discount_value, :wholesale_price, :min_selling_price, :price_2, :reorder_level, :is_active, :is_fifo, :is_expiry, :image_filename, :item_type, :recipe_type, :default_location_id, :allowed_locations, :created_by, :updated_by, :net_weight_kg, :gross_weight_kg, :units_per_carton, :packing_type, :hs_code, :carton_length_cm, :carton_width_cm, :carton_height_cm, :volume_cbm, :carton_tare_weight_kg, :is_online, :out_of_stock, :public_description)
+            (:sku, :part_number, :barcode_number, :part_name, :slug, :unit, :brand_id, :item_section_id, :item_department_id, :item_category_id, :stock_quantity, :cost_price, :price, :discount_type, :discount_value, :wholesale_price, :min_selling_price, :price_2, :reorder_level, :is_active, :is_fifo, :is_expiry, :image_filename, :item_type, :recipe_type, :default_location_id, :allowed_locations, :created_by, :updated_by, :net_weight_kg, :gross_weight_kg, :units_per_carton, :packing_type, :hs_code, :carton_length_cm, :carton_width_cm, :carton_height_cm, :volume_cbm, :carton_tare_weight_kg, :is_online, :out_of_stock, :public_description, :kiosk_module)
         ");
         $this->db->bind(':sku', $data['sku'] ?? null);
         $this->db->bind(':part_number', $data['part_number'] ?? null);
@@ -349,6 +350,7 @@ class Part extends Model {
         $this->db->bind(':is_online', isset($data['is_online']) ? (int)(bool)$data['is_online'] : 1);
         $this->db->bind(':out_of_stock', isset($data['out_of_stock']) ? (int)(bool)$data['out_of_stock'] : 0);
         $this->db->bind(':public_description', $data['public_description'] ?? null);
+        $this->db->bind(':kiosk_module', $data['kiosk_module'] ?? 'None');
         $ok = $this->db->execute();
         if (!$ok) return false;
         $partId = (int)$this->db->lastInsertId();
@@ -418,6 +420,7 @@ class Part extends Model {
                 is_online = :is_online,
                 out_of_stock = :out_of_stock,
                 public_description = :public_description,
+                kiosk_module = :kiosk_module,
                 updated_by = :updated_by
             WHERE id = :id
         ");
@@ -460,6 +463,7 @@ class Part extends Model {
         $this->db->bind(':is_online', isset($data['is_online']) ? (int)(bool)$data['is_online'] : 1);
         $this->db->bind(':out_of_stock', isset($data['out_of_stock']) ? (int)(bool)$data['out_of_stock'] : 0);
         $this->db->bind(':public_description', $data['public_description'] ?? null);
+        $this->db->bind(':kiosk_module', $data['kiosk_module'] ?? 'None');
         $this->db->bind(':updated_by', $userId);
         $this->db->bind(':id', (int)$id);
         $ok = $this->db->execute();

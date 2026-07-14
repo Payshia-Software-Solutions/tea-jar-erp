@@ -136,6 +136,7 @@ export default function ItemDetailPage() {
     item_category_id: "",
     discount_type: "None",
     discount_value: "0",
+    kiosk_module: "None",
   });
 
   const [attrGroups, setAttrGroups] = useState<any[]>([]);
@@ -245,6 +246,7 @@ export default function ItemDetailPage() {
             item_category_id: p.item_category_id ? String(p.item_category_id) : "",
             discount_type: p.discount_type || "None",
             discount_value: p.discount_value !== null && p.discount_value !== undefined ? String(p.discount_value) : "0",
+            kiosk_module: p.kiosk_module || "None",
           });
           const sIds = Array.isArray(p.supplier_ids) ? p.supplier_ids.map(Number) : [];
           setSupplierIds(sIds);
@@ -348,6 +350,9 @@ export default function ItemDetailPage() {
         item_section_id: form.item_section_id ? parseInt(form.item_section_id) : null,
         item_department_id: form.item_department_id ? parseInt(form.item_department_id) : null,
         item_category_id: form.item_category_id ? parseInt(form.item_category_id) : null,
+        discount_type: form.discount_type,
+        discount_value: asNumOrNull(form.discount_value) ?? 0,
+        kiosk_module: form.kiosk_module,
         attributes: attrValues
       };
 
@@ -941,6 +946,21 @@ export default function ItemDetailPage() {
                           <p className="text-xs text-muted-foreground">Force out of stock status</p>
                         </div>
                         <Switch checked={form.out_of_stock} onCheckedChange={(v) => setForm(p => ({ ...p, out_of_stock: v }))} />
+                      </div>
+
+                      <div className="space-y-2 pt-4">
+                        <Label>Kiosk Module</Label>
+                        <p className="text-xs text-muted-foreground mb-2">Display this item in the room kiosk</p>
+                        <Select value={form.kiosk_module} onValueChange={(v: any) => setForm(p => ({ ...p, kiosk_module: v }))}>
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="None">Hide from Kiosk</SelectItem>
+                            <SelectItem value="Dining">In-Room Dining</SelectItem>
+                            <SelectItem value="Experience">Experience Booking</SelectItem>
+                          </SelectContent>
+                        </Select>
                       </div>
                       
                       <div className="space-y-2 pt-4">

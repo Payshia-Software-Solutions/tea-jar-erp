@@ -119,7 +119,6 @@ const resources = {
       "close": "වහන්න",
       "back": "පසුපසට",
 
-      "Brake Pads": "Brake Pads",
       "Brake Pads": "බ්‍රේක් පෑඩ්",
       "select_items": "ඔබගේ ඇණවුමට අයිතම එකතු කරන්න",
       "loading_menu": "මෙනුව පූරණය වෙමින් පවතී…",
@@ -751,7 +750,6 @@ const resources = {
       "close": "Закрыть",
       "back": "Назад",
 
-      "Brake Pads": "Brake Pads",
       "Brake Pads": "Тормозные колодки",
       "select_items": "Выберите товары для заказа",
       "loading_menu": "Загрузка меню…",

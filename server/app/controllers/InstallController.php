@@ -569,4 +569,459 @@ class InstallController extends Controller {
 
         $this->json($response);
     }
+
+    public function seeds() {
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            $response = [
+                'status' => 'pending',
+                'logs' => []
+            ];
+            try {
+                $dsn = "mysql:host=" . DB_HOST;
+                $pdo = new PDO($dsn, DB_USER, DB_PASS);
+                $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+                
+                $response['logs'][] = "Connected to MySQL Server.";
+
+                // Create DB if not exists
+                $pdo->exec("CREATE DATABASE IF NOT EXISTS " . DB_NAME);
+                $response['logs'][] = "Database '" . DB_NAME . "' verified/created.";
+
+                $pdo->exec("USE " . DB_NAME);
+                
+                $sqlPath = APPROOT . '/clean_database_template.sql';
+                if (!file_exists($sqlPath)) {
+                    throw new Exception("Clean database template file not found at " . $sqlPath);
+                }
+
+                $response['logs'][] = "Reading clean_database_template.sql...";
+                $sql = file_get_contents($sqlPath);
+
+                // Disable foreign key checks
+                $pdo->exec("SET FOREIGN_KEY_CHECKS = 0");
+                $response['logs'][] = "Disabled foreign key checks temporarily.";
+
+                // Split SQL by semicolon, skipping comments and empty lines.
+                // Clean database template SQL statements are separated by ;\n\n or ;\r\n\r\n.
+                $statements = preg_split('/;(?:\r?\n)+/', $sql);
+                
+                $executed = 0;
+                $total = count($statements);
+                
+                $response['logs'][] = "Executing " . $total . " database statements...";
+
+                foreach ($statements as $stmt) {
+                    $stmt = trim($stmt);
+                    if (empty($stmt)) continue;
+                    
+                    $pdo->exec($stmt);
+                    $executed++;
+                }
+
+                $pdo->exec("SET FOREIGN_KEY_CHECKS = 1");
+                $response['logs'][] = "Enabled foreign key checks.";
+                $response['logs'][] = "Successfully executed " . $executed . " statements.";
+                $response['status'] = 'success';
+                $response['message'] = "Database successfully reset and seeded with default dataset!";
+
+            } catch (Exception $e) {
+                $response['status'] = 'error';
+                $response['message'] = $e->getMessage();
+                $response['logs'][] = "ERROR: " . $e->getMessage();
+            }
+            $this->json($response);
+        }
+
+        // GET request - Output beautiful UI
+        header('Content-Type: text/html; charset=utf-8');
+        ?>
+        <!DOCTYPE html>
+        <html lang="en">
+        <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>Tea Jar ERP - Database Seed Center</title>
+            <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+            <style>
+                :root {
+                    --bg-gradient: linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%);
+                    --glass-bg: rgba(30, 41, 59, 0.7);
+                    --glass-border: rgba(255, 255, 255, 0.08);
+                    --primary: #6366f1;
+                    --primary-hover: #4f46e5;
+                    --primary-glow: rgba(99, 102, 241, 0.4);
+                    --accent: #14b8a6;
+                    --text: #f8fafc;
+                    --text-muted: #94a3b8;
+                    --danger: #ef4444;
+                    --success: #10b981;
+                }
+
+                * {
+                    box-sizing: border-box;
+                    margin: 0;
+                    padding: 0;
+                }
+
+                body {
+                    font-family: 'Outfit', sans-serif;
+                    background: var(--bg-gradient);
+                    color: var(--text);
+                    min-height: 100vh;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    overflow-x: hidden;
+                    padding: 20px;
+                }
+
+                .container {
+                    background: var(--glass-bg);
+                    backdrop-filter: blur(16px);
+                    -webkit-backdrop-filter: blur(16px);
+                    border: 1px solid var(--glass-border);
+                    border-radius: 24px;
+                    width: 100%;
+                    max-width: 650px;
+                    padding: 40px;
+                    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+                    position: relative;
+                    overflow: hidden;
+                }
+
+                .container::before {
+                    content: '';
+                    position: absolute;
+                    top: -50%;
+                    left: -50%;
+                    width: 200%;
+                    height: 200%;
+                    background: radial-gradient(circle, rgba(99,102,241,0.05) 0%, transparent 70%);
+                    pointer-events: none;
+                }
+
+                .header {
+                    text-align: center;
+                    margin-bottom: 30px;
+                }
+
+                .logo-icon {
+                    font-size: 3rem;
+                    margin-bottom: 10px;
+                    display: inline-block;
+                    animation: float 4s ease-in-out infinite;
+                }
+
+                h1 {
+                    font-weight: 800;
+                    font-size: 2.2rem;
+                    background: linear-gradient(to right, #a5b4fc, #818cf8, #2dd4bf);
+                    -webkit-background-clip: text;
+                    -webkit-text-fill-color: transparent;
+                    margin-bottom: 8px;
+                }
+
+                .subtitle {
+                    color: var(--text-muted);
+                    font-size: 1rem;
+                }
+
+                .info-box {
+                    background: rgba(239, 68, 68, 0.1);
+                    border: 1px solid rgba(239, 68, 68, 0.2);
+                    border-radius: 12px;
+                    padding: 16px;
+                    margin-bottom: 24px;
+                    display: flex;
+                    gap: 12px;
+                    align-items: flex-start;
+                }
+
+                .info-box-icon {
+                    color: var(--danger);
+                    font-size: 1.25rem;
+                    font-weight: bold;
+                }
+
+                .info-box-text {
+                    font-size: 0.9rem;
+                    color: #fca5a5;
+                    line-height: 1.4;
+                }
+
+                .btn {
+                    display: block;
+                    width: 100%;
+                    background: var(--primary);
+                    color: var(--text);
+                    border: none;
+                    border-radius: 12px;
+                    padding: 16px;
+                    font-size: 1.1rem;
+                    font-weight: 600;
+                    cursor: pointer;
+                    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+                    box-shadow: 0 4px 14px var(--primary-glow);
+                    position: relative;
+                    overflow: hidden;
+                    text-align: center;
+                }
+
+                .btn:hover:not(:disabled) {
+                    background: var(--primary-hover);
+                    transform: translateY(-2px);
+                    box-shadow: 0 6px 20px rgba(99, 102, 241, 0.6);
+                }
+
+                .btn:active:not(:disabled) {
+                    transform: translateY(1px);
+                }
+
+                .btn:disabled {
+                    opacity: 0.6;
+                    cursor: not-allowed;
+                }
+
+                .console-wrapper {
+                    margin-top: 30px;
+                    border-radius: 12px;
+                    background: #020617;
+                    border: 1px solid rgba(255, 255, 255, 0.05);
+                    overflow: hidden;
+                    display: none;
+                }
+
+                .console-header {
+                    background: #0f172a;
+                    padding: 10px 16px;
+                    font-size: 0.8rem;
+                    color: var(--text-muted);
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: center;
+                    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+                }
+
+                .console-dots {
+                    display: flex;
+                    gap: 6px;
+                }
+
+                .console-dot {
+                    width: 10px;
+                    height: 10px;
+                    border-radius: 50%;
+                }
+                .dot-red { background: #ef4444; }
+                .dot-yellow { background: #f59e0b; }
+                .dot-green { background: #10b981; }
+
+                .console-body {
+                    padding: 16px;
+                    font-family: 'Fira Code', monospace;
+                    font-size: 0.85rem;
+                    line-height: 1.6;
+                    max-height: 250px;
+                    overflow-y: auto;
+                    color: var(--accent);
+                }
+
+                .log-line {
+                    margin-bottom: 6px;
+                    display: flex;
+                    gap: 8px;
+                }
+
+                .log-line::before {
+                    content: '>';
+                    color: var(--primary);
+                }
+
+                .log-error {
+                    color: var(--danger);
+                }
+
+                .log-success {
+                    color: var(--success);
+                }
+
+                .spinner {
+                    display: none;
+                    width: 20px;
+                    height: 20px;
+                    border: 3px solid rgba(255, 255, 255, 0.3);
+                    border-radius: 50%;
+                    border-top-color: #fff;
+                    animation: spin 1s ease-in-out infinite;
+                    position: absolute;
+                    right: 20px;
+                    top: calc(50% - 10px);
+                }
+
+                @keyframes spin {
+                    to { transform: rotate(360deg); }
+                }
+
+                @keyframes float {
+                    0%, 100% { transform: translateY(0); }
+                    50% { transform: translateY(-10px); }
+                }
+
+                /* Toast Alert */
+                .toast {
+                    position: fixed;
+                    bottom: 24px;
+                    right: 24px;
+                    background: var(--glass-bg);
+                    backdrop-filter: blur(8px);
+                    border: 1px solid var(--glass-border);
+                    border-radius: 12px;
+                    padding: 16px 24px;
+                    display: flex;
+                    align-items: center;
+                    gap: 12px;
+                    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3);
+                    transform: translateY(100px);
+                    opacity: 0;
+                    transition: all 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+                    z-index: 100;
+                }
+
+                .toast.show {
+                    transform: translateY(0);
+                    opacity: 1;
+                }
+
+                .toast-icon {
+                    font-size: 1.5rem;
+                }
+            </style>
+        </head>
+        <body>
+            <div class="container">
+                <div class="header">
+                    <span class="logo-icon">🌱</span>
+                    <h1>Database Seed Center</h1>
+                    <p class="subtitle">Reset & initialize your ERP environment</p>
+                </div>
+
+                <div class="info-box">
+                    <span class="info-box-icon">⚠️</span>
+                    <div class="info-box-text">
+                        <strong>Warning:</strong> This action will drop all existing tables in database <code><?= DB_NAME ?></code> and reload the clean seed dataset. All current transactional data, custom parts, sales, and accounts will be permanently deleted.
+                    </div>
+                </div>
+
+                <button id="seedBtn" class="btn" onclick="startSeeding()">
+                    <span id="btnText">Reset & Load Default Seeds</span>
+                    <div id="btnSpinner" class="spinner"></div>
+                </button>
+
+                <div id="consoleWrapper" class="console-wrapper">
+                    <div class="console-header">
+                        <div class="console-dots">
+                            <div class="console-dot dot-red"></div>
+                            <div class="console-dot dot-yellow"></div>
+                            <div class="console-dot dot-green"></div>
+                        </div>
+                        <span>migration-console</span>
+                    </div>
+                    <div id="consoleBody" class="console-body"></div>
+                </div>
+            </div>
+
+            <div id="toast" class="toast">
+                <span id="toastIcon" class="toast-icon"></span>
+                <span id="toastText"></span>
+            </div>
+
+            <script>
+                function appendLog(text, type = '') {
+                    const consoleBody = document.getElementById('consoleBody');
+                    const line = document.createElement('div');
+                    line.className = 'log-line ' + type;
+                    line.textContent = text;
+                    consoleBody.appendChild(line);
+                    consoleBody.scrollTop = consoleBody.scrollHeight;
+                }
+
+                function showToast(message, success = true) {
+                    const toast = document.getElementById('toast');
+                    const icon = document.getElementById('toastIcon');
+                    const text = document.getElementById('toastText');
+                    
+                    icon.textContent = success ? '✅' : '❌';
+                    text.textContent = message;
+                    
+                    toast.classList.add('show');
+                    setTimeout(() => {
+                        toast.classList.remove('show');
+                    }, 4000);
+                }
+
+                async function startSeeding() {
+                    const btn = document.getElementById('seedBtn');
+                    const btnText = document.getElementById('btnText');
+                    const spinner = document.getElementById('btnSpinner');
+                    const consoleWrapper = document.getElementById('consoleWrapper');
+                    const consoleBody = document.getElementById('consoleBody');
+
+                    if (!confirm('Are you absolutely sure you want to reset the database? This cannot be undone.')) {
+                        return;
+                    }
+
+                    // Reset states
+                    btn.disabled = true;
+                    btnText.textContent = 'Seeding Database...';
+                    spinner.style.display = 'block';
+                    consoleWrapper.style.display = 'block';
+                    consoleBody.innerHTML = '';
+
+                    appendLog('Initiating database reset handshake...', 'log-info');
+
+                    try {
+                        const response = await fetch(window.location.href, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json'
+                            }
+                        });
+
+                        const result = await response.json();
+                        
+                        if (result.logs && Array.isArray(result.logs)) {
+                            result.logs.forEach(log => {
+                                if (log.startsWith('ERROR:')) {
+                                    appendLog(log, 'log-error');
+                                } else {
+                                    appendLog(log);
+                                }
+                            });
+                        }
+
+                        if (result.status === 'success') {
+                            appendLog('Migration successful!', 'log-success');
+                            btnText.textContent = 'Successfully Seeded';
+                            showToast(result.message, true);
+                        } else {
+                            appendLog('Migration failed!', 'log-error');
+                            btnText.textContent = 'Seed Failed';
+                            btn.disabled = false;
+                            showToast(result.message || 'Error running seeds.', false);
+                        }
+                    } catch (err) {
+                        appendLog('Network or Server Error: ' + err.message, 'log-error');
+                        btnText.textContent = 'Seed Failed';
+                        btn.disabled = false;
+                        showToast('Connection failed.', false);
+                    } finally {
+                        spinner.style.display = 'none';
+                    }
+                }
+            </script>
+        </body>
+        </html>
+        <?php
+        exit();
+    }
 }

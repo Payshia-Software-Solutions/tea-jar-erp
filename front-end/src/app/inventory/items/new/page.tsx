@@ -122,6 +122,7 @@ export default function NewItemPage() {
     public_description: "",
     discount_type: "None",
     discount_value: "0",
+    kiosk_module: "None",
   });
 
   const [supplierIds, setSupplierIds] = useState<number[]>([]);
@@ -244,6 +245,7 @@ export default function NewItemPage() {
         public_description: form.public_description.trim() || null,
         discount_type: form.discount_type,
         discount_value: asNumOrNull(form.discount_value) ?? 0,
+        kiosk_module: form.kiosk_module,
       });
 
       toast({ title: "Created", description: "Product created successfully." });
@@ -774,6 +776,21 @@ export default function NewItemPage() {
                           <p className="text-xs text-muted-foreground">Force out of stock status</p>
                         </div>
                         <Switch checked={form.out_of_stock} onCheckedChange={(v) => setForm(p => ({ ...p, out_of_stock: v }))} />
+                      </div>
+
+                      <div className="space-y-2 pt-4">
+                        <Label>Kiosk Module</Label>
+                        <p className="text-xs text-muted-foreground mb-2">Display this item in the room kiosk</p>
+                        <Select value={form.kiosk_module} onValueChange={(v: any) => setForm(p => ({ ...p, kiosk_module: v }))}>
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="None">Hide from Kiosk</SelectItem>
+                            <SelectItem value="Dining">In-Room Dining</SelectItem>
+                            <SelectItem value="Experience">Experience Booking</SelectItem>
+                          </SelectContent>
+                        </Select>
                       </div>
                       
                       <div className="space-y-2 pt-4">
