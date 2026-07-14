@@ -26,6 +26,8 @@ $allowedOrigins = [
     'https://bizzflow.nebulync.com',
     'http://bizzflow.nebulync.com',
     'https://tea-jar-ceylon-erp.netlify.app',
+    'https://admin-teajarceylon.nebulync.com',
+    'http://admin-teajarceylon.nebulync.com',
 ];
 
 $isAllowed = false;
