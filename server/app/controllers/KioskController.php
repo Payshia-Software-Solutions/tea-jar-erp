@@ -358,8 +358,7 @@ HTML;
                         $orderNo = $orderRow->order_no;
                         $roomNumber = $orderRow->room_number;
                         
-                        // Exact same subject as before to thread in Gmail
-                        $subject = "🛎 New Room Order: {$orderNo} | Room {$roomNumber}";
+                        $subject = "New Room Order: {$orderNo} | Room {$roomNumber}";
                         
                         $statusBadgeColor = '#f59e0b';
                         if ($data['status'] === 'Delivered') $statusBadgeColor = '#10b981';
