@@ -130,9 +130,7 @@ export default function KioskOrdersPage() {
     }
   };
 
-  // Filter and pagination logic
-  // For text/date search, if we do it client side on the fetched page, it's limited to current page.
-  // Ideally search is backend too, but keeping it simple for now as requested.
+  // Filter and pagination logic (Client-side fallback for Search, Date, and Status if backend is old)
   const filteredOrders = orders.filter((o) => {
     const matchesSearch =
       o.order_no.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -143,7 +141,10 @@ export default function KioskOrdersPage() {
       ? new Date(o.created_at).toISOString().split('T')[0] === dateFilter
       : true;
 
-    return matchesSearch && matchesDate;
+    // Fallback if backend returned all (array format) instead of paginated data
+    const matchesStatus = statusFilter === "All" || o.status === statusFilter;
+
+    return matchesSearch && matchesDate && matchesStatus;
   });
 
   const paginatedOrders = filteredOrders;
