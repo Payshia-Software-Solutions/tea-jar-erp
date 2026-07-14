@@ -44,7 +44,7 @@ class KioskController extends Controller {
                     $emails = array_map('trim', explode(',', $settings['kiosk_notify_email_addr']));
                     foreach ($emails as $email) {
                         if (!empty($email)) {
-                            EmailHelper::sendGlobalEmail($email, $subject, $message);
+                            EmailHelper::send($email, $subject, $message);
                         }
                     }
                 }
@@ -144,7 +144,7 @@ class KioskController extends Controller {
                     $emails = array_map('trim', explode(',', $settings['kiosk_notify_email_addr']));
                     foreach ($emails as $email) {
                         if (!empty($email)) {
-                            EmailHelper::sendGlobalEmail($email, $subject, $message);
+                            EmailHelper::send($email, $subject, $message);
                         }
                     }
                 }
