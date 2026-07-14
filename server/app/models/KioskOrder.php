@@ -3,6 +3,7 @@ class KioskOrder {
     private $db;
 
     public function __construct() {
+        if (class_exists('KioskSchema')) KioskSchema::ensure();
         $this->db = new Database;
     }
 

@@ -6,6 +6,11 @@
 class KioskContent extends Model {
     private $table = 'kiosk_contents';
 
+    public function __construct() {
+        if (class_exists('KioskSchema')) KioskSchema::ensure();
+        parent::__construct();
+    }
+
     public function getByPartId($partId) {
         $this->db->query("SELECT * FROM {$this->table} WHERE part_id = :part_id LIMIT 1");
         $this->db->bind(':part_id', $partId);
