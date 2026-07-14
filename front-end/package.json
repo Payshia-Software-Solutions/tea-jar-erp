@@ -70,6 +70,7 @@
     "react-simple-keyboard": "^3.8.193",
     "recharts": "^2.15.1",
     "remark-gfm": "^4.0.1",
+    "styled-jsx": "^5.1.7",
     "tailwind-merge": "^3.0.1",
     "tailwindcss-animate": "^1.0.7",
     "xlsx": "^0.18.5",
