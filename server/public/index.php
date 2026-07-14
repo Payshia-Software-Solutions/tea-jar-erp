@@ -28,6 +28,7 @@ $allowedOrigins = [
     'https://tea-jar-ceylon-erp.netlify.app',
     'https://admin-teajarceylon.nebulync.com',
     'http://admin-teajarceylon.nebulync.com',
+    'https://tea-jar-by-the-lake-kiosk.netlify.app',
 ];
 
 $isAllowed = false;
