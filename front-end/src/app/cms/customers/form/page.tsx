@@ -7,8 +7,7 @@ import {
   Save,
   Loader2,
   ArrowLeft,
-  MapPin,
-  Locate
+  MapPin
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -135,6 +134,7 @@ function CustomerFormContent() {
       toast({ title: "Error", description: "Customer name is required", variant: "destructive" });
       return;
     }
+
 
     setIsSubmitting(true);
     try {
@@ -325,21 +325,11 @@ function CustomerFormContent() {
             </div>
 
             <div className="space-y-2 col-span-1 md:col-span-2">
-              <div className="flex items-center justify-between">
-                <Label>Coordinates</Label>
-                <Button 
-                  type="button" 
-                  variant="outline" 
-                  size="sm" 
-                  onClick={handleGetLocation}
-                  disabled={isFetchingLocation}
-                  className="h-8 px-2 text-xs"
-                >
-                  {isFetchingLocation ? (
-                    <><Loader2 className="w-3 h-3 animate-spin mr-1" /> Fetching...</>
-                  ) : (
-                    <><Locate className="w-3 h-3 mr-1" /> Fetch Location</>
-                  )}
+              <div className="flex justify-between items-center">
+                <Label>Coordinates (Optional)</Label>
+                <Button type="button" variant="outline" size="sm" onClick={handleGetLocation} disabled={isFetchingLocation}>
+                  <MapPin className="w-4 h-4 mr-2" />
+                  Get Location
                 </Button>
               </div>
               <div className="flex gap-2 items-center">
@@ -348,7 +338,7 @@ function CustomerFormContent() {
                   <Input 
                     placeholder="Latitude" 
                     value={formData.latitude} 
-                    readOnly
+                    onChange={(e) => setFormData({ ...formData, latitude: e.target.value })}
                     className="bg-muted pl-8"
                   />
                 </div>
@@ -357,10 +347,15 @@ function CustomerFormContent() {
                   <Input 
                     placeholder="Longitude" 
                     value={formData.longitude} 
-                    readOnly
+                    onChange={(e) => setFormData({ ...formData, longitude: e.target.value })}
                     className="bg-muted pl-8"
                   />
                 </div>
+                {isFetchingLocation && (
+                  <span className="text-xs text-muted-foreground flex items-center gap-1 min-w-[80px]">
+                    <Loader2 className="w-3 h-3 animate-spin" /> Fetching...
+                  </span>
+                )}
               </div>
               {formData.latitude && formData.longitude && !isFetchingLocation && (
                 <div className="mt-2">
