@@ -1,8 +1,6 @@
 import { useState } from 'react';
-import { useTranslation } from 'react-i18next';
 import { X, Plus, Minus, ShoppingBag, ArrowRight } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { useLanguageStore } from '../store/useLanguageStore';
 import { useCartStore, getDiscountedPrice } from '../store/useCartStore';
 import type { Product } from '../store/useCartStore';
 
@@ -12,7 +10,6 @@ interface Props {
 }
 
 export default function ProductModal({ product, onClose }: Props) {
-  const { t } = useTranslation();
   const [qty, setQty] = useState(1);
   const addItem = useCartStore((s) => s.addItem);
 
