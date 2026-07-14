@@ -294,9 +294,10 @@ class KioskController extends Controller {
 HTML;
 
                     $emails = array_map('trim', explode(',', $settings['kiosk_notify_email_addr']));
+                    $threadId = "kiosk-order-{$orderId}@tea-jar-ceylon.nebulync.com";
                     foreach ($emails as $email) {
                         if (!empty($email)) {
-                            EmailHelper::send($email, $subject, $message);
+                            EmailHelper::send($email, $subject, $message, [], $threadId, false);
                         }
                     }
                 }
@@ -393,9 +394,10 @@ HTML;
 HTML;
                         
                         $emails = array_map('trim', explode(',', $settings['kiosk_notify_email_addr']));
+                        $threadId = "kiosk-order-{$actualId}@tea-jar-ceylon.nebulync.com";
                         foreach ($emails as $email) {
                             if (!empty($email)) {
-                                EmailHelper::send($email, $subject, $message);
+                                EmailHelper::send($email, $subject, $message, [], $threadId, true);
                             }
                         }
                     }
