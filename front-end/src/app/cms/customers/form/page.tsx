@@ -134,14 +134,7 @@ function CustomerFormContent() {
       toast({ title: "Error", description: "Customer name is required", variant: "destructive" });
       return;
     }
-    if (!formData.latitude || !formData.longitude) {
-      toast({
-        title: "Error",
-        description: "Coordinates are required to save a customer. Please wait for location to be fetched or enter manually.",
-        variant: "destructive",
-      });
-      return;
-    }
+
 
     setIsSubmitting(true);
     try {
@@ -332,14 +325,20 @@ function CustomerFormContent() {
             </div>
 
             <div className="space-y-2 col-span-1 md:col-span-2">
-              <Label>Coordinates *</Label>
+              <div className="flex justify-between items-center">
+                <Label>Coordinates (Optional)</Label>
+                <Button type="button" variant="outline" size="sm" onClick={handleGetLocation} disabled={isFetchingLocation}>
+                  <MapPin className="w-4 h-4 mr-2" />
+                  Get Location
+                </Button>
+              </div>
               <div className="flex gap-2 items-center">
                 <div className="relative flex-1">
                   <MapPin className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
                   <Input 
                     placeholder="Latitude" 
                     value={formData.latitude} 
-                    readOnly
+                    onChange={(e) => setFormData({ ...formData, latitude: e.target.value })}
                     className="bg-muted pl-8"
                   />
                 </div>
@@ -348,7 +347,7 @@ function CustomerFormContent() {
                   <Input 
                     placeholder="Longitude" 
                     value={formData.longitude} 
-                    readOnly
+                    onChange={(e) => setFormData({ ...formData, longitude: e.target.value })}
                     className="bg-muted pl-8"
                   />
                 </div>
