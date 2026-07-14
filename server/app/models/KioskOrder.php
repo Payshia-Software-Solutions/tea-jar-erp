@@ -114,6 +114,12 @@ class KioskOrder {
         ];
     }
 
+    public function getOrderById($id) {
+        $this->db->query('SELECT * FROM kiosk_orders WHERE id = :id');
+        $this->db->bind(':id', $id);
+        return $this->db->single();
+    }
+
     public function updateStatus($id, $status) {
         $this->db->query('UPDATE kiosk_orders SET status = :status WHERE id = :id');
         $this->db->bind(':status', $status);
