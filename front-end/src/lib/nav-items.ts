@@ -84,6 +84,15 @@ export const serviceCenterItems: NavItem[] = [
   { icon: Tag, label: "Vehicle Makes", href: "/master-data/makes", perm: "makes.read" },
   { icon: Layers, label: "Vehicle Models", href: "/master-data/models", perm: "models.read" },
   { icon: Grid, label: "Departments", href: "/master-data/departments", perm: "departments.read" },
+  { icon: Receipt, label: "Fuel Orders", href: "/fleet/fuel", perm: "vehicles.read" },
+  { icon: Settings, label: "Fuel Settings", href: "/fleet/fuel/settings", perm: "vehicles.write" },
+];
+
+export const kioskItems: NavItem[] = [
+  { icon: Ticket, label: "Experience Bookings", href: "/kiosk/bookings", perm: "orders.read" },
+  { icon: Ticket, label: "Order Requests", href: "/kiosk/orders", perm: "orders.read" },
+  { icon: FileText, label: "Kiosk Content", href: "/kiosk/content", perm: "ecommerce.write" },
+  { icon: Settings, label: "Settings", href: "/kiosk/settings", perm: "ecommerce.write" },
 ];
 
 export const vendorItems: NavItem[] = [

@@ -247,7 +247,7 @@ function AppInner() {
             <Route path="/:lang" element={<LanguageSyncWrapper />}>
               <Route index element={<LanguageSelect />} />
               <Route path="home" element={<HomePage settings={kioskSettings} />} />
-              <Route path="dining" element={<Menu onCartOpen={() => setCartOpen(true)} />} />
+              <Route path="dining" element={<Menu />} />
               <Route path="experiences" element={<Experiences />} />
               <Route path="experiences/:slug/book" element={<ExperienceBooking />} />
               <Route path="cart" element={<Cart />} />

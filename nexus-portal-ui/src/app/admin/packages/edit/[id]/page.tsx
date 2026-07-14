@@ -105,6 +105,7 @@ export default function PackageEditPage() {
     { id: 'production', label: 'Manufacturing & Production', icon: Factory },
     { id: 'frontOffice', label: 'Hotel Front Office', icon: Building2 },
     { id: 'banquet', label: 'Banquet Management', icon: Music },
+    { id: 'ecommerce', label: 'E-commerce & Kiosk', icon: ShoppingCart },
   ];
 
   const toggleModule = (modId: string) => {

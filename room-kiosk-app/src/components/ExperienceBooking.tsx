@@ -131,7 +131,7 @@ export default function ExperienceBooking() {
           </div>
 
           <p style={{ color: '#475569', lineHeight: 1.6, margin: '0 auto 16px', fontSize: 15, fontFamily: 'system-ui, -apple-system, sans-serif' }}>
-            {t('booking_request_for')} <strong style={{ color: '#0f172a' }}>{t(product.name, product.name)}</strong> {t('has_been_received')}
+            {(t('booking_request_for') as string)} <strong style={{ color: '#0f172a' }}>{(t(product.name, { defaultValue: product.name }) as string)}</strong> {(t('has_been_received') as string)}
           </p>
           <p className="exp-success-sub" style={{ color: '#64748b', fontSize: 14, marginBottom: 24 }}>{t('contact_shortly')}</p>
 
