@@ -344,7 +344,63 @@ HTML;
             $data = json_decode(file_get_contents('php://input'), true);
             $actualId = is_numeric($action) ? $action : $id;
             if ($actualId && isset($data['status'])) {
+                $orderRow = $model->getOrderById($actualId);
                 $ok = $model->updateStatus($actualId, $data['status']);
+                
+                if ($ok && $orderRow && $orderRow->status !== $data['status']) {
+                    require_once '../app/models/StorefrontSetting.php';
+                    $settingsModel = new StorefrontSetting();
+                    $settings = $settingsModel->getAll(1); // Default location
+
+                    if (!empty($settings['kiosk_notify_email_enabled']) && $settings['kiosk_notify_email_enabled'] === '1' && !empty($settings['kiosk_notify_email_addr'])) {
+                        require_once '../app/helpers/EmailHelper.php';
+                        $orderNo = $orderRow->order_no;
+                        $roomNumber = $orderRow->room_number;
+                        
+                        // Exact same subject as before to thread in Gmail
+                        $subject = "🛎 New Room Order: {$orderNo} | Room {$roomNumber}";
+                        
+                        $statusBadgeColor = '#f59e0b';
+                        if ($data['status'] === 'Delivered') $statusBadgeColor = '#10b981';
+                        if ($data['status'] === 'Cancelled') $statusBadgeColor = '#ef4444';
+                        if ($data['status'] === 'Preparing') $statusBadgeColor = '#3b82f6';
+                        
+                        $message = <<<HTML
+<!DOCTYPE html>
+<html lang="en">
+<body style="margin:0;padding:0;background:#f1f5f9;font-family:'Segoe UI',Arial,sans-serif;">
+<table width="100%" cellpadding="0" cellspacing="0" style="padding:20px 0;">
+  <tr><td align="center">
+    <table width="620" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:12px;overflow:hidden;border:1px solid #e2e8f0;">
+      <tr>
+        <td style="padding:24px 40px;border-bottom:1px solid #e2e8f0;background:#f8fafc;">
+            <div style="font-size:14px;color:#64748b;margin-bottom:8px;">Order Status Update</div>
+            <div style="font-size:20px;font-weight:700;color:#0f172a;">Order {$orderNo} is now <span style="color:{$statusBadgeColor};">{$data['status']}</span></div>
+        </td>
+      </tr>
+      <tr>
+        <td style="padding:24px 40px;">
+          <p style="margin:0;font-size:14px;color:#475569;line-height:1.6;">
+            The status of room service order <strong>{$orderNo}</strong> for Room <strong>{$roomNumber}</strong> has been updated to <strong>{$data['status']}</strong>.
+          </p>
+        </td>
+      </tr>
+    </table>
+  </td></tr>
+</table>
+</body>
+</html>
+HTML;
+                        
+                        $emails = array_map('trim', explode(',', $settings['kiosk_notify_email_addr']));
+                        foreach ($emails as $email) {
+                            if (!empty($email)) {
+                                EmailHelper::send($email, $subject, $message);
+                            }
+                        }
+                    }
+                }
+                
                 echo json_encode(['success' => $ok]);
             } else {
                 http_response_code(400);
