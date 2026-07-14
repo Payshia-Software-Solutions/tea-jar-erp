@@ -54,7 +54,7 @@ if ($origin && $isAllowed) {
     header('Access-Control-Allow-Origin: *');
 }
 
-header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS');
+header('Access-Control-Allow-Methods: GET, POST, PUT, PATCH, DELETE, OPTIONS');
 
 // Echo back requested headers so preflight succeeds even if the browser adds more.
 $reqHeaders = $_SERVER['HTTP_ACCESS_CONTROL_REQUEST_HEADERS'] ?? '';
