@@ -109,7 +109,9 @@ class KioskController extends Controller {
 
             if ($orderId) {
                 $itemDetailsText = "";
-                $itemDetailsHtml = "";
+                $itemTableRowsVar = "";
+                $rowColors = ['#ffffff', '#f8fafc'];
+                $rowIdx = 0;
 
                 // Insert items
                 if (isset($data['items']) && is_array($data['items'])) {
@@ -136,29 +138,160 @@ class KioskController extends Controller {
                             'price' => $price
                         ]);
 
+                        $rowNum = $rowIdx + 1;
+                        $bg = $rowColors[$rowIdx % 2];
                         $itemDetailsText .= "- {$partName} x{$qty} (Rs. " . number_format($price, 2) . ")\n";
-                        $itemDetailsHtml .= "<li><strong>{$partName}</strong> x{$qty} - Rs. " . number_format($itemTotal, 2) . " (Rs. " . number_format($price, 2) . " each)</li>";
+                        $itemTableRowsVar .= "<tr style='background:{$bg};'>"
+                            . "<td style='padding:12px 16px;font-size:13px;color:#64748b;'>{$rowNum}</td>"
+                            . "<td style='padding:12px 16px;font-size:14px;font-weight:600;color:#0f172a;'>{$partName}</td>"
+                            . "<td style='padding:12px 16px;font-size:14px;color:#0f172a;text-align:center;'>{$qty}</td>"
+                            . "<td style='padding:12px 16px;font-size:14px;color:#64748b;text-align:right;'>Rs. " . number_format($price, 2) . "</td>"
+                            . "<td style='padding:12px 16px;font-size:14px;font-weight:700;color:#1e40af;text-align:right;'>Rs. " . number_format($itemTotal, 2) . "</td>"
+                            . "</tr>";
+                        $rowIdx++;
                     }
                 }
 
                 // Check notifications
                 require_once '../app/models/StorefrontSetting.php';
+                require_once '../app/models/ServiceLocation.php';
                 $settingsModel = new StorefrontSetting();
                 $settings = $settingsModel->getAll($locationId);
 
+                // Fetch location name
+                $locModel = new ServiceLocation();
+                $locationRow = $locModel->getById($locationId);
+                $locationName = $locationRow ? ($locationRow->name ?? 'Kiosk') : 'Kiosk';
+
+                $phoneNumber = $data['phoneNumber'] ?? '';
+                $specialInstructions = $data['specialInstructions'] ?? '';
+                $orderDate = date('d M Y, h:i A');
+                $totalFormatted = number_format((float)$totalAmount, 2);
+                $specialInstructionsBlock = !empty($specialInstructions)
+                    ? "<tr><td style='padding:0 40px 24px 40px;'><div style='background:#fef9f0;border:1px solid #fcd34d;border-radius:10px;padding:16px 20px;'><div style='font-size:11px;font-weight:700;letter-spacing:1px;color:#92400e;text-transform:uppercase;margin-bottom:6px;'>📝 Special Instructions</div><div style='font-size:14px;color:#78350f;line-height:1.6;'>" . nl2br(htmlspecialchars($specialInstructions)) . "</div></div></td></tr>"
+                    : '';
+
                 if (!empty($settings['kiosk_notify_email_enabled']) && $settings['kiosk_notify_email_enabled'] === '1' && !empty($settings['kiosk_notify_email_addr'])) {
                     require_once '../app/helpers/EmailHelper.php';
-                    $subject = "New Kiosk Order: {$orderNo}";
-                    
-                    $message = "A new room order ($orderNo) was placed by {$guestName} for Room {$roomNumber}.<br><br>";
-                    if (!empty($itemDetailsHtml)) {
-                        $message .= "<strong>Ordered Items:</strong><ul>{$itemDetailsHtml}</ul><br>";
-                    }
-                    $message .= "<strong>Total:</strong> Rs. " . number_format($totalAmount, 2);
-                    
-                    if (!empty($data['specialInstructions'])) {
-                        $message .= "<br><br><strong>Special Instructions:</strong><br>" . nl2br(htmlspecialchars($data['specialInstructions']));
-                    }
+                    $subject = "New Room Order: {$orderNo} | Room {$roomNumber}";
+
+                    $message = <<<HTML
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>New Kiosk Order</title>
+</head>
+<body style="margin:0;padding:0;background:#f1f5f9;font-family:'Segoe UI',Arial,sans-serif;">
+<table width="100%" cellpadding="0" cellspacing="0" style="background:#f1f5f9;padding:32px 0;">
+  <tr><td align="center">
+    <table width="620" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.08);">
+
+      <!-- Header -->
+      <tr>
+        <td style="background:linear-gradient(135deg,#0f172a 0%,#1e3a5f 100%);padding:32px 40px;text-align:center;">
+          <div style="font-size:11px;font-weight:700;letter-spacing:3px;color:#94a3b8;text-transform:uppercase;margin-bottom:8px;">Room Service Order</div>
+          <div style="font-size:26px;font-weight:800;color:#ffffff;letter-spacing:1px;">{$locationName}</div>
+          <div style="margin-top:16px;display:inline-block;background:rgba(255,255,255,0.12);border:1px solid rgba(255,255,255,0.2);border-radius:8px;padding:8px 20px;">
+            <span style="font-size:14px;color:#e2e8f0;font-weight:600;">Order No: </span>
+            <span style="font-size:14px;color:#60a5fa;font-weight:700;">{$orderNo}</span>
+          </div>
+          <div style="margin-top:8px;font-size:12px;color:#94a3b8;">{$orderDate}</div>
+        </td>
+      </tr>
+
+      <!-- Alert Banner -->
+      <tr>
+        <td style="background:#fef3c7;border-left:4px solid #f59e0b;padding:14px 40px;">
+          <span style="font-size:13px;font-weight:700;color:#92400e;">🛎 New order received — Please action immediately</span>
+        </td>
+      </tr>
+
+      <!-- Customer Info -->
+      <tr>
+        <td style="padding:28px 40px 0 40px;">
+          <div style="font-size:11px;font-weight:700;letter-spacing:2px;color:#94a3b8;text-transform:uppercase;margin-bottom:14px;">Guest Information</div>
+          <table width="100%" cellpadding="0" cellspacing="0">
+            <tr>
+              <td width="50%" style="padding-bottom:12px;vertical-align:top;">
+                <div style="font-size:11px;color:#94a3b8;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px;">Guest Name</div>
+                <div style="font-size:16px;font-weight:700;color:#0f172a;">{$guestName}</div>
+              </td>
+              <td width="50%" style="padding-bottom:12px;vertical-align:top;">
+                <div style="font-size:11px;color:#94a3b8;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px;">Room Number</div>
+                <div style="font-size:16px;font-weight:700;color:#0f172a;">🚪 Room {$roomNumber}</div>
+              </td>
+            </tr>
+            <tr>
+              <td width="50%" style="vertical-align:top;">
+                <div style="font-size:11px;color:#94a3b8;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px;">Contact</div>
+                <div style="font-size:15px;font-weight:600;color:#0f172a;">{$phoneNumber}</div>
+              </td>
+              <td width="50%" style="vertical-align:top;">
+                <div style="font-size:11px;color:#94a3b8;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px;">Location</div>
+                <div style="font-size:15px;font-weight:600;color:#0f172a;">📍 {$locationName}</div>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+
+      <!-- Divider -->
+      <tr><td style="padding:20px 40px 0 40px;"><hr style="border:none;border-top:1px solid #e2e8f0;"></td></tr>
+
+      <!-- Order Items Table -->
+      <tr>
+        <td style="padding:20px 40px 0 40px;">
+          <div style="font-size:11px;font-weight:700;letter-spacing:2px;color:#94a3b8;text-transform:uppercase;margin-bottom:14px;">Order Items</div>
+          <table width="100%" cellpadding="0" cellspacing="0" style="border-radius:10px;overflow:hidden;border:1px solid #e2e8f0;">
+            <thead>
+              <tr style="background:#f8fafc;">
+                <th style="text-align:left;padding:12px 16px;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:1px;border-bottom:1px solid #e2e8f0;">#</th>
+                <th style="text-align:left;padding:12px 16px;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:1px;border-bottom:1px solid #e2e8f0;">Item</th>
+                <th style="text-align:center;padding:12px 16px;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:1px;border-bottom:1px solid #e2e8f0;">Qty</th>
+                <th style="text-align:right;padding:12px 16px;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:1px;border-bottom:1px solid #e2e8f0;">Unit Price</th>
+                <th style="text-align:right;padding:12px 16px;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:1px;border-bottom:1px solid #e2e8f0;">Subtotal</th>
+              </tr>
+            </thead>
+            <tbody>
+              {$itemTableRowsVar}
+            </tbody>
+          </table>
+        </td>
+      </tr>
+
+      <!-- Total -->
+      <tr>
+        <td style="padding:0 40px 20px 40px;">
+          <table width="100%" cellpadding="0" cellspacing="0">
+            <tr>
+              <td style="padding:16px;background:#0f172a;border-radius:0 0 10px 10px;text-align:right;">
+                <span style="font-size:13px;color:#94a3b8;font-weight:600;margin-right:16px;">TOTAL AMOUNT</span>
+                <span style="font-size:20px;font-weight:800;color:#60a5fa;">Rs. {$totalFormatted}</span>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+
+      <!-- Special Instructions -->
+      {$specialInstructionsBlock}
+
+      <!-- Footer -->
+      <tr>
+        <td style="background:#f8fafc;border-top:1px solid #e2e8f0;padding:24px 40px;text-align:center;">
+          <div style="font-size:12px;color:#94a3b8;">This is an automated notification from <strong style="color:#64748b;">{$locationName} Room Service System</strong></div>
+          <div style="font-size:11px;color:#cbd5e1;margin-top:4px;">Please do not reply directly to this email.</div>
+        </td>
+      </tr>
+
+    </table>
+  </td></tr>
+</table>
+</body>
+</html>
+HTML;
 
                     $emails = array_map('trim', explode(',', $settings['kiosk_notify_email_addr']));
                     foreach ($emails as $email) {
@@ -171,13 +304,18 @@ class KioskController extends Controller {
                 if (!empty($settings['kiosk_notify_sms_enabled']) && $settings['kiosk_notify_sms_enabled'] === '1' && !empty($settings['kiosk_notify_sms_phone'])) {
                     require_once '../app/helpers/SmsHelper.php';
                     
-                    $msg = "New Order {$orderNo} from Room {$roomNumber}.\n";
+                    $msg = "🛎 New Order {$orderNo}\n";
+                    $msg .= "📍 {$locationName}\n";
+                    $msg .= "🚪 Room: {$roomNumber}\n";
+                    $msg .= "👤 Guest: {$guestName}";
+                    if (!empty($phoneNumber)) $msg .= " | 📞 {$phoneNumber}";
+                    $msg .= "\n---\n";
                     if (!empty($itemDetailsText)) {
                         $msg .= trim($itemDetailsText) . "\n";
                     }
-                    $msg .= "Total: Rs. " . number_format($totalAmount, 2);
-                    if (!empty($data['specialInstructions'])) {
-                        $msg .= "\nNote: " . $data['specialInstructions'];
+                    $msg .= "---\nTotal: Rs. " . number_format($totalAmount, 2);
+                    if (!empty($specialInstructions)) {
+                        $msg .= "\n📝 Note: " . $specialInstructions;
                     }
 
                     $phones = array_map('trim', explode(',', $settings['kiosk_notify_sms_phone']));
