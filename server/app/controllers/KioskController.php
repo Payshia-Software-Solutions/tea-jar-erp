@@ -91,13 +91,19 @@ class KioskController extends Controller {
             // Create a new order
             $data = json_decode(file_get_contents('php://input'), true);
             $orderNo = 'KO-' . time() . rand(100, 999);
+            
+            $guestName = $data['guestName'] ?? $data['name'] ?? '';
+            $roomNumber = $data['roomNumber'] ?? '';
+            $totalAmount = $data['totalAmount'] ?? 0;
+            $locationId = isset($data['locationId']) ? (int)$data['locationId'] : 1;
+
             $orderId = $model->createOrder([
                 'order_no' => $orderNo,
-                'room_number' => $data['roomNumber'] ?? '',
-                'guest_name' => $data['name'] ?? '',
+                'room_number' => $roomNumber,
+                'guest_name' => $guestName,
                 'phone_number' => $data['phoneNumber'] ?? '',
                 'special_instructions' => $data['specialInstructions'] ?? '',
-                'total_amount' => $data['totalAmount'] ?? 0,
+                'total_amount' => $totalAmount,
                 'status' => 'Pending'
             ]);
 
@@ -128,12 +134,12 @@ class KioskController extends Controller {
                 // Check notifications
                 require_once '../app/models/StorefrontSetting.php';
                 $settingsModel = new StorefrontSetting();
-                $settings = $settingsModel->getAll();
+                $settings = $settingsModel->getAll($locationId);
 
                 if (!empty($settings['kiosk_notify_email_enabled']) && $settings['kiosk_notify_email_enabled'] === '1' && !empty($settings['kiosk_notify_email_addr'])) {
                     require_once '../app/helpers/EmailHelper.php';
                     $subject = "New Kiosk Order: {$orderNo}";
-                    $message = "A new room order ($orderNo) was placed by {$data['name']} for Room {$data['roomNumber']}.<br><br>Total: Rs. {$data['totalAmount']}";
+                    $message = "A new room order ($orderNo) was placed by {$guestName} for Room {$roomNumber}.<br><br>Total: Rs. {$totalAmount}";
                     
                     $emails = array_map('trim', explode(',', $settings['kiosk_notify_email_addr']));
                     foreach ($emails as $email) {
@@ -145,7 +151,7 @@ class KioskController extends Controller {
 
                 if (!empty($settings['kiosk_notify_sms_enabled']) && $settings['kiosk_notify_sms_enabled'] === '1' && !empty($settings['kiosk_notify_sms_phone'])) {
                     require_once '../app/helpers/SmsHelper.php';
-                    $msg = "New Kiosk Order: {$orderNo} from Room {$data['roomNumber']}. Total: Rs. {$data['totalAmount']}";
+                    $msg = "New Kiosk Order: {$orderNo} from Room {$roomNumber}. Total: Rs. {$totalAmount}";
                     
                     $phones = array_map('trim', explode(',', $settings['kiosk_notify_sms_phone']));
                     foreach ($phones as $phone) {
