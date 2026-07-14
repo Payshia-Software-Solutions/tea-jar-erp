@@ -11591,6 +11591,15 @@ class SchemaDefinition {
         'Default' => NULL,
         'Extra' => '',
       ),
+      'kiosk_module' => 
+      array (
+        'Field' => 'kiosk_module',
+        'Type' => 'varchar(50)',
+        'Null' => 'NO',
+        'Key' => '',
+        'Default' => 'None',
+        'Extra' => '',
+      ),
     ),
     'indexes' => 
     array (
