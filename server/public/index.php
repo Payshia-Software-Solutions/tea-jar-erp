@@ -18,6 +18,7 @@ if (file_exists(__DIR__ . '/../vendor/autoload.php')) {
 // NOTE: When the frontend sends cookies (`credentials: 'include'`), we cannot use `*` for Allow-Origin.
 $origin = $_SERVER['HTTP_ORIGIN'] ?? '';
 $allowedOrigins = [
+    'http://localhost:9005',
     'http://localhost:9003',
     'http://localhost:3000',
     'http://localhost:9002',

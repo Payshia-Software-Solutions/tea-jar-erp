@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "node server.js --dev --port 9003",
+    "dev": "node server.js --dev --port 9005",
     "dev:next": "next dev -p 9003",
     "dev:turbopack": "next dev --turbopack -p 9003",
     "dev:stable": "node server.js --dev --port 9003",
@@ -50,7 +50,7 @@
     "exceljs": "^4.4.0",
     "file-saver": "^2.0.5",
     "firebase": "^11.9.1",
-    "framer-motion": "^12.38.0",
+    "framer-motion": "^12.42.2",
     "genkit": "^1.28.0",
     "genkitx-groq": "^0.30.0",
     "lucide-react": "^0.475.0",
