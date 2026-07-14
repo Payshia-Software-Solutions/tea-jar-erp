@@ -8,7 +8,7 @@ class EmailHelper {
     /**
      * Send an HTML email using global system settings
      */
-    public static function send($to, $subject, $message, $attachments = []) {
+    public static function send($to, $subject, $message, $attachments = [], $threadId = null, $isReply = false) {
         require_once __DIR__ . '/../models/SystemSetting.php';
         $settingModel = new SystemSetting();
         $settings = $settingModel->getAll();
@@ -23,13 +23,13 @@ class EmailHelper {
             'mail_from_name' => $settings['mail_from_name'] ?? 'BizFlow'
         ];
 
-        return self::sendWithConfig($to, $subject, $message, $config, $attachments);
+        return self::sendWithConfig($to, $subject, $message, $config, $attachments, $threadId, $isReply);
     }
 
     /**
      * Send an HTML email with specific configuration
      */
-    public static function sendWithConfig($to, $subject, $message, $config, $attachments = []) {
+    public static function sendWithConfig($to, $subject, $message, $config, $attachments = [], $threadId = null, $isReply = false) {
         $fromName = $config['mail_from_name'] ?? 'BizFlow';
         $fromEmail = $config['mail_from_addr'] ?? 'no-reply@payshia.com';
 
@@ -60,6 +60,16 @@ class EmailHelper {
                 );
             } else {
                 $mail->isMail();
+            }
+
+            // Threading headers
+            if ($threadId) {
+                if ($isReply) {
+                    $mail->addCustomHeader('In-Reply-To', "<{$threadId}>");
+                    $mail->addCustomHeader('References', "<{$threadId}>");
+                } else {
+                    $mail->MessageID = "<{$threadId}>";
+                }
             }
 
             // Recipients
