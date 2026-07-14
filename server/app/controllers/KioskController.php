@@ -108,11 +108,15 @@ class KioskController extends Controller {
             ]);
 
             if ($orderId) {
+                $itemDetailsText = "";
+                $itemDetailsHtml = "";
+
                 // Insert items
                 if (isset($data['items']) && is_array($data['items'])) {
                     $partModel = $this->model('Part');
                     foreach ($data['items'] as $item) {
                         $part = $partModel->getById($item['productId']);
+                        $partName = $part ? $part->part_name : 'Unknown Product';
                         $price = $part ? $part->price : 0;
                         if ($part && $part->discount_type && $part->discount_value > 0) {
                             if ($part->discount_type === 'Percentage') {
@@ -122,12 +126,18 @@ class KioskController extends Controller {
                             }
                         }
 
+                        $qty = (int)$item['qty'];
+                        $itemTotal = $price * $qty;
+
                         $model->createOrderItem([
                             'kiosk_order_id' => $orderId,
                             'product_id' => $item['productId'],
-                            'quantity' => $item['qty'],
+                            'quantity' => $qty,
                             'price' => $price
                         ]);
+
+                        $itemDetailsText .= "- {$partName} x{$qty} (Rs. " . number_format($price, 2) . ")\n";
+                        $itemDetailsHtml .= "<li><strong>{$partName}</strong> x{$qty} - Rs. " . number_format($itemTotal, 2) . " (Rs. " . number_format($price, 2) . " each)</li>";
                     }
                 }
 
@@ -139,8 +149,17 @@ class KioskController extends Controller {
                 if (!empty($settings['kiosk_notify_email_enabled']) && $settings['kiosk_notify_email_enabled'] === '1' && !empty($settings['kiosk_notify_email_addr'])) {
                     require_once '../app/helpers/EmailHelper.php';
                     $subject = "New Kiosk Order: {$orderNo}";
-                    $message = "A new room order ($orderNo) was placed by {$guestName} for Room {$roomNumber}.<br><br>Total: Rs. {$totalAmount}";
                     
+                    $message = "A new room order ($orderNo) was placed by {$guestName} for Room {$roomNumber}.<br><br>";
+                    if (!empty($itemDetailsHtml)) {
+                        $message .= "<strong>Ordered Items:</strong><ul>{$itemDetailsHtml}</ul><br>";
+                    }
+                    $message .= "<strong>Total:</strong> Rs. " . number_format($totalAmount, 2);
+                    
+                    if (!empty($data['specialInstructions'])) {
+                        $message .= "<br><br><strong>Special Instructions:</strong><br>" . nl2br(htmlspecialchars($data['specialInstructions']));
+                    }
+
                     $emails = array_map('trim', explode(',', $settings['kiosk_notify_email_addr']));
                     foreach ($emails as $email) {
                         if (!empty($email)) {
@@ -151,8 +170,16 @@ class KioskController extends Controller {
 
                 if (!empty($settings['kiosk_notify_sms_enabled']) && $settings['kiosk_notify_sms_enabled'] === '1' && !empty($settings['kiosk_notify_sms_phone'])) {
                     require_once '../app/helpers/SmsHelper.php';
-                    $msg = "New Kiosk Order: {$orderNo} from Room {$roomNumber}. Total: Rs. {$totalAmount}";
                     
+                    $msg = "New Order {$orderNo} from Room {$roomNumber}.\n";
+                    if (!empty($itemDetailsText)) {
+                        $msg .= trim($itemDetailsText) . "\n";
+                    }
+                    $msg .= "Total: Rs. " . number_format($totalAmount, 2);
+                    if (!empty($data['specialInstructions'])) {
+                        $msg .= "\nNote: " . $data['specialInstructions'];
+                    }
+
                     $phones = array_map('trim', explode(',', $settings['kiosk_notify_sms_phone']));
                     foreach ($phones as $phone) {
                         if (!empty($phone)) {
