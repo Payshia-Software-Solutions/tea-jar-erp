@@ -303,19 +303,19 @@ HTML;
 
                 if (!empty($settings['kiosk_notify_sms_enabled']) && $settings['kiosk_notify_sms_enabled'] === '1' && !empty($settings['kiosk_notify_sms_phone'])) {
                     require_once '../app/helpers/SmsHelper.php';
-                    
-                    $msg = "🛎 New Order {$orderNo}\n";
-                    $msg .= "📍 {$locationName}\n";
-                    $msg .= "🚪 Room: {$roomNumber}\n";
-                    $msg .= "👤 Guest: {$guestName}";
-                    if (!empty($phoneNumber)) $msg .= " | 📞 {$phoneNumber}";
+
+                    $msg = "New Order: {$orderNo}\n";
+                    $msg .= "Location: {$locationName}\n";
+                    $msg .= "Room: {$roomNumber}\n";
+                    $msg .= "Guest: {$guestName}";
+                    if (!empty($phoneNumber)) $msg .= " | Tel: {$phoneNumber}";
                     $msg .= "\n---\n";
                     if (!empty($itemDetailsText)) {
                         $msg .= trim($itemDetailsText) . "\n";
                     }
                     $msg .= "---\nTotal: Rs. " . number_format($totalAmount, 2);
                     if (!empty($specialInstructions)) {
-                        $msg .= "\n📝 Note: " . $specialInstructions;
+                        $msg .= "\nNote: " . $specialInstructions;
                     }
 
                     $phones = array_map('trim', explode(',', $settings['kiosk_notify_sms_phone']));
