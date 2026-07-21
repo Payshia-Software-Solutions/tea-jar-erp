@@ -68,7 +68,7 @@ class BillingController extends Controller {
 
             // Check if invoice already exists for this month
             if (!$invoiceModel->exists($tid, $currentMonth)) {
-                $invoiceNumber = 'INV-' . strtoupper(substr(md5(uniqid()), 0, 8));
+                $invoiceNumber = $invoiceModel->generateNextInvoiceNumber();
                 
                 // Add billing info for PDF
                 $pdfData = (object)[
@@ -105,7 +105,8 @@ class BillingController extends Controller {
                     // Generate PDF & Send Email
                     try {
                         $pdf = \App\Services\InvoicePDF::generate($pdfData);
-                        $sent = \App\Core\Mailer::sendInvoiceEmail($adminEmail, $tenantName, $invoiceNumber, $pdf, $currentMonth, $monthlyPrice, $currency, $ccEmail);
+                        $description = ($pdfData->package_name ?? 'Subscription') . ' - ' . $tenantName;
+                        $sent = \App\Core\Mailer::sendInvoiceEmail($adminEmail, $tenantName, $invoiceNumber, $pdf, $currentMonth, $monthlyPrice, $currency, $ccEmail, $description);
                         
                         // Update Email Status & Log
                         $invoiceModel->update($invoiceId, [
@@ -206,7 +207,8 @@ class BillingController extends Controller {
             $sent = \App\Core\Mailer::sendPaymentReceipt($invoice->admin_email, $invoice->tenant_name, $invoice->invoice_number, $receiptPdf, $invoicePdf, $invoice->amount, $invoice->currency, $invoice->receipt_number, $invoice->billing_cc_email);
         } else {
             $pdf = \App\Services\InvoicePDF::generate($invoice, false);
-            $sent = \App\Core\Mailer::sendInvoiceEmail($invoice->admin_email, $invoice->tenant_name, $invoice->invoice_number, $pdf, $invoice->billing_month, $invoice->amount, $invoice->currency, $invoice->billing_cc_email);
+            $description = ($invoice->package_name ?? 'Subscription') . ' - ' . $invoice->tenant_name;
+            $sent = \App\Core\Mailer::sendInvoiceEmail($invoice->admin_email, $invoice->tenant_name, $invoice->invoice_number, $pdf, $invoice->billing_month, $invoice->amount, $invoice->currency, $invoice->billing_cc_email, $description);
         }
 
         $model->update($id, [

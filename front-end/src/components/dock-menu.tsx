@@ -9,7 +9,9 @@ import {
   PlusCircle, 
   Menu, 
   PlayCircle,
-  HelpCircle
+  HelpCircle,
+  BarChart3,
+  Boxes
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
@@ -23,10 +25,10 @@ import * as NavItems from '@/lib/nav-items';
 import { fetchOrders } from '@/lib/api';
 
 const DEFAULT_ITEMS = [
-  { icon: LayoutDashboard, label: 'Home', href: '/dashboard' },
-  { icon: ClipboardList, label: 'Queue', href: '/orders' },
-  { icon: PlusCircle, label: 'New', href: '/orders/new', primary: true },
-  { icon: PlayCircle, label: 'Active', href: '/orders/active' },
+  { icon: LayoutDashboard, label: 'Home', href: '/dashboard/overall' },
+  { icon: BarChart3, label: 'Reports', href: '/reports' },
+  { icon: PlusCircle, label: 'POS', href: '/cms/pos', primary: true },
+  { icon: Boxes, label: 'Stock', href: '/inventory/stock' },
   { icon: Menu, label: 'All', href: '/menu' },
 ];
 

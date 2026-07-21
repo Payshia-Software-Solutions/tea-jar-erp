@@ -73,6 +73,14 @@ import {
   SidebarGroupLabel,
   SidebarGroupContent
 } from '@/components/ui/sidebar';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { DockMenu } from './dock-menu';
 import { PromotionsDialog } from './promotions-dialog';
 import { SaasInfoDialog } from './saas-info-dialog';
@@ -1400,12 +1408,35 @@ export function DashboardLayout({ children, fullWidth = true, title }: { childre
                 <Bell className="w-5 h-5" />
                 <span className="absolute top-2.5 right-2.5 w-2 h-2 bg-accent rounded-full border-2 border-background" />
               </Button>
-              <Link href="/profile">
-                <Avatar className="h-8 w-8 sm:h-9 sm:w-9 border-2 border-primary/10 cursor-pointer hover:border-accent transition-colors">
-                  <AvatarImage src="https://picsum.photos/seed/user/32/32" />
-                  <AvatarFallback>FO</AvatarFallback>
-                </Avatar>
-              </Link>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Avatar className="h-8 w-8 sm:h-9 sm:w-9 border-2 border-primary/10 cursor-pointer hover:border-accent transition-colors outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2">
+                    <AvatarImage src="https://picsum.photos/seed/user/32/32" />
+                    <AvatarFallback>FO</AvatarFallback>
+                  </Avatar>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-56">
+                  <DropdownMenuLabel>My Account</DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem asChild>
+                    <Link href="/profile" className="cursor-pointer flex w-full">
+                      <User className="mr-2 h-4 w-4" />
+                      <span>Profile</span>
+                    </Link>
+                  </DropdownMenuItem>
+                  {availableLocations.length > 0 ? (
+                    <DropdownMenuItem onClick={openLocationSwitcher} className="cursor-pointer">
+                      <MapPin className="mr-2 h-4 w-4" />
+                      <span>Switch Location</span>
+                    </DropdownMenuItem>
+                  ) : null}
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={handleLogout} className="cursor-pointer text-red-600 focus:text-red-600 focus:bg-red-50 dark:focus:bg-red-950">
+                    <LogOut className="mr-2 h-4 w-4" />
+                    <span>Logout</span>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
           </header>
           <main className="flex-1 p-4 sm:p-6 overflow-y-auto pb-24 lg:pb-8" suppressHydrationWarning>

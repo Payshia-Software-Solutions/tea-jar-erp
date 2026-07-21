@@ -39,88 +39,158 @@ type PermRow = { id: number; perm_key: string; description: string | null };
 type PermMatrixRow = { module: string; page: string; read: string; write?: string };
 
 const basePagePermissionMatrix: PermMatrixRow[] = [
+  // Core Features
+  { module: "Core Features", page: "Executive Dashboard", read: "reports.read" },
+  { module: "Core Features", page: "Workshop Dashboard", read: "reports.read" },
+  { module: "Core Features", page: "AI Business Intelligence", read: "reports.read" },
+  { module: "Core Features", page: "Sales Dashboard", read: "reports.read" },
+  { module: "Core Features", page: "POS Quick Sale", read: "pos.read", write: "pos.write" },
+  { module: "Core Features", page: "Reports", read: "reports.read" },
+
   // Fleet Management
-  { module: "Fleet Management", page: "Orders (Queue / Dashboard)", read: "orders.read", write: "orders.write" },
-  { module: "Fleet Management", page: "Active Jobs & Completed", read: "orders.read", write: "orders.write" },
-  { module: "Fleet Management", page: "Service Bays & Board", read: "bays.read", write: "bays.write" },
-  { module: "Fleet Management", page: "Technicians Management", read: "technicians.read", write: "technicians.write" },
-  { module: "Fleet Management", page: "Vehicles List & History", read: "vehicles.read", write: "vehicles.write" },
+  { module: "Fleet Management", page: "Create Order", read: "orders.read", write: "orders.write" },
+  { module: "Fleet Management", page: "Order Queue", read: "orders.read", write: "orders.write" },
+  { module: "Fleet Management", page: "Service Calendar", read: "orders.read" },
+  { module: "Fleet Management", page: "Upcoming Services", read: "vehicles.read" },
+  { module: "Fleet Management", page: "Active Jobs", read: "orders.read", write: "orders.write" },
+  { module: "Fleet Management", page: "Completed Orders", read: "orders.read" },
+  { module: "Fleet Management", page: "Bays Board", read: "bays.read", write: "bays.write" },
+  { module: "Fleet Management", page: "Vehicles List", read: "vehicles.read", write: "vehicles.write" },
+  { module: "Fleet Management", page: "Vehicle Lookup", read: "vehicles.read" },
+  { module: "Fleet Management", page: "Technicians", read: "technicians.read", write: "technicians.write" },
+  { module: "Fleet Management", page: "Service Bays", read: "bays.read", write: "bays.write" },
   { module: "Fleet Management", page: "Repair Categories", read: "categories.read", write: "categories.write" },
-  { module: "Fleet Management", page: "Checklist Repository", read: "checklists.read", write: "checklists.write" },
+  { module: "Fleet Management", page: "Checklist Items", read: "checklists.read", write: "checklists.write" },
+  { module: "Fleet Management", page: "Vehicle Makes", read: "makes.read", write: "makes.write" },
+  { module: "Fleet Management", page: "Vehicle Models", read: "models.read", write: "models.write" },
+  { module: "Fleet Management", page: "Departments", read: "departments.read", write: "departments.write" },
+  { module: "Fleet Management", page: "Fuel Orders", read: "vehicles.read", write: "vehicles.write" },
+  { module: "Fleet Management", page: "Fuel Settings", read: "vehicles.write", write: "vehicles.write" },
 
-  // Inventory & Vendors
-  { module: "Inventory", page: "Item Master (Parts/Products)", read: "parts.read", write: "parts.write" },
-  { module: "Inventory", page: "Stock Balance & Movements", read: "stock.read", write: "stock.adjust" },
+  // Vendors
+  { module: "Vendors", page: "Suppliers", read: "suppliers.read", write: "suppliers.write" },
+  { module: "Vendors", page: "Vendor Payments", read: "suppliers.read", write: "accounting.write" },
+  { module: "Vendors", page: "Supplier Returns", read: "suppliers.read", write: "suppliers.write" },
+  
+  // Inventory
+  { module: "Inventory", page: "Items", read: "parts.read", write: "parts.write" },
+  { module: "Inventory", page: "Barcode Printer", read: "parts.read" },
+  { module: "Inventory", page: "Stock Balance", read: "stock.read" },
+  { module: "Inventory", page: "Stock Counts", read: "stock.read", write: "stock.adjust" },
   { module: "Inventory", page: "Stock Adjustments", read: "stock.read", write: "stock.adjust" },
+  { module: "Inventory", page: "Stock Transfers", read: "transfer.read", write: "transfer.write" },
+  { module: "Inventory", page: "Issue Notes", read: "parts.read", write: "parts.write" },
   { module: "Inventory", page: "Purchase Orders", read: "purchase.read", write: "purchase.write" },
-  { module: "Inventory", page: "Goods Receive Note (GRN)", read: "grn.read", write: "grn.write" },
-  { module: "Inventory", page: "Supplier Management", read: "suppliers.read", write: "suppliers.write" },
-  { module: "Inventory", page: "Vendor Payments & Vouchers", read: "suppliers.read", write: "accounting.write" },
-  { module: "Inventory", page: "Supplier Returns", read: "suppliers.read", write: "suppliers.write" },
-  { module: "Inventory", page: "Stock Requisitions & Transfers", read: "transfer.read", write: "transfer.write" },
+  { module: "Inventory", page: "GRN", read: "grn.read", write: "grn.write" },
+  { module: "Inventory", page: "Stock Requests", read: "transfer.read", write: "transfer.write" },
 
-  // Sales & CRM
-  { module: "Sales & CRM", page: "Customer 360 (Profiles)", read: "customers.read", write: "customers.write" },
-  { module: "Sales & CRM", page: "Customer Vehicles", read: "vehicles.read", write: "vehicles.write" },
-  { module: "Sales & CRM", page: "Quotations (Create / Manage)", read: "sales.read", write: "sales.create" },
-  { module: "Sales & CRM", page: "Quotations (Update Status)", read: "sales.read", write: "sales.update" },
-  { module: "Sales & CRM", page: "Invoices & Online Orders", read: "invoices.read", write: "invoices.write" },
-  { module: "Sales & CRM", page: "POS (Point of Sale)", read: "pos.read", write: "pos.write" },
-  { module: "Sales & CRM", page: "Online Orders Dashboard", read: "invoices.read", write: "invoices.write" },
-  { module: "Sales & CRM", page: "Payment Receipts History", read: "payments.read", write: "payments.write" },
-  { module: "Sales & CRM", page: "Cheque Inventory Tracking", read: "payments.read", write: "payments.write" },
-  { module: "Sales & CRM", page: "Sales Returns & Refunds", read: "sales.read", write: "sales.write" },
+  // CRM
+  { module: "CRM", page: "Inquiries (Leads)", read: "crm.inquiries.view", write: "crm.inquiries.write" },
+  { module: "CRM", page: "Customers", read: "customers.read", write: "customers.write" },
+  { module: "CRM", page: "Customer Vehicles", read: "vehicles.read", write: "vehicles.write" },
+  { module: "CRM", page: "Routes", read: "customers.read", write: "customers.write" },
 
-  // Accounting
-  { module: "Accounting", page: "Financial Dashboard", read: "accounting.read" },
-  { module: "Accounting", page: "Chart of Accounts", read: "accounting.read", write: "accounting.write" },
-  { module: "Accounting", page: "Journal Entries", read: "accounting.read", write: "accounting.write" },
-  { module: "Accounting", page: "Expense Management", read: "accounting.read", write: "accounting.write" },
-  { module: "Accounting", page: "Bank Reconciliation", read: "accounting.reconcile", write: "accounting.write" },
-  { module: "Accounting", page: "Trial Balance & Trial Balance", read: "accounting.read" },
-  { module: "Accounting", page: "Balance Sheet & P&L", read: "accounting.read" },
-  { module: "Accounting", page: "Fiscal Years & Periods", read: "fiscal.read", write: "fiscal.write" },
-
-  // HRM
-  { module: "HRM", page: "Employee Management", read: "hrm.read", write: "hrm.write" },
-  { module: "HRM", page: "Attendance Tracking", read: "hrm.read", write: "attendance.write" },
-  { module: "HRM", page: "Leave Management", read: "hrm.read", write: "leave.write" },
-  { module: "HRM", page: "Payroll Processing", read: "hrm.read", write: "payroll.write" },
-  { module: "HRM", page: "HR Document Management", read: "hrm.read", write: "hrm.write" },
-  { module: "HRM", page: "Staff Groups & Schemes", read: "hrm.read", write: "hrm.write" },
-
-  // Production
-  { module: "Production", page: "Bill of Materials (BOM)", read: "production.read", write: "production.write" },
-  { module: "Production", page: "Production Orders Workflow", read: "production.read", write: "production.write" },
+  // Sales
+  { module: "Sales", page: "Sales Targets", read: "sales.read", write: "sales.write" },
+  { module: "Sales", page: "Quotations", read: "sales.read", write: "sales.create" },
+  { module: "Sales", page: "Invoices", read: "invoices.read", write: "invoices.write" },
+  { module: "Sales", page: "Recurring Invoices", read: "invoices.read", write: "invoices.write" },
+  { module: "Sales", page: "Customer Notes", read: "invoices.read", write: "invoices.write" },
+  { module: "Sales", page: "Payment Receipts", read: "payments.read", write: "payments.write" },
+  { module: "Sales", page: "Cheque Inventory", read: "payments.read", write: "payments.write" },
 
   // Marketing
-  { module: "Marketing", page: "SMS & Email Marketing", read: "promotions.read", write: "promotions.write" },
+  { module: "Marketing", page: "Promotions", read: "promotions.read", write: "promotions.write" },
+  { module: "Marketing", page: "SMS Marketing", read: "promotions.read", write: "promotions.write" },
+  { module: "Marketing", page: "Email Marketing", read: "promotions.read", write: "promotions.write" },
   { module: "Marketing", page: "Audience Segments", read: "promotions.read", write: "promotions.write" },
-  { module: "Marketing", page: "Promotions & Campaigns", read: "promotions.read", write: "promotions.write" },
+
+  // E-commerce
+  { module: "E-commerce", page: "Online Orders", read: "invoices.read", write: "invoices.write" },
+  { module: "E-commerce", page: "Storefront Customers", read: "customers.read", write: "customers.write" },
+  { module: "E-commerce", page: "Payment Webhook Logs", read: "invoices.read" },
+  { module: "E-commerce", page: "Content Management", read: "promotions.read", write: "promotions.write" },
+  { module: "E-commerce", page: "Navigation Menu", read: "promotions.read", write: "promotions.write" },
+  { module: "E-commerce", page: "Storefront Products", read: "parts.read", write: "parts.write" },
+  { module: "E-commerce", page: "Product Reviews", read: "promotions.read", write: "promotions.write" },
+  { module: "E-commerce", page: "Coupons & Discounts", read: "promotions.read", write: "promotions.write" },
+  { module: "E-commerce", page: "E-commerce Settings", read: "promotions.read", write: "promotions.write" },
+  { module: "E-commerce", page: "Developer Options", read: "promotions.read", write: "promotions.write" },
+
+  // Kiosk
+  { module: "Kiosk", page: "Experience Bookings", read: "orders.read", write: "orders.write" },
+  { module: "Kiosk", page: "Order Requests", read: "orders.read", write: "orders.write" },
+  { module: "Kiosk", page: "Kiosk Content", read: "ecommerce.read", write: "ecommerce.write" },
+  { module: "Kiosk", page: "Settings", read: "ecommerce.read", write: "ecommerce.write" },
+
+  // Accounting
+  { module: "Accounting", page: "Financial Overview", read: "accounting.read" },
+  { module: "Accounting", page: "Journal Entries", read: "accounting.read", write: "accounting.write" },
+  { module: "Accounting", page: "Expense Payees", read: "accounting.read", write: "accounting.write" },
+  { module: "Accounting", page: "Chart of Accounts", read: "accounting.read", write: "accounting.write" },
+  { module: "Accounting", page: "Expenses & Vouchers", read: "accounting.read", write: "accounting.write" },
+  { module: "Accounting", page: "Bank Reconciliation", read: "accounting.reconcile", write: "accounting.write" },
+  { module: "Accounting", page: "Trial Balance", read: "accounting.read" },
+  { module: "Accounting", page: "Fiscal Management", read: "fiscal.read", write: "fiscal.write" },
+  { module: "Accounting", page: "Balance Sheet", read: "accounting.read" },
+  { module: "Accounting", page: "Product Costing Templates", read: "costing.manage", write: "costing.manage" },
+  { module: "Accounting", page: "Product & Export Costing", read: "costing.manage", write: "costing.manage" },
+  { module: "Accounting", page: "Accounting Settings", read: "accounting.read", write: "accounting.write" },
+
+  // Production
+  { module: "Production", page: "Overview", read: "production.read" },
+  { module: "Production", page: "Production Orders", read: "production.read", write: "production.write" },
+  { module: "Production", page: "Bill of Materials", read: "production.read", write: "production.write" },
+
+  // Human Resources
+  { module: "Human Resources", page: "Employees", read: "hrm.read", write: "hrm.write" },
+  { module: "Human Resources", page: "Attendance", read: "hrm.read", write: "attendance.write" },
+  { module: "Human Resources", page: "Leave Management", read: "hrm.read", write: "leave.write" },
+  { module: "Human Resources", page: "Payroll", read: "hrm.read", write: "payroll.write" },
+  { module: "Human Resources", page: "Staff Departments", read: "hrm.read", write: "hrm.write" },
+  { module: "Human Resources", page: "Staff Categories", read: "hrm.read", write: "hrm.write" },
+  { module: "Human Resources", page: "Salary Schemes", read: "hrm.read", write: "hrm.write" },
 
   // Front Office
-  { module: "Front Office", page: "Room Rack & Occupancy", read: "orders.read", write: "orders.write" },
-  { module: "Front Office", page: "Reservations Management", read: "orders.read", write: "orders.write" },
-  { module: "Front Office", page: "Room Rates & Types", read: "parts.read", write: "parts.write" },
+  { module: "Front Office", page: "Room Rack", read: "orders.read", write: "orders.write" },
+  { module: "Front Office", page: "Calendar View", read: "orders.read" },
+  { module: "Front Office", page: "Reservations", read: "orders.read", write: "orders.write" },
+  { module: "Front Office", page: "Rooms & Rates", read: "parts.read", write: "parts.write" },
+
+  // Banquet
+  { module: "Banquet", page: "Banquet Overview", read: "orders.read" },
+  { module: "Banquet", page: "Event Calendar", read: "orders.read" },
+  { module: "Banquet", page: "Banquet Bookings", read: "orders.read", write: "orders.write" },
+  { module: "Banquet", page: "Banquet Halls", read: "orders.read", write: "orders.write" },
+  { module: "Banquet", page: "Banquet Menus", read: "orders.read", write: "orders.write" },
+  { module: "Banquet", page: "Banquet Resources", read: "orders.read", write: "orders.write" },
+  { module: "Banquet", page: "Banquet Vendors", read: "orders.read", write: "orders.write" },
 
   // Master Data
-  { module: "Master Data", page: "Brands Master", read: "brands.read", write: "brands.write" },
-  { module: "Master Data", page: "Vehicle Makes", read: "makes.read", write: "makes.write" },
-  { module: "Master Data", page: "Vehicle Models", read: "models.read", write: "models.write" },
-  { module: "Master Data", page: "Units of Measure", read: "units.read", write: "units.write" },
-  { module: "Master Data", page: "Tax Configurations", read: "taxes.read", write: "taxes.write" },
-  { module: "Master Data", page: "Department Master", read: "departments.read", write: "departments.write" },
-  { module: "Master Data", page: "Bank Master Data", read: "banks.read", write: "banks.write" },
   { module: "Master Data", page: "Product Collections", read: "parts.read", write: "parts.write" },
+  { module: "Master Data", page: "Item Sections", read: "parts.read", write: "parts.write" },
+  { module: "Master Data", page: "Item Departments", read: "parts.read", write: "parts.write" },
+  { module: "Master Data", page: "Item Categories", read: "parts.read", write: "parts.write" },
+  { module: "Master Data", page: "Technical Specifications", read: "parts.read", write: "parts.write" },
+  { module: "Master Data", page: "Units", read: "units.read", write: "units.write" },
+  { module: "Master Data", page: "Taxes", read: "taxes.read", write: "taxes.write" },
+  { module: "Master Data", page: "Banks & Branches", read: "banks.read", write: "banks.write" },
+  { module: "Master Data", page: "Shipping Carriers", read: "parts.read", write: "parts.write" },
   { module: "Master Data", page: "Restaurant Tables", read: "bays.read", write: "bays.write" },
+  { module: "Master Data", page: "Brands", read: "brands.read", write: "brands.write" },
 
   // Admin & Settings
-  { module: "Admin & Settings", page: "Locations Management", read: "locations.read", write: "locations.write" },
-  { module: "Admin & Settings", page: "Company & System Config", read: "company.write", write: "settings.write" },
-  { module: "Admin & Settings", page: "Shipping & Logistics", read: "locations.read", write: "locations.write" },
-  { module: "Admin & Settings", page: "User Management", read: "users.read", write: "users.write" },
-  { module: "Admin & Settings", page: "RBAC Roles & Permissions", read: "rbac.read", write: "rbac.write" },
-  { module: "Admin & Settings", page: "Reports & Analytics", read: "reports.read" },
+  { module: "Admin & Settings", page: "Users", read: "users.read", write: "users.write" },
+  { module: "Admin & Settings", page: "RBAC Roles", read: "rbac.read", write: "rbac.write" },
+  { module: "Admin & Settings", page: "Locations", read: "locations.read", write: "locations.write" },
+  { module: "Admin & Settings", page: "Company", read: "company.write", write: "settings.write" },
+  { module: "Admin & Settings", page: "System Settings", read: "settings.read", write: "settings.write" },
+  { module: "Admin & Settings", page: "Printer Setup", read: "settings.read", write: "settings.write" },
+  { module: "Admin & Settings", page: "Shipping Management", read: "locations.read", write: "locations.write" },
+  { module: "Admin & Settings", page: "Database Schema", read: "settings.read", write: "settings.write" },
+  { module: "Admin & Settings", page: "Table Verification", read: "settings.read", write: "settings.write" },
+  { module: "Admin & Settings", page: "Subscription", read: "settings.read", write: "settings.write" },
+  { module: "Admin & Settings", page: "Document Cancellations", read: "accounting.write", write: "accounting.write" },
 ];
 
 export default function RbacPage() {

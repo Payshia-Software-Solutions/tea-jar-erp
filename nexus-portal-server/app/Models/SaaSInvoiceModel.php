@@ -91,7 +91,7 @@ class SaaSInvoiceModel {
             $this->db->bind(':month', $billingMonth);
             
             if (!$this->db->single()) {
-                $invoiceNum = "NEX-" . strtoupper($tenant->slug) . "-" . date('Ym') . "-" . str_pad(rand(1, 999), 3, '0', STR_PAD_LEFT);
+                $invoiceNum = $this->generateNextInvoiceNumber();
                 
                 $this->db->query("INSERT INTO saas_invoices (tenant_id, invoice_number, billing_month, amount, due_date, status) 
                                  VALUES (:tid, :num, :month, :amt, :due, 'Pending')");
@@ -107,6 +107,13 @@ class SaaSInvoiceModel {
             }
         }
         return $count;
+    }
+
+    public function generateNextInvoiceNumber() {
+        $this->db->query("SELECT MAX(id) as max_id FROM saas_invoices");
+        $result = $this->db->single();
+        $nextId = ($result->max_id ?? 0) + 1;
+        return 'INV-' . date('Ym') . '-' . str_pad($nextId, 4, '0', STR_PAD_LEFT);
     }
 
     public function getAllInvoices() {
