@@ -146,6 +146,25 @@ export const fetchCustomerSummary = async (id: string | number) => {
   return data.status === 'success' ? data.data : data;
 };
 
+export const fetchCustomerStocks = async (id: string | number) => {
+  const res = await api(`/api/customer-stock/get/${id}`);
+  if (!res.ok) throw new Error('Failed to load customer stocks');
+  const data = await res.json();
+  return data.status === 'success' ? data.data : data;
+};
+
+export const updateCustomerStock = async (id: string | number, payload: any) => {
+  const res = await api(`/api/customer-stock/update/${id}`, { method: 'PUT', body: JSON.stringify(payload) });
+  if (!res.ok) throw new Error('Failed to update customer stock');
+  return res.json();
+};
+
+export const deleteCustomerStock = async (id: string | number) => {
+  const res = await api(`/api/customer-stock/delete/${id}`, { method: 'DELETE' });
+  if (!res.ok) throw new Error('Failed to delete customer stock');
+  return res.json();
+};
+
 // Categories & Checklists
 export const fetchCategories = async () => {
   const res = await api('/api/category/list');

@@ -172,6 +172,11 @@ class InvoiceController extends Controller {
             require_once '../app/helpers/AccountingHelper.php';
             AccountingHelper::postInvoice($invoiceId);
 
+            // Create Customer Stocks from Batches
+            require_once '../app/models/CustomerStock.php';
+            $customerStockModel = new CustomerStock();
+            $customerStockModel->createFromInvoice($invoiceId, $data['customer_id']);
+
             // Optional: Process Payments immediately
             if (!empty($data['payments']) && is_array($data['payments'])) {
                 foreach ($data['payments'] as $p) {

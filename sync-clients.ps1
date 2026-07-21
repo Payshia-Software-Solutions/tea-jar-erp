@@ -3,7 +3,10 @@ $clients = @(
     "linton-teas-system",
     "lanka-auto-prime",
     "nebulync-erp-office",
-    "tea-jar-erp"
+    "tea-jar-erp",
+    "hotel-sobana-erp",
+    "hotel-grand-amanee",
+    "taste-of-ceylon"
 )
 
 # Move up one level to access the sibling client folders
