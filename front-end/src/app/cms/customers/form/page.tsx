@@ -27,6 +27,8 @@ import {
   fetchRoutes,
   RouteModel
 } from "@/lib/api";
+import { OSMLocationPicker } from "@/components/osm-location-picker";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 function CustomerFormContent() {
   const router = useRouter();
@@ -39,6 +41,7 @@ function CustomerFormContent() {
   const [routesList, setRoutesList] = useState<RouteModel[]>([]);
   const [selectedPhoto, setSelectedPhoto] = useState<File | null>(null);
   const [isFetchingLocation, setIsFetchingLocation] = useState(false);
+  const [mapPickerOpen, setMapPickerOpen] = useState(false);
   const [currentPhotoUrl, setCurrentPhotoUrl] = useState<string | null>(null);
 
   const [formData, setFormData] = useState({
@@ -64,8 +67,6 @@ function CustomerFormContent() {
 
     if (id) {
       loadCustomer(id);
-    } else {
-      handleGetLocation();
     }
   }, [id]);
 
@@ -92,9 +93,6 @@ function CustomerFormContent() {
             longitude: customer.longitude ? String(customer.longitude) : "",
           });
           setCurrentPhotoUrl(customer.photo_url || null);
-          if (!customer.latitude || !customer.longitude) {
-            handleGetLocation();
-          }
         }
       }
     } catch (error) {
@@ -327,10 +325,16 @@ function CustomerFormContent() {
             <div className="space-y-2 col-span-1 md:col-span-2">
               <div className="flex justify-between items-center">
                 <Label>Coordinates (Optional)</Label>
-                <Button type="button" variant="outline" size="sm" onClick={handleGetLocation} disabled={isFetchingLocation}>
-                  <MapPin className="w-4 h-4 mr-2" />
-                  Get Location
-                </Button>
+                <div className="flex gap-2">
+                  <Button type="button" variant="outline" size="sm" onClick={() => setMapPickerOpen(true)}>
+                    <MapPin className="w-4 h-4 mr-2" />
+                    Pick on Map
+                  </Button>
+                  <Button type="button" variant="outline" size="sm" onClick={handleGetLocation} disabled={isFetchingLocation}>
+                    <MapPin className="w-4 h-4 mr-2" />
+                    Get GPS
+                  </Button>
+                </div>
               </div>
               <div className="flex gap-2 items-center">
                 <div className="relative flex-1">
@@ -407,6 +411,28 @@ function CustomerFormContent() {
           </div>
         </form>
       </div>
+
+      <Dialog open={mapPickerOpen} onOpenChange={setMapPickerOpen}>
+        <DialogContent className="max-w-3xl">
+          <DialogHeader>
+            <DialogTitle>Select Location</DialogTitle>
+          </DialogHeader>
+          <OSMLocationPicker 
+            initialLat={formData.latitude}
+            initialLng={formData.longitude}
+            onSelect={(lat, lng, address) => {
+              setFormData((prev) => ({
+                ...prev,
+                latitude: lat,
+                longitude: lng,
+                address: address ? address : prev.address
+              }));
+              setMapPickerOpen(false);
+            }}
+            onCancel={() => setMapPickerOpen(false)}
+          />
+        </DialogContent>
+      </Dialog>
     </DashboardLayout>
   );
 }

@@ -10,7 +10,7 @@ class ServiceLocation extends Model {
             $this->db->query("SHOW COLUMNS FROM {$this->table} LIKE 'location_type'");
             $exists = (bool)$this->db->single();
             if (!$exists) {
-                $this->db->exec("ALTER TABLE {$this->table} ADD COLUMN location_type ENUM('service','warehouse') NOT NULL DEFAULT 'service' AFTER name");
+                $this->db->exec("ALTER TABLE {$this->table} ADD COLUMN location_type VARCHAR(50) NOT NULL DEFAULT 'service' AFTER name");
             }
 
             $cols = [

@@ -71,8 +71,8 @@ export default function KioskOrdersPage() {
       setLoading(true);
       const res = await api('/api/kiosk/orders');
       if (res.ok) {
-        const data = await res.json();
-        setOrders(data || []);
+        const payload = await res.json();
+        setOrders(Array.isArray(payload) ? payload : (Array.isArray(payload?.data) ? payload.data : []));
       }
     } catch (e) {
       console.error(e);
@@ -114,7 +114,7 @@ export default function KioskOrdersPage() {
   };
 
   // Filter and pagination logic
-  const filteredOrders = orders.filter((o) => {
+  const filteredOrders = (Array.isArray(orders) ? orders : []).filter((o) => {
     const matchesSearch =
       o.order_no.toLowerCase().includes(searchQuery.toLowerCase()) ||
       o.guest_name.toLowerCase().includes(searchQuery.toLowerCase()) ||

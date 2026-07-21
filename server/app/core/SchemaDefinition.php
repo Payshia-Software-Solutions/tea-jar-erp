@@ -4656,6 +4656,151 @@ class SchemaDefinition {
       ),
     ),
   ),
+  'customer_stocks' => 
+  array (
+    'name' => 'customer_stocks',
+    'columns' => 
+    array (
+      'id' => 
+      array (
+        'Field' => 'id',
+        'Type' => 'int(11)',
+        'Null' => 'NO',
+        'Key' => 'PRI',
+        'Default' => NULL,
+        'Extra' => 'auto_increment',
+      ),
+      'customer_id' => 
+      array (
+        'Field' => 'customer_id',
+        'Type' => 'int(11)',
+        'Null' => 'NO',
+        'Key' => 'MUL',
+        'Default' => NULL,
+        'Extra' => '',
+      ),
+      'invoice_id' => 
+      array (
+        'Field' => 'invoice_id',
+        'Type' => 'int(11)',
+        'Null' => 'YES',
+        'Key' => 'MUL',
+        'Default' => NULL,
+        'Extra' => '',
+      ),
+      'item_id' => 
+      array (
+        'Field' => 'item_id',
+        'Type' => 'int(11)',
+        'Null' => 'NO',
+        'Key' => 'MUL',
+        'Default' => NULL,
+        'Extra' => '',
+      ),
+      'item_description' => 
+      array (
+        'Field' => 'item_description',
+        'Type' => 'varchar(255)',
+        'Null' => 'NO',
+        'Key' => '',
+        'Default' => NULL,
+        'Extra' => '',
+      ),
+      'batch_number' => 
+      array (
+        'Field' => 'batch_number',
+        'Type' => 'varchar(100)',
+        'Null' => 'YES',
+        'Key' => '',
+        'Default' => NULL,
+        'Extra' => '',
+      ),
+      'quantity' => 
+      array (
+        'Field' => 'quantity',
+        'Type' => 'decimal(10,2)',
+        'Null' => 'NO',
+        'Key' => '',
+        'Default' => '0.00',
+        'Extra' => '',
+      ),
+      'sold_qty' => 
+      array (
+        'Field' => 'sold_qty',
+        'Type' => 'decimal(10,2)',
+        'Null' => 'NO',
+        'Key' => '',
+        'Default' => '0.00',
+        'Extra' => '',
+      ),
+      'expire_date' => 
+      array (
+        'Field' => 'expire_date',
+        'Type' => 'date',
+        'Null' => 'YES',
+        'Key' => '',
+        'Default' => NULL,
+        'Extra' => '',
+      ),
+      'created_at' => 
+      array (
+        'Field' => 'created_at',
+        'Type' => 'timestamp',
+        'Null' => 'NO',
+        'Key' => '',
+        'Default' => 'current_timestamp()',
+        'Extra' => '',
+      ),
+      'updated_at' => 
+      array (
+        'Field' => 'updated_at',
+        'Type' => 'timestamp',
+        'Null' => 'NO',
+        'Key' => '',
+        'Default' => 'current_timestamp()',
+        'Extra' => 'on update current_timestamp()',
+      ),
+    ),
+    'indexes' => 
+    array (
+      'PRIMARY' => 
+      array (
+        'Key_name' => 'PRIMARY',
+        'Non_unique' => 0,
+        'Columns' => 
+        array (
+          0 => 'id',
+        ),
+      ),
+      'idx_cs_customer' => 
+      array (
+        'Key_name' => 'idx_cs_customer',
+        'Non_unique' => 1,
+        'Columns' => 
+        array (
+          0 => 'customer_id',
+        ),
+      ),
+      'idx_cs_invoice' => 
+      array (
+        'Key_name' => 'idx_cs_invoice',
+        'Non_unique' => 1,
+        'Columns' => 
+        array (
+          0 => 'invoice_id',
+        ),
+      ),
+      'idx_cs_item' => 
+      array (
+        'Key_name' => 'idx_cs_item',
+        'Non_unique' => 1,
+        'Columns' => 
+        array (
+          0 => 'item_id',
+        ),
+      ),
+    ),
+  ),
   'customer_visits' => 
   array (
     'name' => 'customer_visits',
@@ -6438,6 +6583,252 @@ class SchemaDefinition {
         'Null' => 'YES',
         'Key' => '',
         'Default' => '1',
+        'Extra' => '',
+      ),
+      'created_at' => 
+      array (
+        'Field' => 'created_at',
+        'Type' => 'timestamp',
+        'Null' => 'NO',
+        'Key' => '',
+        'Default' => 'current_timestamp()',
+        'Extra' => '',
+      ),
+    ),
+    'indexes' => 
+    array (
+      'PRIMARY' => 
+      array (
+        'Key_name' => 'PRIMARY',
+        'Non_unique' => 0,
+        'Columns' => 
+        array (
+          0 => 'id',
+        ),
+      ),
+    ),
+  ),
+  'fleet_fuel_orders' => 
+  array (
+    'name' => 'fleet_fuel_orders',
+    'columns' => 
+    array (
+      'id' => 
+      array (
+        'Field' => 'id',
+        'Type' => 'int(11)',
+        'Null' => 'NO',
+        'Key' => 'PRI',
+        'Default' => NULL,
+        'Extra' => 'auto_increment',
+      ),
+      'vehicle_id' => 
+      array (
+        'Field' => 'vehicle_id',
+        'Type' => 'int(11)',
+        'Null' => 'NO',
+        'Key' => '',
+        'Default' => NULL,
+        'Extra' => '',
+      ),
+      'driver_id' => 
+      array (
+        'Field' => 'driver_id',
+        'Type' => 'int(11)',
+        'Null' => 'YES',
+        'Key' => '',
+        'Default' => NULL,
+        'Extra' => '',
+      ),
+      'fuel_station_id' => 
+      array (
+        'Field' => 'fuel_station_id',
+        'Type' => 'int(11)',
+        'Null' => 'NO',
+        'Key' => '',
+        'Default' => NULL,
+        'Extra' => '',
+      ),
+      'fuel_type_id' => 
+      array (
+        'Field' => 'fuel_type_id',
+        'Type' => 'int(11)',
+        'Null' => 'NO',
+        'Key' => '',
+        'Default' => NULL,
+        'Extra' => '',
+      ),
+      'liters' => 
+      array (
+        'Field' => 'liters',
+        'Type' => 'decimal(10,2)',
+        'Null' => 'NO',
+        'Key' => '',
+        'Default' => NULL,
+        'Extra' => '',
+      ),
+      'price_per_liter' => 
+      array (
+        'Field' => 'price_per_liter',
+        'Type' => 'decimal(10,2)',
+        'Null' => 'NO',
+        'Key' => '',
+        'Default' => NULL,
+        'Extra' => '',
+      ),
+      'total_cost' => 
+      array (
+        'Field' => 'total_cost',
+        'Type' => 'decimal(10,2)',
+        'Null' => 'NO',
+        'Key' => '',
+        'Default' => NULL,
+        'Extra' => '',
+      ),
+      'mileage' => 
+      array (
+        'Field' => 'mileage',
+        'Type' => 'int(11)',
+        'Null' => 'NO',
+        'Key' => '',
+        'Default' => NULL,
+        'Extra' => '',
+      ),
+      'status' => 
+      array (
+        'Field' => 'status',
+        'Type' => 'enum(\'completed\',\'cancelled\')',
+        'Null' => 'YES',
+        'Key' => '',
+        'Default' => 'completed',
+        'Extra' => '',
+      ),
+      'created_by' => 
+      array (
+        'Field' => 'created_by',
+        'Type' => 'int(11)',
+        'Null' => 'YES',
+        'Key' => '',
+        'Default' => NULL,
+        'Extra' => '',
+      ),
+      'created_at' => 
+      array (
+        'Field' => 'created_at',
+        'Type' => 'timestamp',
+        'Null' => 'NO',
+        'Key' => '',
+        'Default' => 'current_timestamp()',
+        'Extra' => '',
+      ),
+    ),
+    'indexes' => 
+    array (
+      'PRIMARY' => 
+      array (
+        'Key_name' => 'PRIMARY',
+        'Non_unique' => 0,
+        'Columns' => 
+        array (
+          0 => 'id',
+        ),
+      ),
+    ),
+  ),
+  'fleet_fuel_stations' => 
+  array (
+    'name' => 'fleet_fuel_stations',
+    'columns' => 
+    array (
+      'id' => 
+      array (
+        'Field' => 'id',
+        'Type' => 'int(11)',
+        'Null' => 'NO',
+        'Key' => 'PRI',
+        'Default' => NULL,
+        'Extra' => 'auto_increment',
+      ),
+      'name' => 
+      array (
+        'Field' => 'name',
+        'Type' => 'varchar(255)',
+        'Null' => 'NO',
+        'Key' => '',
+        'Default' => NULL,
+        'Extra' => '',
+      ),
+      'type' => 
+      array (
+        'Field' => 'type',
+        'Type' => 'enum(\'outside_shed\',\'factory_pump\')',
+        'Null' => 'NO',
+        'Key' => '',
+        'Default' => NULL,
+        'Extra' => '',
+      ),
+      'status' => 
+      array (
+        'Field' => 'status',
+        'Type' => 'enum(\'active\',\'inactive\')',
+        'Null' => 'YES',
+        'Key' => '',
+        'Default' => 'active',
+        'Extra' => '',
+      ),
+      'created_at' => 
+      array (
+        'Field' => 'created_at',
+        'Type' => 'timestamp',
+        'Null' => 'NO',
+        'Key' => '',
+        'Default' => 'current_timestamp()',
+        'Extra' => '',
+      ),
+    ),
+    'indexes' => 
+    array (
+      'PRIMARY' => 
+      array (
+        'Key_name' => 'PRIMARY',
+        'Non_unique' => 0,
+        'Columns' => 
+        array (
+          0 => 'id',
+        ),
+      ),
+    ),
+  ),
+  'fleet_fuel_types' => 
+  array (
+    'name' => 'fleet_fuel_types',
+    'columns' => 
+    array (
+      'id' => 
+      array (
+        'Field' => 'id',
+        'Type' => 'int(11)',
+        'Null' => 'NO',
+        'Key' => 'PRI',
+        'Default' => NULL,
+        'Extra' => 'auto_increment',
+      ),
+      'name' => 
+      array (
+        'Field' => 'name',
+        'Type' => 'varchar(255)',
+        'Null' => 'NO',
+        'Key' => '',
+        'Default' => NULL,
+        'Extra' => '',
+      ),
+      'price_per_liter' => 
+      array (
+        'Field' => 'price_per_liter',
+        'Type' => 'decimal(10,2)',
+        'Null' => 'NO',
+        'Key' => '',
+        'Default' => '0.00',
         'Extra' => '',
       ),
       'created_at' => 
@@ -9063,15 +9454,6 @@ class SchemaDefinition {
         'Default' => '1',
         'Extra' => '',
       ),
-      'cost_center_id' => 
-      array (
-        'Field' => 'cost_center_id',
-        'Type' => 'int(11)',
-        'Null' => 'NO',
-        'Key' => 'MUL',
-        'Default' => NULL,
-        'Extra' => '',
-      ),
       'status' => 
       array (
         'Field' => 'status',
@@ -9126,6 +9508,15 @@ class SchemaDefinition {
         'Default' => 'current_timestamp()',
         'Extra' => 'on update current_timestamp()',
       ),
+      'cost_center_id' => 
+      array (
+        'Field' => 'cost_center_id',
+        'Type' => 'int(11)',
+        'Null' => 'NO',
+        'Key' => 'MUL',
+        'Default' => NULL,
+        'Extra' => '',
+      ),
     ),
     'indexes' => 
     array (
@@ -9156,15 +9547,6 @@ class SchemaDefinition {
           0 => 'location_id',
         ),
       ),
-      'idx_issue_cc' => 
-      array (
-        'Key_name' => 'idx_issue_cc',
-        'Non_unique' => 1,
-        'Columns' => 
-        array (
-          0 => 'cost_center_id',
-        ),
-      ),
       'idx_issue_status' => 
       array (
         'Key_name' => 'idx_issue_status',
@@ -9172,6 +9554,15 @@ class SchemaDefinition {
         'Columns' => 
         array (
           0 => 'status',
+        ),
+      ),
+      'fk_issue_notes_cost_center' => 
+      array (
+        'Key_name' => 'fk_issue_notes_cost_center',
+        'Non_unique' => 1,
+        'Columns' => 
+        array (
+          0 => 'cost_center_id',
         ),
       ),
     ),
@@ -11369,7 +11760,7 @@ class SchemaDefinition {
       'recipe_type' => 
       array (
         'Field' => 'recipe_type',
-        'Type' => 'enum(\'Standard\',\'A La Carte\',\'Recipe\',\'Buffet\')',
+        'Type' => 'enum(\'Standard\',\'A La Carte\',\'Recipe\')',
         'Null' => 'NO',
         'Key' => '',
         'Default' => 'Standard',
@@ -11594,7 +11985,7 @@ class SchemaDefinition {
       'kiosk_module' => 
       array (
         'Field' => 'kiosk_module',
-        'Type' => 'varchar(50)',
+        'Type' => 'enum(\'None\',\'Dining\',\'Experience\')',
         'Null' => 'NO',
         'Key' => '',
         'Default' => 'None',

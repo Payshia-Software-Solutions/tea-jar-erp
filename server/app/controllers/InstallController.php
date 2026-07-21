@@ -57,7 +57,7 @@ class InstallController extends Controller {
             CREATE TABLE IF NOT EXISTS service_locations (
                 id INT AUTO_INCREMENT PRIMARY KEY,
                 name VARCHAR(100) NOT NULL,
-                location_type ENUM('service','warehouse') NOT NULL DEFAULT 'service',
+                location_type VARCHAR(50) NOT NULL DEFAULT 'service',
                 address VARCHAR(255) NULL,
                 phone VARCHAR(50) NULL,
                 created_by INT NULL,
@@ -74,7 +74,7 @@ class InstallController extends Controller {
             $stmt = $pdo->query("SHOW COLUMNS FROM service_locations LIKE 'location_type'");
             $exists = (bool)$stmt->fetch(PDO::FETCH_ASSOC);
             if (!$exists) {
-                $pdo->exec("ALTER TABLE service_locations ADD COLUMN location_type ENUM('service','warehouse') NOT NULL DEFAULT 'service' AFTER name");
+                $pdo->exec("ALTER TABLE service_locations ADD COLUMN location_type VARCHAR(50) NOT NULL DEFAULT 'service' AFTER name");
             }
         } catch (Exception $e) {}
 

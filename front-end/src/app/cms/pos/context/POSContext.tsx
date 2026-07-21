@@ -248,6 +248,12 @@ export const POSProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     // Refresh inventory and tables when location changes
     refreshInventory(val);
     refreshTablesAndStewards(val);
+    
+    // Auto-select default customer for new location
+    const currentLoc = locations.find((l: any) => String(l.id) === String(val));
+    if (currentLoc?.default_customer_id) {
+      setSelectedCustomer(String(currentLoc.default_customer_id));
+    }
   };
   const [selectedCustomer, setSelectedCustomer] = useState<string>("");
   const [billDiscountValue, setBillDiscountValue] = useState<number>(0);
@@ -547,8 +553,11 @@ export const POSProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           ]);
         }
 
-        // Auto-select first customer as default (Walk-In)
-        if (custsRes?.length > 0) {
+        // Auto-select location's default customer, or first customer as fallback
+        const currentLoc = (locsRes || []).find((l: any) => String(l.id) === activeLocId);
+        if (currentLoc?.default_customer_id) {
+          setSelectedCustomer(String(currentLoc.default_customer_id));
+        } else if (custsRes?.length > 0) {
           setSelectedCustomer(String(custsRes[0].id));
         }
 

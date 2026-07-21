@@ -195,7 +195,7 @@ export const SidebarCart: React.FC = () => {
               placeholder="Search Customer..."
               options={customers.map(c => ({
                 value: String(c.id),
-                label: c.name,
+                label: c.phone ? `${c.name} (${c.phone})` : c.name,
                 keywords: `${c.name} ${c.phone}`
               }))}
             />

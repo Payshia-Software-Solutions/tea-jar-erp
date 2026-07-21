@@ -149,20 +149,20 @@ export function ReportShell({
 
   return (
     <DashboardLayout>
-      <div className="flex items-center justify-between gap-3 mb-6">
-        <div className="flex items-start gap-3">
-          <Button asChild variant="outline" className="gap-2">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+        <div className="flex items-start gap-3 flex-1 min-w-0">
+          <Button asChild variant="outline" className="gap-2 shrink-0">
             <Link href="/reports">
               <ArrowLeft className="w-4 h-4" />
-              Back
+              <span className="hidden sm:inline">Back</span>
             </Link>
           </Button>
-          <div>
-            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">{title}</h1>
-            {subtitle ? <p className="text-muted-foreground mt-1">{subtitle}</p> : null}
+          <div className="min-w-0">
+            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight break-words">{title}</h1>
+            {subtitle ? <p className="text-muted-foreground mt-1 text-sm sm:text-base break-words">{subtitle}</p> : null}
           </div>
         </div>
-        {actions ? <div className="flex items-center gap-2">{actions}</div> : null}
+        {actions ? <div className="flex flex-wrap items-center gap-2 shrink-0">{actions}</div> : null}
       </div>
       {children}
     </DashboardLayout>

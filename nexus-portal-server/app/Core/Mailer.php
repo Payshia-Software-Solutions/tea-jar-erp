@@ -100,13 +100,17 @@ class Mailer {
         }
     }
 
-    public static function sendInvoiceEmail($to, $name, $invoiceNumber, $pdfContent, $period, $amount, $currency, $ccEmail = null) {
+    public static function sendInvoiceEmail($to, $name, $invoiceNumber, $pdfContent, $period, $amount, $currency, $ccEmail = null, $customDescription = null) {
         try {
             $mail = self::getMailer();
             $mail->addAddress($to, $name);
             self::addCCAddresses($mail, $ccEmail);
             $mail->isHTML(true);
-            $mail->Subject = "New Invoice #$invoiceNumber for $period from Nebulynch in nexus portal - $name";
+            if ($customDescription) {
+                $mail->Subject = "New Invoice #$invoiceNumber - $customDescription";
+            } else {
+                $mail->Subject = "New Invoice #$invoiceNumber for $period from Nebulink - $name";
+            }
             
             $mail->Body = "
                 <div style=\"font-family: sans-serif; color: #1e293b; max-width: 600px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 16px; overflow: hidden;\">

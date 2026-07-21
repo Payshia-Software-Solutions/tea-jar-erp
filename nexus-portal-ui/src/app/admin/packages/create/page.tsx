@@ -23,7 +23,11 @@ import {
   Sparkles,
   Factory,
   Building2,
-  Music
+  Music,
+  Truck,
+  Store,
+  Smartphone,
+  LayoutDashboard
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
@@ -73,19 +77,21 @@ export default function PackageCreatePage() {
   }, [router]);
 
   const AVAILABLE_MODULES = [
-    { id: 'serviceCenter', label: 'Service Center', icon: Wrench },
-    { id: 'inventory', label: 'Inventory', icon: Zap },
+    { id: 'coreFeatures', label: 'Core Features', icon: LayoutDashboard },
+    { id: 'fleet', label: 'Fleet Management', icon: Truck },
     { id: 'vendors', label: 'Vendors', icon: ShoppingCart },
+    { id: 'inventory', label: 'Inventory', icon: Zap },
     { id: 'crm', label: 'CRM', icon: Users },
     { id: 'sales', label: 'Sales', icon: Globe },
+    { id: 'marketing', label: 'Marketing', icon: Sparkles },
+    { id: 'ecommerce', label: 'E-commerce', icon: Store },
+    { id: 'kiosk', label: 'Kiosk', icon: Smartphone },
     { id: 'accounting', label: 'Accounting', icon: Wallet },
+    { id: 'production', label: 'Production', icon: Factory },
     { id: 'hrm', label: 'Human Resources', icon: Users },
+    { id: 'frontOffice', label: 'Front Office', icon: Building2 },
+    { id: 'banquet', label: 'Banquet', icon: Music },
     { id: 'masterData', label: 'Master Data', icon: BarChart },
-    { id: 'promotions', label: 'Marketing & Promotions', icon: Sparkles },
-    { id: 'production', label: 'Manufacturing & Production', icon: Factory },
-    { id: 'frontOffice', label: 'Hotel Front Office', icon: Building2 },
-    { id: 'banquet', label: 'Banquet Management', icon: Music },
-    { id: 'ecommerce', label: 'E-commerce & Kiosk', icon: ShoppingCart },
   ];
 
   const toggleModule = (modId: string) => {
