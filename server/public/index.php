@@ -38,11 +38,18 @@ if ($origin) {
     } else {
         $host = parse_url($origin, PHP_URL_HOST);
         if ($host) {
+            // Allow if the origin itself is nebulync.com
             if ($host === 'nebulync.com' || preg_match('/\.nebulync\.com$/', $host)) {
                 $isAllowed = true;
             }
         }
     }
+}
+
+// If the API server itself is hosted on a nebulync.com subdomain, allow all origins
+$serverHost = $_SERVER['HTTP_HOST'] ?? '';
+if ($serverHost === 'nebulync.com' || preg_match('/\.nebulync\.com$/', $serverHost)) {
+    $isAllowed = true;
 }
 
 if ($origin && $isAllowed) {
