@@ -1,7 +1,6 @@
 $clients = @(
     "lanka-auto-mart",
     "linton-teas-system",
-    "lanka-auto-prime",
     "nebulync-erp-office",
     "tea-jar-erp",
     "hotel-sobana-erp",
