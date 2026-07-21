@@ -51,6 +51,7 @@ import {
   fetchPosDayLedger,
   fetchInvoices,
   addInvoicePayment, 
+  addBulkInvoicePayments,
   api as apiHelper 
 } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
@@ -105,10 +106,30 @@ export const ManagementModals: React.FC = () => {
   const [pendingInvoices, setPendingInvoices] = useState<any[]>([]);
   const [loadingPending, setLoadingPending] = useState(false);
   const [searchInvoice, setSearchInvoice] = useState("");
-  const [selectedInvoice, setSelectedInvoice] = useState<any>(null);
+  const [selectedInvoices, setSelectedInvoices] = useState<any[]>([]);
+  const [allocations, setAllocations] = useState<Record<number, string>>({});
   const [paymentAmount, setPaymentAmount] = useState("");
   const [paymentMethod, setPaymentMethod] = useState<'Cash' | 'Card' | 'Cheque' | 'Bank Transfer'>('Cash');
   const [isRecordingPayment, setIsRecordingPayment] = useState(false);
+  const [selectedCustomerForPending, setSelectedCustomerForPending] = useState<any>(null);
+  const [activeTabMobile, setActiveTabMobile] = useState<'list' | 'checkout'>('list');
+
+  const customerGroups = React.useMemo(() => {
+     const groups: Record<string, { id: string | number, name: string, totalBalance: number, count: number, invoices: any[] }> = {};
+     pendingInvoices.forEach(inv => {
+        const key = inv.customer_id || "walk-in";
+        const name = inv.customer_name || "Walk-in Customer";
+        const bal = parseFloat(inv.grand_total) - parseFloat(inv.paid_amount);
+        if (bal <= 0) return;
+        if (!groups[key]) {
+           groups[key] = { id: key, name, totalBalance: 0, count: 0, invoices: [] };
+        }
+        groups[key].totalBalance += bal;
+        groups[key].count += 1;
+        groups[key].invoices.push(inv);
+     });
+     return Object.values(groups).sort((a, b) => b.totalBalance - a.totalBalance);
+  }, [pendingInvoices]);
   
   // Cheque Specifics
   const [chequeNo, setChequeNo] = useState("");
@@ -197,13 +218,16 @@ export const ManagementModals: React.FC = () => {
       <Dialog open={pendingInvoicesDialogOpen} onOpenChange={(open) => {
           setPendingInvoicesDialogOpen(open);
           if(!open) {
-              setSelectedInvoice(null);
+              setSelectedInvoices([]);
+              setAllocations({});
               setSearchInvoice("");
               setPaymentAmount("");
               setPaymentMethod('Cash');
               setChequeNo("");
               setChequeBank("");
               setChequeBranchId("");
+              setSelectedCustomerForPending(null);
+              setActiveTabMobile('list');
           }
       }}>
         <DialogContent className="w-full sm:max-w-4xl h-[100dvh] sm:h-[90vh] sm:max-h-[850px] p-0 overflow-hidden border-none shadow-2xl rounded-none sm:rounded-[2rem] flex flex-col bg-white dark:bg-slate-950">
@@ -223,81 +247,235 @@ export const ManagementModals: React.FC = () => {
 
           <div className="flex-1 flex flex-col md:flex-row overflow-hidden bg-white dark:bg-slate-950">
              {/* Left Panel: List & Search */}
-             <div className="w-full md:w-[350px] border-r border-slate-100 dark:border-slate-800 flex flex-col">
-                <div className="p-4 border-b border-slate-100 dark:border-slate-800">
-                   <div className="relative">
-                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                      <Input 
-                        placeholder="Invoice # or Customer..." 
-                        value={searchInvoice}
-                        onChange={e => setSearchInvoice(e.target.value)}
-                        className="h-10 pl-9 bg-slate-50 dark:bg-slate-900 border-none rounded-xl text-sm"
-                      />
+             <div className={`w-full md:w-[350px] border-r border-slate-100 dark:border-slate-800 flex flex-col flex-1 md:flex-none overflow-hidden ${activeTabMobile === 'checkout' ? 'hidden md:flex' : 'flex'}`}>
+                {selectedCustomerForPending === null ? (
+                   <>
+                      <div className="p-4 border-b border-slate-100 dark:border-slate-800">
+                         <div className="relative">
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                            <Input 
+                              placeholder="Search customer name..." 
+                              value={searchInvoice}
+                              onChange={e => setSearchInvoice(e.target.value)}
+                              className="h-10 pl-9 bg-slate-50 dark:bg-slate-900 border-none rounded-xl text-sm"
+                            />
+                         </div>
+                      </div>
+                      <div className="flex-1 overflow-y-auto p-2 space-y-1 custom-scrollbar">
+                         {loadingPending ? (
+                            <div className="flex flex-col items-center justify-center py-10 gap-2">
+                               <Loader2 className="w-8 h-8 animate-spin text-indigo-500" />
+                               <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Loading...</p>
+                            </div>
+                         ) : (
+                            customerGroups
+                              .filter(g => !searchInvoice || g.name.toLowerCase().includes(searchInvoice.toLowerCase()))
+                              .map(g => (
+                                 <button 
+                                   key={g.id}
+                                   onClick={() => {
+                                      setSelectedCustomerForPending(g);
+                                      setSelectedInvoices([]);
+                                      setAllocations({});
+                                      setPaymentAmount("");
+                                   }}
+                                   className="w-full p-3.5 rounded-xl text-left transition-all border border-slate-100/60 dark:border-slate-800/40 bg-white dark:bg-slate-950 hover:bg-indigo-50/20 dark:hover:bg-indigo-950/10 flex justify-between items-center shadow-sm"
+                                 >
+                                    <div>
+                                       <span className="text-xs font-black tracking-tight text-slate-800 dark:text-slate-200">{g.name}</span>
+                                       <p className="text-[9px] font-bold text-muted-foreground mt-0.5">{g.count} pending bill{g.count > 1 ? 's' : ''}</p>
+                                    </div>
+                                    <div className="text-right">
+                                       <span className="text-xs font-black text-rose-600">LKR {g.totalBalance.toLocaleString()}</span>
+                                    </div>
+                                 </button>
+                              ))
+                         )}
+                         {customerGroups.length === 0 && !loadingPending && (
+                            <div className="py-20 text-center text-muted-foreground opacity-30">
+                               <Receipt className="w-12 h-12 mx-auto mb-4" />
+                               <p className="text-xs font-black uppercase tracking-widest">No outstanding balances</p>
+                            </div>
+                         )}
+                      </div>
+                   </>
+                ) : (
+                   <>
+                      <div className="p-3 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between gap-2 bg-slate-50/50 dark:bg-slate-900/30">
+                         <Button
+                           variant="ghost"
+                           size="sm"
+                           onClick={() => {
+                              setSelectedCustomerForPending(null);
+                              setSelectedInvoices([]);
+                              setAllocations({});
+                              setPaymentAmount("");
+                           }}
+                           className="text-[10px] font-bold uppercase tracking-tight gap-1 px-2 h-8"
+                         >
+                            ← Back
+                         </Button>
+                         <span className="text-[10px] font-black uppercase tracking-widest text-slate-500 truncate max-w-[120px]">
+                            {selectedCustomerForPending.name}
+                         </span>
+                         {selectedCustomerForPending.invoices.length > 0 && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="text-[9px] uppercase font-bold shrink-0 h-8 rounded-lg px-2"
+                              onClick={() => {
+                                 const customerInvs = selectedCustomerForPending.invoices;
+                                 const allSelected = customerInvs.every((inv: any) => selectedInvoices.some(i => i.id === inv.id));
+                                 if (allSelected) {
+                                    setSelectedInvoices(prev => prev.filter(p => !customerInvs.some((f: any) => f.id === p.id)));
+                                    setAllocations(prev => {
+                                       const next = { ...prev };
+                                       customerInvs.forEach((f: any) => delete next[f.id]);
+                                       return next;
+                                    });
+                                    setPaymentAmount("");
+                                 } else {
+                                    setSelectedInvoices(prev => {
+                                       const next = [...prev];
+                                       customerInvs.forEach((f: any) => {
+                                          if (!next.some(n => n.id === f.id)) next.push(f);
+                                       });
+                                       return next;
+                                    });
+                                    setAllocations(prev => {
+                                       const next = { ...prev };
+                                       let total = 0;
+                                       customerInvs.forEach((f: any) => {
+                                          const maxBal = parseFloat(f.grand_total) - parseFloat(f.paid_amount);
+                                          next[f.id] = String(maxBal.toFixed(2));
+                                       });
+                                       Object.values(next).forEach(v => total += parseFloat(v as string) || 0);
+                                       setPaymentAmount(String(total.toFixed(2)));
+                                       return next;
+                                    });
+                                 }
+                              }}
+                            >
+                               All
+                            </Button>
+                         )}
+                      </div>
+                      <div className="flex-1 overflow-y-auto p-2 space-y-1 custom-scrollbar">
+                         {selectedCustomerForPending.invoices.map((inv: any) => {
+                            const isSelected = selectedInvoices.some(i => i.id === inv.id);
+                            const maxBal = parseFloat(inv.grand_total) - parseFloat(inv.paid_amount);
+                            return (
+                               <button 
+                                 key={inv.id}
+                                 onClick={() => {
+                                    let newSelected: any[];
+                                    if (isSelected) {
+                                       newSelected = selectedInvoices.filter(i => i.id !== inv.id);
+                                    } else {
+                                       newSelected = [...selectedInvoices, inv];
+                                    }
+                                    setSelectedInvoices(newSelected);
+                                    
+                                    const newAllocations = { ...allocations };
+                                    if (isSelected) {
+                                       delete newAllocations[inv.id];
+                                    } else {
+                                       newAllocations[inv.id] = String(maxBal.toFixed(2));
+                                    }
+                                    setAllocations(newAllocations);
+                                    
+                                    let totalAlloc = 0;
+                                    Object.values(newAllocations).forEach(v => {
+                                       totalAlloc += parseFloat(v as string) || 0;
+                                    });
+                                    setPaymentAmount(String(totalAlloc.toFixed(2)));
+                                 }}
+                                 className={`w-full p-3 rounded-xl text-left transition-all border flex gap-3 items-center ${isSelected ? 'bg-indigo-50 border-indigo-200 dark:bg-indigo-900/20 dark:border-indigo-800' : 'bg-white dark:bg-slate-950 border-transparent hover:bg-slate-50 dark:hover:bg-slate-900'}`}
+                               >
+                                  <div className={`w-4 h-4 rounded border flex items-center justify-center shrink-0 transition-all ${isSelected ? 'bg-indigo-600 border-indigo-600 text-white' : 'border-slate-300 dark:border-slate-700 bg-white'}`}>
+                                     {isSelected && <Check className="w-2.5 h-2.5 stroke-[3]" />}
+                                  </div>
+                                  <div className="flex-1 min-w-0">
+                                     <div className="flex justify-between items-start mb-0.5">
+                                        <span className="text-xs font-mono font-bold tracking-tight">{inv.invoice_no}</span>
+                                        <Badge variant="outline" className={`text-[7px] tracking-widest uppercase h-4 px-1 ${inv.status === 'Partial' ? 'bg-amber-100 text-amber-700' : 'bg-rose-100 text-rose-700'}`}>{inv.status}</Badge>
+                                     </div>
+                                     <p className="text-[8px] text-muted-foreground uppercase font-bold tracking-wide mt-0.5">{inv.issue_date}</p>
+                                     <div className="flex justify-between items-end mt-1.5">
+                                        <div className="text-[8px] font-black uppercase tracking-tighter text-muted-foreground">Balance</div>
+                                        <div className="text-xs font-black text-indigo-600">LKR {maxBal.toLocaleString()}</div>
+                                     </div>
+                                  </div>
+                               </button>
+                            );
+                         })}
+                      </div>
+                   </>
+                )}
+                {selectedInvoices.length > 0 && (
+                   <div className="p-3 border-t bg-white dark:bg-slate-950 md:hidden shrink-0">
+                      <Button 
+                         className="w-full h-11 bg-indigo-600 hover:bg-indigo-700 text-white font-bold uppercase tracking-tight text-xs rounded-xl"
+                         onClick={() => setActiveTabMobile('checkout')}
+                      >
+                         Settle Invoices ({selectedInvoices.length}) →
+                      </Button>
                    </div>
-                </div>
-                <div className="flex-1 overflow-y-auto p-2 space-y-1 custom-scrollbar">
-                   {loadingPending ? (
-                      <div className="flex flex-col items-center justify-center py-10 gap-2">
-                         <Loader2 className="w-8 h-8 animate-spin text-indigo-500" />
-                         <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Loading...</p>
-                      </div>
-                   ) : (
-                      pendingInvoices
-                        .filter(inv => !searchInvoice || inv.invoice_no.toLowerCase().includes(searchInvoice.toLowerCase()) || inv.customer_name?.toLowerCase().includes(searchInvoice.toLowerCase()))
-                        .map(inv => (
-                           <button 
-                             key={inv.id}
-                             onClick={() => {
-                                setSelectedInvoice(inv);
-                                setPaymentAmount(String(parseFloat(inv.grand_total) - parseFloat(inv.paid_amount)));
-                             }}
-                             className={`w-full p-3 rounded-xl text-left transition-all border ${selectedInvoice?.id === inv.id ? 'bg-indigo-50 border-indigo-200 dark:bg-indigo-900/20 dark:border-indigo-800' : 'bg-white dark:bg-slate-950 border-transparent hover:bg-slate-50 dark:hover:bg-slate-900'}`}
-                           >
-                              <div className="flex justify-between items-start mb-0.5">
-                                 <span className="text-xs font-black tracking-tight">{inv.invoice_no}</span>
-                                 <Badge variant="outline" className={`text-[7px] tracking-widest uppercase h-4 px-1 ${inv.status === 'Partial' ? 'bg-amber-100 text-amber-700' : 'bg-rose-100 text-rose-700'}`}>{inv.status}</Badge>
-                              </div>
-                              <p className="text-[9px] font-bold text-muted-foreground truncate mb-1.5">{inv.customer_name || 'Walk-in'}</p>
-                              <div className="flex justify-between items-end">
-                                 <div className="text-[8px] font-black uppercase tracking-tighter text-muted-foreground">Balance</div>
-                                 <div className="text-xs font-black text-indigo-600">LKR {(parseFloat(inv.grand_total) - parseFloat(inv.paid_amount)).toLocaleString()}</div>
-                              </div>
-                           </button>
-                        ))
-                   )}
-                   {pendingInvoices.length === 0 && !loadingPending && (
-                      <div className="py-20 text-center text-muted-foreground opacity-30">
-                         <Receipt className="w-12 h-12 mx-auto mb-4" />
-                         <p className="text-xs font-black uppercase tracking-widest">No Pending Invoices</p>
-                      </div>
-                   )}
-                </div>
+                )}
              </div>
 
              {/* Right Panel: Payment Form */}
-             <div className="flex-1 bg-slate-50/50 dark:bg-slate-900/50 p-6 overflow-y-auto custom-scrollbar">
-                {selectedInvoice ? (
+             <div className={`flex-1 bg-slate-50/50 dark:bg-slate-900/50 p-6 overflow-y-auto custom-scrollbar ${activeTabMobile === 'list' ? 'hidden md:block' : 'block'}`}>
+                {selectedInvoices.length > 0 ? (
                    <div className="space-y-6">
-                      <div className="p-5 bg-white dark:bg-slate-950 border border-slate-100 dark:border-slate-800 rounded-2xl shadow-sm">
-                         <div className="flex justify-between items-center mb-4 pb-4 border-b border-slate-50 dark:border-slate-900">
-                            <div>
-                               <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Receiving Payment For</p>
-                               <p className="text-xl font-black">{selectedInvoice.invoice_no}</p>
-                            </div>
-                            <div className="text-right">
-                               <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Original Total</p>
-                               <p className="text-lg font-black opacity-40 tabular-nums">LKR {parseFloat(selectedInvoice.grand_total).toLocaleString()}</p>
-                            </div>
+                      <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setActiveTabMobile('list')}
+                          className="md:hidden text-xs font-bold uppercase tracking-tight gap-1 h-8 px-2"
+                       >
+                          ← Back to Invoices
+                       </Button>
+                      <div className="p-5 bg-white dark:bg-slate-950 border border-slate-100 dark:border-slate-800 rounded-2xl shadow-sm space-y-4">
+                         <div>
+                            <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Receiving Payment For</p>
+                            <p className="text-lg font-black">{selectedInvoices.length} Selected Invoices</p>
                          </div>
-                         <div className="grid grid-cols-2 gap-6">
-                            <div className="space-y-1">
-                               <p className="text-[10px] font-bold text-muted-foreground uppercase">Already Paid</p>
-                               <p className="text-lg font-black text-emerald-600">LKR {parseFloat(selectedInvoice.paid_amount).toLocaleString()}</p>
-                            </div>
-                            <div className="space-y-1 text-right">
-                               <p className="text-[10px] font-bold text-muted-foreground uppercase">Remaining Balance</p>
-                               <p className="text-lg font-black text-rose-600">LKR {(parseFloat(selectedInvoice.grand_total) - parseFloat(selectedInvoice.paid_amount)).toLocaleString()}</p>
-                            </div>
+                         
+                         <div className="border border-slate-100 dark:border-slate-800 rounded-xl p-3 bg-slate-50/50 dark:bg-slate-900/50 space-y-3 max-h-[160px] overflow-y-auto custom-scrollbar">
+                            {selectedInvoices.map(inv => {
+                               const maxBal = parseFloat(inv.grand_total) - parseFloat(inv.paid_amount);
+                               return (
+                                  <div key={inv.id} className="flex justify-between items-center gap-2 border-b border-slate-100 dark:border-slate-800/50 pb-2 last:border-0 last:pb-0">
+                                     <div className="text-left">
+                                        <span className="font-mono text-xs font-bold">{inv.invoice_no}</span>
+                                        <span className="text-[9px] text-muted-foreground ml-2">(Max: LKR {maxBal.toLocaleString()})</span>
+                                     </div>
+                                     <Input 
+                                        type="number"
+                                        step="0.01"
+                                        className="w-28 h-8 font-bold text-right text-xs"
+                                        value={allocations[inv.id] || ""}
+                                        onChange={e => {
+                                           const val = e.target.value;
+                                           const newAllocations = { ...allocations, [inv.id]: val };
+                                           setAllocations(newAllocations);
+                                           
+                                           let totalAlloc = 0;
+                                           Object.values(newAllocations).forEach(v => {
+                                              totalAlloc += parseFloat(v as string) || 0;
+                                           });
+                                           setPaymentAmount(String(totalAlloc.toFixed(2)));
+                                        }}
+                                     />
+                                  </div>
+                               );
+                            })}
+                         </div>
+
+                         <div className="pt-2 flex justify-between items-center border-t border-slate-50 dark:border-slate-900">
+                            <span className="text-[10px] font-bold text-muted-foreground uppercase">Combined Balance Due</span>
+                            <span className="text-lg font-black text-rose-600">LKR {selectedInvoices.reduce((acc, curr) => acc + (parseFloat(curr.grand_total) - parseFloat(curr.paid_amount)), 0).toLocaleString()}</span>
                          </div>
                       </div>
 
@@ -318,14 +496,14 @@ export const ManagementModals: React.FC = () => {
                       </div>
 
                       <div className="space-y-4">
-                         <label className="text-xs font-black uppercase tracking-widest text-muted-foreground ml-1">Payment Amount</label>
+                         <label className="text-xs font-black uppercase tracking-widest text-muted-foreground ml-1">Total Payment Amount</label>
                          <div className="relative">
                             <span className="absolute left-4 top-1/2 -translate-y-1/2 font-black text-slate-400">LKR</span>
                             <Input 
                                type="number"
+                               readOnly
                                value={paymentAmount}
-                               onChange={e => setPaymentAmount(e.target.value)}
-                               className="h-16 pl-14 text-2xl font-black bg-white dark:bg-slate-950 border-2 border-indigo-100 dark:border-indigo-900 rounded-2xl shadow-inner focus-visible:ring-indigo-500"
+                               className="h-16 pl-14 text-2xl font-black bg-slate-50 dark:bg-slate-900 cursor-not-allowed border-2 border-indigo-100 dark:border-indigo-900 rounded-2xl shadow-inner focus-visible:ring-indigo-500 text-indigo-600"
                             />
                          </div>
                       </div>
@@ -373,33 +551,45 @@ export const ManagementModals: React.FC = () => {
                         onClick={async () => {
                            setIsRecordingPayment(true);
                            try {
+                              const paymentsPayload = selectedInvoices.map(inv => ({
+                                 invoice_id: inv.id,
+                                 amount: parseFloat(allocations[inv.id] || "0")
+                              })).filter(p => p.amount > 0);
+
+                              if (paymentsPayload.length === 0) {
+                                 throw new Error("At least one invoice must have a payment amount allocated.");
+                              }
+
                               const payload = {
                                  amount: parseFloat(paymentAmount),
                                  payment_method: paymentMethod,
                                  payment_date: new Date().toISOString().split('T')[0],
-                                 notes: `POS payment for ${selectedInvoice.invoice_no}`,
-                                 // Cheque specifics
+                                 notes: `POS bulk payment for ${paymentsPayload.length} invoices`,
                                  cheque: paymentMethod === 'Cheque' ? {
                                     cheque_no: chequeNo,
                                     cheque_date: chequeDate,
                                     bank_name: banks.find(b => String(b.id) === chequeBank)?.name || "",
-                                    branch_name: chequeBranchId, // We use the ID or text if available
-                                    payee_name: selectedInvoice.customer_name || 'Walk-in'
+                                    branch_name: chequeBranchId,
+                                    payee_name: selectedInvoices[0]?.customer_name || 'Walk-in'
                                  } : null,
                                  bank_id: paymentMethod === 'Cheque' ? chequeBank : null,
-                                 reference_no: paymentMethod === 'Cheque' ? chequeNo : null
+                                 reference_no: paymentMethod === 'Cheque' ? chequeNo : null,
+                                 payments: paymentsPayload
                               };
 
-                              const res = await addInvoicePayment(selectedInvoice.id, payload);
+                              const res = await addBulkInvoicePayments(payload);
                               if (res.status === 'success') {
-                                 toast({ title: "Payment Recorded", description: `LKR ${parseFloat(paymentAmount).toLocaleString()} collected successfully.` });
-                                 // Reset and Refresh
-                                 setSelectedInvoice(null);
+                                 toast({ title: "Bulk Payment Recorded", description: `LKR ${parseFloat(paymentAmount).toLocaleString()} collected successfully for ${paymentsPayload.length} invoices.` });
+                                 setSelectedInvoices([]);
+                                 setAllocations({});
                                  setPaymentAmount("");
                                  await refreshPendingInvoices();
-                                 if (res.receipt_id) {
-                                    window.open(`/cms/payment-receipts/${res.receipt_id}/print?autoprint=1`, '_blank');
+                                 if (res.receipt_ids && Array.isArray(res.receipt_ids)) {
+                                    res.receipt_ids.forEach((rcpId: string) => {
+                                       window.open(`/cms/payment-receipts/${rcpId}/print?autoprint=1`, '_blank');
+                                    });
                                  }
+                                 setSelectedCustomerForPending(null);
                               } else {
                                  throw new Error(res.message || "Failed to record payment");
                               }
@@ -417,7 +607,7 @@ export const ManagementModals: React.FC = () => {
                 ) : (
                    <div className="h-full flex flex-col items-center justify-center text-muted-foreground opacity-30 text-center">
                       <Calculator className="w-16 h-16 mb-4" />
-                      <p className="text-sm font-black uppercase tracking-widest max-w-[200px]">Select an invoice from the left to start collecting payment.</p>
+                      <p className="text-sm font-black uppercase tracking-widest max-w-[200px]">Select one or more invoices from the left to start collecting payment.</p>
                    </div>
                 )}
              </div>

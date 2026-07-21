@@ -13,6 +13,14 @@ class VehicleSyncController extends Controller {
 
     /**
      * GET /api/vehiclesync/mileage/:vin
+     * Alias for get_mileage to support /api/vehiclesync/mileage/{vin} directly
+     */
+    public function mileage($vin) {
+        $this->get_mileage($vin);
+    }
+
+    /**
+     * GET /api/vehiclesync/mileage/:vin
      * Fetches real-time mileage for a specific vehicle
      */
     public function get_mileage($vin) {
@@ -23,7 +31,7 @@ class VehicleSyncController extends Controller {
             $apiToken = $this->systemSettingModel->get('MILEAGE_API_TOKEN') ?: MILEAGE_API_TOKEN;
 
             if (!$apiUrl || !$apiToken) {
-                $this->error("Mileage API configuration missing.");
+                $this->error("Mileage API configuration missing.", 400);
                 return;
             }
 
@@ -32,10 +40,10 @@ class VehicleSyncController extends Controller {
             if ($mileage !== null) {
                 $this->success(['mileage' => $mileage]);
             } else {
-                $this->error("Could not fetch mileage for $vin");
+                $this->error("Could not fetch mileage for $vin", 404);
             }
         } catch (Exception $e) {
-            $this->error($e->getMessage());
+            $this->error($e->getMessage(), 400);
         }
     }
 
@@ -54,9 +62,22 @@ class VehicleSyncController extends Controller {
 
         if ($httpCode !== 200) return null;
 
+        // Clean up response: API output has a trailing closing tag which breaks json_decode
+        if (preg_match('/\x7b.*\x7d/s', $response, $matches)) {
+            $response = $matches[0];
+        }
+
         $data = json_decode($response, true);
-        if (isset($data['status']) && $data['status'] === 'success' && isset($data['gps_mileage'])) {
-            return (int)$data['gps_mileage'];
+        if (isset($data['status']) && $data['status'] === 'success') {
+            if (isset($data['wialon_data']['item']['cnm_km'])) {
+                return (int)$data['wialon_data']['item']['cnm_km'];
+            }
+            if (isset($data['CNM'])) {
+                return (int)$data['CNM'];
+            }
+            if (isset($data['gps_mileage'])) {
+                return (int)$data['gps_mileage'];
+            }
         }
 
         return null;

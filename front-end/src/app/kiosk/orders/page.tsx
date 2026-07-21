@@ -60,9 +60,7 @@ export default function KioskOrdersPage() {
   // New states for search, filter, pagination, and view modal
   const [searchQuery, setSearchQuery] = useState("");
   const [dateFilter, setDateFilter] = useState("");
-  const [statusFilter, setStatusFilter] = useState("Pending");
   const [currentPage, setCurrentPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
   const pageSize = 10;
   
   const [selectedOrder, setSelectedOrder] = useState<KioskOrder | null>(null);
@@ -71,25 +69,10 @@ export default function KioskOrdersPage() {
   const fetchOrders = async () => {
     try {
       setLoading(true);
-      const queryParams = new URLSearchParams({
-        page: currentPage.toString(),
-        limit: pageSize.toString(),
-      });
-      if (statusFilter !== "All") queryParams.append("status", statusFilter);
-      // NOTE: For search/date we might need to do client side filtering or update backend.
-      // Assuming simple server side pagination for status first.
-      
-      const res = await api(`/api/kiosk/orders?${queryParams.toString()}`);
+      const res = await api('/api/kiosk/orders');
       if (res.ok) {
-        const result = await res.json();
-        // Check if old array format or new paginated format
-        if (Array.isArray(result)) {
-          setOrders(result);
-          setTotalPages(1);
-        } else {
-          setOrders(result.data || []);
-          setTotalPages(result.pagination?.total_pages || 1);
-        }
+        const data = await res.json();
+        setOrders(data || []);
       }
     } catch (e) {
       console.error(e);
@@ -101,7 +84,7 @@ export default function KioskOrdersPage() {
 
   useEffect(() => {
     fetchOrders();
-  }, [currentPage, statusFilter]);
+  }, []);
 
   const updateStatus = async (id: number, newStatus: string) => {
     try {
@@ -130,7 +113,7 @@ export default function KioskOrdersPage() {
     }
   };
 
-  // Filter and pagination logic (Client-side fallback for Search, Date, and Status if backend is old)
+  // Filter and pagination logic
   const filteredOrders = orders.filter((o) => {
     const matchesSearch =
       o.order_no.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -141,18 +124,19 @@ export default function KioskOrdersPage() {
       ? new Date(o.created_at).toISOString().split('T')[0] === dateFilter
       : true;
 
-    // Fallback if backend returned all (array format) instead of paginated data
-    const matchesStatus = statusFilter === "All" || o.status === statusFilter;
-
-    return matchesSearch && matchesDate && matchesStatus;
+    return matchesSearch && matchesDate;
   });
 
-  const paginatedOrders = filteredOrders;
+  const totalPages = Math.ceil(filteredOrders.length / pageSize);
+  const paginatedOrders = filteredOrders.slice(
+    (currentPage - 1) * pageSize,
+    currentPage * pageSize
+  );
 
   // Reset page when filters change
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchQuery, dateFilter, statusFilter]);
+  }, [searchQuery, dateFilter]);
 
   const openViewModal = (order: KioskOrder) => {
     setSelectedOrder(order);
@@ -200,23 +184,6 @@ export default function KioskOrdersPage() {
               </Button>
             )}
           </div>
-        </div>
-
-        {/* Status Tabs */}
-        <div className="flex space-x-2 overflow-x-auto pb-2 border-b border-border/50">
-          {["Pending", "Preparing", "Delivered", "Cancelled", "All"].map((status) => (
-            <button
-              key={status}
-              onClick={() => setStatusFilter(status)}
-              className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-                statusFilter === status 
-                  ? 'bg-primary text-primary-foreground shadow' 
-                  : 'bg-muted/50 text-muted-foreground hover:bg-muted hover:text-foreground'
-              }`}
-            >
-              {status}
-            </button>
-          ))}
         </div>
 
         <div className="bg-card text-card-foreground rounded-lg shadow-sm border overflow-hidden">
@@ -313,18 +280,14 @@ export default function KioskOrdersPage() {
                   ))}
                 </TableBody>
               </Table>
-              
-              {/* Pagination Controls */}
               {totalPages > 1 && (
-                <div className="p-4 border-t">
-                  <DataTablePagination
-                    currentPage={currentPage}
-                    totalPages={totalPages}
-                    pageSize={pageSize}
-                    totalItems={orders.length}
-                    onPageChange={setCurrentPage}
-                  />
-                </div>
+                <DataTablePagination
+                  currentPage={currentPage}
+                  totalPages={totalPages}
+                  pageSize={pageSize}
+                  totalItems={filteredOrders.length}
+                  onPageChange={setCurrentPage}
+                />
               )}
             </>
           )}

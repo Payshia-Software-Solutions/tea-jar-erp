@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { DashboardLayout } from "@/components/dashboard-layout";
-import { fetchCustomerSummary, fetchCustomerCheques, CONTENT_BASE_URL } from "@/lib/api";
+import { fetchCustomerSummary, fetchCustomerCheques, fetchCustomerStocks, updateCustomerStock, CONTENT_BASE_URL } from "@/lib/api";
 import { QRCodeSVG } from "qrcode.react";
 import { 
   User, 
@@ -25,12 +25,17 @@ import {
   Hotel,
   Layers,
   ArrowUpRight,
-  Printer
+  Printer,
+  Package,
+  Edit2
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import Link from "next/link";
 
@@ -41,16 +46,41 @@ export default function CustomerProfilePage() {
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState<any>(null);
   const [cheques, setCheques] = useState<any[]>([]);
+  const [stocks, setStocks] = useState<any[]>([]);
+
+  const [stockUpdateModal, setStockUpdateModal] = useState<{ isOpen: boolean; stockId: number | null; currentSoldQty: number; maxQty: number }>({ isOpen: false, stockId: null, currentSoldQty: 0, maxQty: 0 });
+  const [stockUpdateQty, setStockUpdateQty] = useState("");
+
+  const handleUpdateStockConfirm = async () => {
+    const { stockId, maxQty } = stockUpdateModal;
+    if (stockId === null) return;
+    
+    const numQty = parseFloat(stockUpdateQty);
+    if (isNaN(numQty) || numQty < 0 || numQty > maxQty) {
+      return toast({ title: "Error", description: "Invalid quantity", variant: "destructive" });
+    }
+    
+    try {
+      await updateCustomerStock(stockId, { sold_qty: numQty });
+      setStocks(stocks.map(s => s.id === stockId ? { ...s, sold_qty: numQty } : s));
+      toast({ title: "Success", description: "Sold quantity updated successfully." });
+      setStockUpdateModal({ ...stockUpdateModal, isOpen: false });
+    } catch (err: any) {
+      toast({ title: "Error", description: err.message, variant: "destructive" });
+    }
+  };
 
   useEffect(() => {
     const load = async () => {
       try {
-        const [summary, chequesData] = await Promise.all([
+        const [summary, chequesData, stocksData] = await Promise.all([
           fetchCustomerSummary(id as string),
-          fetchCustomerCheques(id as string).catch(() => [])
+          fetchCustomerCheques(id as string).catch(() => []),
+          fetchCustomerStocks(id as string).catch(() => [])
         ]);
         setData(summary);
         setCheques(chequesData);
+        setStocks(stocksData);
       } catch (err: any) {
         toast({ title: "Error", description: err.message, variant: "destructive" });
       } finally {
@@ -261,7 +291,7 @@ export default function CustomerProfilePage() {
             <Card className="border-none shadow-xl min-h-[600px]">
               <CardContent className="p-6">
                 <Tabs defaultValue="reservations" className="space-y-6">
-                  <TabsList className="grid w-full grid-cols-5 h-12 rounded-xl bg-muted/50 p-1">
+                  <TabsList className="grid w-full grid-cols-6 h-12 rounded-xl bg-muted/50 p-1">
                     <TabsTrigger value="reservations" className="rounded-lg font-bold gap-2">
                       <Hotel className="w-4 h-4" /> Stays
                     </TabsTrigger>
@@ -276,6 +306,9 @@ export default function CustomerProfilePage() {
                     </TabsTrigger>
                     <TabsTrigger value="items" className="rounded-lg font-bold gap-2">
                       <Layers className="w-4 h-4" /> Items
+                    </TabsTrigger>
+                    <TabsTrigger value="stocks" className="rounded-lg font-bold gap-2">
+                      <Package className="w-4 h-4" /> Stocks
                     </TabsTrigger>
                   </TabsList>
 
@@ -438,12 +471,100 @@ export default function CustomerProfilePage() {
                       </div>
                     )}
                   </TabsContent>
+                  <TabsContent value="stocks" className="space-y-4">
+                    {stocks.length === 0 ? (
+                      <div className="text-center py-20 text-muted-foreground">No customer stocks found.</div>
+                    ) : (
+                      <div className="overflow-hidden rounded-2xl border border-border/50">
+                        <table className="w-full text-sm text-left">
+                          <thead className="bg-muted/50 text-[10px] font-black uppercase tracking-widest text-muted-foreground">
+                            <tr>
+                              <th className="px-4 py-3">Item Name</th>
+                              <th className="px-4 py-3">Batch</th>
+                              <th className="px-4 py-3">Invoice No</th>
+                              <th className="px-4 py-3 text-center">Original Qty</th>
+                              <th className="px-4 py-3 text-center">Sold Qty</th>
+                              <th className="px-4 py-3 text-center">Remaining</th>
+                              <th className="px-4 py-3 text-right">Expiry Date</th>
+                              <th className="px-4 py-3 text-center">Action</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-border/50">
+                            {stocks.map((item: any) => {
+                              const originalQty = Number(item.quantity) || 0;
+                              const soldQty = Number(item.sold_qty) || 0;
+                              const remaining = originalQty - soldQty;
+                              return (
+                                <tr key={item.id} className="hover:bg-muted/30 transition-colors">
+                                  <td className="px-4 py-4 font-bold text-primary">{item.item_description}</td>
+                                  <td className="px-4 py-4 font-mono text-xs">{item.batch_number || '-'}</td>
+                                  <td className="px-4 py-4 font-mono text-xs">{item.invoice_no || '-'}</td>
+                                  <td className="px-4 py-4 text-center font-mono">
+                                    <Badge variant="outline">{originalQty.toLocaleString()}</Badge>
+                                  </td>
+                                  <td className="px-4 py-4 text-center font-mono">
+                                    <Badge variant="outline" className="bg-blue-50 dark:bg-blue-900/20 text-blue-600">{soldQty.toLocaleString()}</Badge>
+                                  </td>
+                                  <td className="px-4 py-4 text-center font-mono">
+                                    <Badge variant={remaining > 0 ? "default" : "destructive"}>{remaining.toLocaleString()}</Badge>
+                                  </td>
+                                  <td className="px-4 py-4 text-right font-mono text-xs text-rose-500 font-bold">
+                                    {item.expire_date || '-'}
+                                  </td>
+                                  <td className="px-4 py-4 text-center">
+                                    <Button variant="ghost" size="sm" onClick={() => {
+                                      setStockUpdateModal({ isOpen: true, stockId: item.id, currentSoldQty: soldQty, maxQty: originalQty });
+                                      setStockUpdateQty(soldQty.toString());
+                                    }}>
+                                      <Edit2 className="w-4 h-4 text-blue-500" />
+                                    </Button>
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                  </TabsContent>
                 </Tabs>
               </CardContent>
             </Card>
           </div>
         </div>
       </div>
+
+      <Dialog open={stockUpdateModal.isOpen} onOpenChange={(open) => setStockUpdateModal({ ...stockUpdateModal, isOpen: open })}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Update Sold Quantity</DialogTitle>
+            <DialogDescription>
+              Enter the total quantity sold for this batch. The maximum allowed is {stockUpdateModal.maxQty}.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="sold_qty" className="text-right">
+                Sold Qty
+              </Label>
+              <Input
+                id="sold_qty"
+                type="number"
+                min="0"
+                max={stockUpdateModal.maxQty}
+                step="0.01"
+                value={stockUpdateQty}
+                onChange={(e) => setStockUpdateQty(e.target.value)}
+                className="col-span-3"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setStockUpdateModal({ ...stockUpdateModal, isOpen: false })}>Cancel</Button>
+            <Button onClick={handleUpdateStockConfirm}>Save changes</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </DashboardLayout>
   );
 }

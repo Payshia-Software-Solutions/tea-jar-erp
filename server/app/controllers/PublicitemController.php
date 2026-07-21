@@ -139,8 +139,11 @@ class PublicitemController extends Controller {
 
         $sanitized = [];
         foreach ($items as $item) {
-            // Only online enabled items
-            if ((int)($item->is_online ?? 0) !== 1) continue;
+            // Only online enabled items OR kiosk enabled items
+            $isOnline = (int)($item->is_online ?? 0) === 1;
+            $isKiosk = ($item->kiosk_module ?? 'None') !== 'None';
+            if (!$isOnline && !$isKiosk) continue;
+            
             if ((int)$item->is_active !== 1) continue;
 
             // Optional collection filtering
@@ -173,12 +176,14 @@ class PublicitemController extends Controller {
                 'discount_type' => (string)($item->discount_type ?? 'None'),
                 'discount_value' => (float)($item->discount_value ?? 0),
                 'brand' => (string)($item->brand_name ?? 'Generic'),
+                'description' => (string)($item->public_description ?? ''),
                 'item_type' => (string)$item->item_type,
                 'is_in_stock' => (float)$item->stock_quantity > 0,
                 'stock_qty' => (float)$item->stock_quantity,
                 'image_url' => !empty($item->image_filename) ? $imageBaseUrl . $item->image_filename : null,
                 'gallery' => $sanitizedGallery,
                 'category_ids' => $item->collection_ids ?? [],
+                'kiosk_module' => (string)($item->kiosk_module ?? 'None'),
                 'attributes' => $attrModel->getPartAttributesGrouped($item->id)
             ];
         }
@@ -206,7 +211,11 @@ class PublicitemController extends Controller {
         } else {
             $item = $this->itemModel->getBySlug($id);
         }
-        if (!$item || (int)$item->is_active === 0 || (isset($item->is_online) && (int)$item->is_online !== 1)) {
+        
+        $isOnline = (int)($item->is_online ?? 0) === 1;
+        $isKiosk = ($item->kiosk_module ?? 'None') !== 'None';
+        
+        if (!$item || (int)$item->is_active === 0 || (!$isOnline && !$isKiosk)) {
             $this->error('Product not found', 404);
         }
 
@@ -222,6 +231,10 @@ class PublicitemController extends Controller {
 
         require_once '../app/models/PartAttribute.php';
         $attrModel = new PartAttribute();
+        
+        require_once '../app/models/KioskContent.php';
+        $kioskContentModel = new KioskContent();
+        $kioskContent = $kioskContentModel->getByPartId($item->id);
 
         require_once '../app/models/Tax.php';
         require_once '../app/models/ServiceLocation.php';
@@ -265,6 +278,7 @@ class PublicitemController extends Controller {
             'discount_type' => (string)($item->discount_type ?? 'None'),
             'discount_value' => (float)($item->discount_value ?? 0),
             'brand' => (string)($item->brand_name ?? 'Generic'),
+            'description' => (string)($item->public_description ?? ''),
             'item_type' => (string)$item->item_type,
             'unit' => (string)$item->unit,
             'is_in_stock' => (float)$item->stock_quantity > 0,
@@ -280,6 +294,9 @@ class PublicitemController extends Controller {
             'collections' => array_map(function($c) {
                 return ['id' => $c->id, 'name' => $c->name];
             }, $item->collections ?: []),
+            'kiosk_module' => (string)($item->kiosk_module ?? 'None'),
+            'kiosk_content_html' => $kioskContent ? (string)$kioskContent->content_html : null,
+            'kiosk_video_url' => $kioskContent ? (string)$kioskContent->video_url : null,
             'attributes' => $attrModel->getPartAttributesGrouped($item->id)
         ];
 

@@ -9670,3 +9670,29 @@ CREATE TABLE `vehicles` (
 ) ENGINE=InnoDB AUTO_INCREMENT=225 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 SET FOREIGN_KEY_CHECKS = 1;
+
+
+--
+-- Table structure for table `customer_stocks`
+--
+
+DROP TABLE IF EXISTS `customer_stocks`;
+CREATE TABLE `customer_stocks` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `customer_id` int(11) NOT NULL,
+  `invoice_id` int(11) DEFAULT NULL,
+  `invoice_item_id` int(11) DEFAULT NULL,
+  `item_id` int(11) NOT NULL,
+  `item_description` varchar(255) NOT NULL,
+  `batch_number` varchar(100) DEFAULT NULL,
+  `quantity` decimal(10,2) NOT NULL DEFAULT 0.00,
+  `expire_date` date DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  PRIMARY KEY (`id`),
+  KEY `idx_cs_customer` (`customer_id`),
+  KEY `idx_cs_invoice` (`invoice_id`),
+  KEY `idx_cs_item` (`item_id`),
+  CONSTRAINT `fk_cs_customer` FOREIGN KEY (`customer_id`) REFERENCES `customers` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+

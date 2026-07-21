@@ -87,6 +87,7 @@ class PartController extends Controller {
             'carton_tare_weight_kg' => $data['carton_tare_weight_kg'] ?? 0,
             'is_online' => $data['is_online'] ?? 0,
             'public_description' => $data['public_description'] ?? null,
+            'kiosk_module' => $data['kiosk_module'] ?? 'None',
         ];
 
         $newId = $this->partModel->create($payload, (int)$u['sub']);
@@ -247,6 +248,7 @@ class PartController extends Controller {
             'is_online' => isset($data['is_online']) ? $data['is_online'] : $existing->is_online,
             'out_of_stock' => isset($data['out_of_stock']) ? $data['out_of_stock'] : ($existing->out_of_stock ?? 0),
             'public_description' => array_key_exists('public_description', $data) ? $data['public_description'] : $existing->public_description,
+            'kiosk_module' => array_key_exists('kiosk_module', $data) ? $data['kiosk_module'] : ($existing->kiosk_module ?? 'None'),
             'collection_ids' => $collectionIds,
         ];
 

@@ -104,21 +104,25 @@ class StorefrontSettingsController extends Controller {
             $this->error('File upload failed with error code: ' . $file['error']);
         }
 
-        $uploadDir = '../public/uploads/payment_icons/';
-        if (!is_dir($uploadDir)) {
-            mkdir($uploadDir, 0777, true);
-        }
-
         $ext = pathinfo($file['name'], PATHINFO_EXTENSION);
-        $filename = 'payicon_' . $locationId . '_' . $settingKey . '_' . uniqid() . '.' . $ext;
-        $targetPath = $uploadDir . $filename;
-
-        if (move_uploaded_file($file['tmp_name'], $targetPath)) {
-            $iconPath = 'uploads/payment_icons/' . $filename;
+        $ext = preg_replace('/[^a-z0-9]+/', '', strtolower($ext));
+        if ($ext === '') $ext = 'png';
+        
+        $filename = 'kiosk_' . $locationId . '_' . $settingKey . '_' . uniqid() . '.' . $ext;
+        
+        try {
+            require_once '../app/helpers/FtpStorage.php';
+            $ftp = new FtpStorage();
+            $dir = 'storefront'; // directory in FTP
+            $ftp->upload($file['tmp_name'], $dir, $filename);
+            
+            // FtpStorage usually means it's available at CONTENT_BASE_URL
+            $iconPath = rtrim(CONTENT_BASE_URL, '/') . '/' . $dir . '/' . $filename;
             $this->settingModel->updateSetting($settingKey, $iconPath, $locationId);
-            $this->success(['path' => $iconPath], 'Icon uploaded successfully');
-        } else {
-            $this->error('Failed to save uploaded file');
+            $this->success(['path' => $iconPath], 'Icon uploaded successfully via FTP');
+        } catch (Exception $e) {
+            error_log('FTP Upload Error: ' . $e->getMessage());
+            $this->error('FTP upload failed: ' . $e->getMessage());
         }
     }
 }
