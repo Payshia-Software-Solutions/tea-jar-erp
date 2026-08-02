@@ -2,23 +2,59 @@
 /**
  * Nexus Portal API Entry Point
  */
-session_start([
-    'cookie_lifetime' => 86400,
-    'cookie_httponly' => true,
-    'cookie_samesite' => 'Lax'
-]);
+// 1. Set CORS Headers at the absolute top
+$origin = '';
+if (isset($_SERVER['HTTP_ORIGIN'])) {
+    $origin = $_SERVER['HTTP_ORIGIN'];
+} elseif (function_exists('getallheaders')) {
+    $headers = getallheaders();
+    $origin = $headers['Origin'] ?? $headers['origin'] ?? '';
+}
 
-// Global CORS Handling
-$origin = $_SERVER['HTTP_ORIGIN'] ?? 'http://localhost:3000';
+if (empty($origin)) {
+    $referer = $_SERVER['HTTP_REFERER'] ?? '';
+    if (!empty($referer)) {
+        $parts = parse_url($referer);
+        if (isset($parts['scheme']) && isset($parts['host'])) {
+            $port = isset($parts['port']) ? ':' . $parts['port'] : '';
+            $origin = $parts['scheme'] . '://' . $parts['host'] . $port;
+        }
+    }
+}
+
+if (empty($origin)) {
+    $origin = 'http://localhost:3000';
+}
+
 header("Access-Control-Allow-Origin: $origin");
 header('Access-Control-Allow-Methods: GET, POST, OPTIONS, PUT, DELETE');
-header('Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-With');
+header('Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-With, Origin, Accept');
 header('Access-Control-Allow-Credentials: true');
 
+// 2. Handle OPTIONS preflight immediately
 if ($_SERVER['REQUEST_METHOD'] == 'OPTIONS') {
     http_response_code(200);
     exit;
 }
+
+// 3. Extract Session Token and start session
+$authHeader = $_SERVER['HTTP_AUTHORIZATION'] ?? $_SERVER['REDIRECT_HTTP_AUTHORIZATION'] ?? '';
+if (empty($authHeader) && function_exists('apache_request_headers')) {
+    $reqHeaders = apache_request_headers();
+    $authHeader = $reqHeaders['Authorization'] ?? $reqHeaders['authorization'] ?? '';
+}
+if (!empty($authHeader) && preg_match('/Bearer\s+([a-zA-Z0-9,-]+)/i', $authHeader, $matches)) {
+    session_id(trim($matches[1]));
+} elseif (isset($_GET['token']) && !empty($_GET['token']) && preg_match('/^[a-zA-Z0-9,-]+$/', $_GET['token'])) {
+    session_id(trim($_GET['token']));
+}
+
+session_start([
+    'cookie_lifetime' => 86400,
+    'cookie_httponly' => true,
+    'cookie_samesite' => 'Lax',
+    'cookie_path' => '/'
+]);
 
 // Autoloader (Simple PSR-4)
 require_once __DIR__ . '/../vendor/autoload.php';

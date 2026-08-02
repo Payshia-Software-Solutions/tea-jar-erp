@@ -20,12 +20,12 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className="h-full scroll-smooth" suppressHydrationWarning>
-      <body className={`${inter.className} min-h-full flex flex-col antialiased bg-background text-foreground transition-colors duration-300`}>
+      <body className={`${inter.className} min-h-full flex flex-col antialiased bg-background text-foreground`}>
         <ThemeProvider
           attribute="class"
-          defaultTheme="dark"
-          enableSystem
-          disableTransitionOnChange
+          defaultTheme="light"
+          enableSystem={false}
+          disableTransitionOnChange={false}
         >
           <BackgroundGradients />
           <Navbar />

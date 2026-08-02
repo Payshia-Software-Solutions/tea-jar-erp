@@ -1,16 +1,35 @@
 "use client";
 import { API_BASE } from '@/config';
 
-import React, { useState } from 'react';
-import { ChevronRight, ShieldCheck, Zap } from 'lucide-react';
-import { motion } from 'framer-motion';
+import React, { useState, useEffect } from 'react';
+import { ShieldCheck, Zap, ArrowRight, Loader2, CheckCircle2, AlertCircle } from 'lucide-react';
+
+const inputCls = `
+  w-full rounded-lg border border-[#e4e4e7] bg-white py-2.5 px-3.5
+  text-[13px] text-[#09090b] placeholder:text-[#a1a1aa]
+  focus:border-[#6366f1] focus:outline-none focus:ring-2 focus:ring-[#6366f1]/20
+  dark:border-[#27272a] dark:bg-[#18181b] dark:text-white
+  dark:focus:border-[#818cf8] dark:focus:ring-[#818cf8]/20
+  transition-all
+`;
+
+function FormField({ label, required = false, children }: { label: string; required?: boolean; children: React.ReactNode }) {
+  return (
+    <div className="space-y-1.5">
+      <label className="block text-[12px] font-medium text-[#09090b] dark:text-white">
+        {label} {required && <span className="text-red-500">*</span>}
+      </label>
+      {children}
+    </div>
+  );
+}
 
 export default function OrderPage() {
-  const [formStatus, setFormStatus] = useState<{ type: 'success' | 'error', message: string } | null>(null);
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [formStatus,     setFormStatus]     = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+  const [isSubmitting,   setIsSubmitting]   = useState(false);
   const [serverPackages, setServerPackages] = useState<any[]>([]);
 
-  React.useEffect(() => {
+  useEffect(() => {
     fetch(`${API_BASE}/saas/packages`, { credentials: 'include' })
       .then(res => res.json())
       .then(data => {
@@ -38,14 +57,13 @@ export default function OrderPage() {
         body: JSON.stringify(data)
       });
       const result = await response.json();
-      
       if (response.ok) {
         setFormStatus({ type: 'success', message: result.message });
         (e.target as HTMLFormElement).reset();
       } else {
         setFormStatus({ type: 'error', message: result.message });
       }
-    } catch (err) {
+    } catch {
       setFormStatus({ type: 'error', message: 'Connection error. Please ensure the PHP server is running.' });
     } finally {
       setIsSubmitting(false);
@@ -53,127 +71,112 @@ export default function OrderPage() {
   };
 
   return (
-    <div className="pt-32 pb-20 px-4 max-w-4xl mx-auto">
-      <motion.div 
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="text-center mb-16"
-      >
-        <h1 className="text-5xl md:text-6xl font-extrabold tracking-tight text-gradient mb-6">
-          Create Your Nexus Account
-        </h1>
-        <p className="text-muted text-lg max-w-2xl mx-auto leading-relaxed font-medium">
-          Start your transformation journey today. Enter your details below to initialize your dedicated enterprise workspace.
-        </p>
-      </motion.div>
+    <div className="min-h-screen bg-[#f7f7f8] dark:bg-[#09090b] pt-24 pb-20">
+      <div className="mx-auto max-w-3xl px-4 sm:px-6">
 
-      <motion.div
-        initial={{ opacity: 0, y: 30 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.2 }}
-        className="glass p-8 md:p-12 relative overflow-hidden"
-      >
-        <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500" />
-        
-        <form onSubmit={handleSubmit} className="relative z-10 space-y-8">
-          <div className="grid md:grid-cols-2 gap-8">
-            <div className="space-y-3">
-              <label className="text-xs font-bold uppercase tracking-widest text-muted">Company Name</label>
-              <input name="company_name" required type="text" className="w-full bg-[var(--input-bg)] border border-[var(--input-border)] rounded-xl px-5 py-4 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition-all font-medium text-slate-950 dark:text-white placeholder:text-slate-400" placeholder="Nexus Global Corp" />
-            </div>
-            <div className="space-y-3">
-              <label className="text-xs font-bold uppercase tracking-widest text-muted">Contact Person</label>
-              <input name="contact_person" required type="text" className="w-full bg-[var(--input-bg)] border border-[var(--input-border)] rounded-xl px-5 py-4 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition-all font-medium text-slate-950 dark:text-white placeholder:text-slate-400" placeholder="Alex Rivera" />
-            </div>
+        {/* Page Header */}
+        <div className="text-center mb-10">
+          <div className="inline-flex items-center gap-1.5 rounded-full border border-green-200 bg-green-50 px-3 py-1 text-[11px] font-medium text-green-700 dark:border-green-800/40 dark:bg-green-950/30 dark:text-green-400 mb-4">
+            <span className="h-1.5 w-1.5 rounded-full bg-green-500" /> 14-Day Free Trial Included
           </div>
+          <h1 className="text-3xl font-bold tracking-tight text-[#09090b] dark:text-white sm:text-4xl">
+            Create Your BizzFlow Instance
+          </h1>
+          <p className="mt-2 text-sm text-[#71717a] dark:text-[#a1a1aa] max-w-lg mx-auto">
+            Fill in your business details to provision your dedicated enterprise workspace instantly.
+          </p>
+        </div>
 
-          <div className="grid md:grid-cols-2 gap-8">
-            <div className="space-y-3">
-              <label className="text-xs font-bold uppercase tracking-widest text-muted">Work Email</label>
-              <input name="email" required type="email" className="w-full bg-[var(--input-bg)] border border-[var(--input-border)] rounded-xl px-5 py-4 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition-all font-medium text-slate-950 dark:text-white placeholder:text-slate-400" placeholder="alex@nexus.io" />
-            </div>
-            <div className="space-y-3">
-              <label className="text-xs font-bold uppercase tracking-widest text-muted">Business Category</label>
-              <select name="business_type" className="w-full bg-[var(--input-bg)] border border-[var(--input-border)] rounded-xl px-5 py-4 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition-all appearance-none cursor-pointer font-medium text-slate-950 dark:text-white">
-                <option value="Healthcare">Healthcare & Biotech</option>
-                <option value="Retail">Retail & E-commerce</option>
-                <option value="Construction">Construction & Engineering</option>
-                <option value="Finance">Finance & Insurance</option>
-                <option value="Tech">Technology & SaaS</option>
-              </select>
-            </div>
-          </div>
+        {/* Form Card */}
+        <div className="rounded-xl border border-[#e4e4e7] bg-white p-6 sm:p-8 dark:border-[#27272a] dark:bg-[#18181b] shadow-sm">
+          <form onSubmit={handleSubmit} className="space-y-5">
 
-          <div className="space-y-3">
-            <label className="text-xs font-bold uppercase tracking-widest text-muted">Business Address</label>
-            <textarea name="address" rows={2} className="w-full bg-[var(--input-bg)] border border-[var(--input-border)] rounded-xl px-5 py-4 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition-all font-medium text-slate-950 dark:text-white placeholder:text-slate-400 resize-none" placeholder="123 Enterprise Way, Suite 500, Innovation District" />
-          </div>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <FormField label="Company Name" required>
+                <input name="company_name" required type="text" placeholder="Acme Corp" className={inputCls} />
+              </FormField>
+              <FormField label="Contact Person" required>
+                <input name="contact_person" required type="text" placeholder="Alex Rivera" className={inputCls} />
+              </FormField>
+            </div>
 
-          <div className="grid md:grid-cols-2 gap-8">
-            <div className="space-y-3">
-              <label className="text-xs font-bold uppercase tracking-widest text-muted">Create Password</label>
-              <input name="password" required type="password" className="w-full bg-[var(--input-bg)] border border-[var(--input-border)] rounded-xl px-5 py-4 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition-all font-medium text-slate-950 dark:text-white placeholder:text-slate-400" placeholder="••••••••" />
+            <div className="grid gap-4 sm:grid-cols-2">
+              <FormField label="Work Email" required>
+                <input name="email" required type="email" placeholder="alex@acme.com" className={inputCls} />
+              </FormField>
+              <FormField label="Business Category">
+                <select name="business_type" className={`${inputCls} appearance-none cursor-pointer`}>
+                  <option value="Retail">Retail & E-commerce</option>
+                  <option value="Healthcare">Healthcare & Biotech</option>
+                  <option value="Construction">Construction & Engineering</option>
+                  <option value="Finance">Finance & Insurance</option>
+                  <option value="Tech">Technology & SaaS</option>
+                </select>
+              </FormField>
             </div>
-            <div className="space-y-3">
-              <label className="text-xs font-bold uppercase tracking-widest text-muted">Confirm Password</label>
-              <input name="confirm_password" required type="password" className="w-full bg-[var(--input-bg)] border border-[var(--input-border)] rounded-xl px-5 py-4 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition-all font-medium text-slate-950 dark:text-white placeholder:text-slate-400" placeholder="••••••••" />
-            </div>
-          </div>
 
-          <div className="grid md:grid-cols-2 gap-8">
-            <div className="space-y-3">
-              <label className="text-xs font-bold uppercase tracking-widest text-muted">Expected Users</label>
-              <select name="expected_users" className="w-full bg-[var(--input-bg)] border border-[var(--input-border)] rounded-xl px-5 py-4 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition-all appearance-none cursor-pointer font-medium text-slate-950 dark:text-white">
-                <option value="5">1-5 High-Frequency Users</option>
-                <option value="20">6-20 Users</option>
-                <option value="50">21-50 Users</option>
-                <option value="100">Enterprise Scale (50+)</option>
-              </select>
-            </div>
-            <div className="space-y-3">
-              <label className="text-xs font-bold uppercase tracking-widest text-muted">Selected ERP Plan</label>
-              <select name="package_type" className="w-full bg-[var(--input-bg)] border border-[var(--input-border)] rounded-xl px-5 py-4 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition-all appearance-none cursor-pointer font-medium text-slate-950 dark:text-white">
-                {serverPackages.map((pkg) => (
-                  <option key={pkg.id} value={pkg.name}>{pkg.name} Suite</option>
-                ))}
-                <option value="Enterprise">Enterprise Workspace</option>
-              </select>
-            </div>
-          </div>
+            <FormField label="Business Address">
+              <textarea name="address" rows={2} placeholder="123 Innovation Way, Suite 500" className={`${inputCls} resize-none`} />
+            </FormField>
 
-          <button 
-            disabled={isSubmitting}
-            type="submit" 
-            className="w-full btn-premium py-5 mt-6 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-4 group"
-          >
-            <div className="flex items-center gap-3">
-               <Zap size={20} className="fill-white" />
-               <span className="font-bold uppercase tracking-[0.2em]">{isSubmitting ? 'Initializing Workspace...' : 'Initialize My Workspace'}</span>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <FormField label="Create Password" required>
+                <input name="password" required type="password" placeholder="••••••••" className={inputCls} />
+              </FormField>
+              <FormField label="Confirm Password" required>
+                <input name="confirm_password" required type="password" placeholder="••••••••" className={inputCls} />
+              </FormField>
             </div>
-            {!isSubmitting && <ChevronRight size={22} className="group-hover:translate-x-1 transition-transform" />}
-          </button>
 
-          {formStatus && (
-            <motion.div 
-               initial={{ opacity: 0, scale: 0.95 }}
-               animate={{ opacity: 1, scale: 1 }}
-               className={`p-8 rounded-2xl text-center font-bold flex flex-col items-center justify-center gap-4 ${formStatus.type === 'success' ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20' : 'bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20'}`}>
-              <div className="flex items-center gap-3">
-                {formStatus.type === 'success' ? <ShieldCheck size={28} /> : <Zap size={28} />}
-                <span className="text-xl">{formStatus.type === 'success' ? 'Action Required' : 'Submission Failed'}</span>
-              </div>
-              <p className="text-sm font-medium leading-relaxed opacity-90 max-w-sm mx-auto">
-                {formStatus.message}
-              </p>
-              {formStatus.type === 'success' && (
-                <div className="text-[10px] uppercase tracking-widest opacity-60">
-                  Please check your spam folder if you don't see the mail.
+            <div className="grid gap-4 sm:grid-cols-2">
+              <FormField label="Expected Users">
+                <select name="expected_users" className={`${inputCls} appearance-none cursor-pointer`}>
+                  <option value="5">1–5 Users</option>
+                  <option value="20">6–20 Users</option>
+                  <option value="50">21–50 Users</option>
+                  <option value="100">Enterprise (50+)</option>
+                </select>
+              </FormField>
+              <FormField label="ERP Package">
+                <select name="package_type" className={`${inputCls} appearance-none cursor-pointer`}>
+                  {serverPackages.map((pkg) => (
+                    <option key={pkg.id} value={pkg.name}>{pkg.name} Suite</option>
+                  ))}
+                  <option value="Enterprise">Enterprise Workspace</option>
+                </select>
+              </FormField>
+            </div>
+
+            {/* Status Feedback */}
+            {formStatus && (
+              <div className={`flex items-start gap-3 rounded-lg border p-4 text-[13px] ${
+                formStatus.type === 'success'
+                  ? 'border-green-200 bg-green-50 text-green-700 dark:border-green-800/40 dark:bg-green-950/30 dark:text-green-400'
+                  : 'border-red-200 bg-red-50 text-red-700 dark:border-red-800/40 dark:bg-red-950/30 dark:text-red-400'
+              }`}>
+                {formStatus.type === 'success' ? <CheckCircle2 size={16} className="mt-0.5 shrink-0" /> : <AlertCircle size={16} className="mt-0.5 shrink-0" />}
+                <div>
+                  <p className="font-semibold">{formStatus.type === 'success' ? 'Registration Successful!' : 'Registration Failed'}</p>
+                  <p className="mt-0.5 text-xs opacity-90">{formStatus.message}</p>
                 </div>
+              </div>
+            )}
+
+            <button
+              disabled={isSubmitting}
+              type="submit"
+              className="flex w-full items-center justify-center gap-2 rounded-lg bg-[#6366f1] py-3 text-[13px] font-semibold text-white hover:bg-[#4f46e5] disabled:opacity-60 transition-colors shadow-sm"
+            >
+              {isSubmitting ? (
+                <><Loader2 size={15} className="animate-spin" /> Initializing Workspace…</>
+              ) : (
+                <><span>Initialize My Workspace</span><ArrowRight size={14} /></>
               )}
-            </motion.div>
-          )}
-        </form>
-      </motion.div>
+            </button>
+
+          </form>
+        </div>
+      </div>
     </div>
   );
 }

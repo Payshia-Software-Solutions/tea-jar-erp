@@ -1,24 +1,13 @@
 "use client";
-import { API_BASE } from '@/config';
 
-import React from 'react';
-import { 
-  Zap, 
-  Inbox, 
-  UserCheck, 
-  Layers, 
-  CreditCard,
-  LogOut,
-  Sun,
-  Moon,
-  Globe,
-  Building2,
-  FileText,
-  Mail,
-  Send,
-  X
+import React, { useState } from 'react';
+import {
+  Inbox, Layers, CreditCard, Zap, UserCheck,
+  FileText, Mail, Send, Globe, Building2,
+  LogOut, Sun, Moon, ChevronRight, X, BarChart
 } from 'lucide-react';
 import { useRouter, usePathname } from 'next/navigation';
+import { API_BASE } from '@/config';
 
 type AdminSidebarProps = {
   activeTab?: string;
@@ -30,150 +19,179 @@ type AdminSidebarProps = {
   onClose?: () => void;
 };
 
-export default function AdminSidebar({ activeTab, currentUser, role, theme, onToggleTheme, isOpen, onClose }: AdminSidebarProps) {
-  const router = useRouter();
+const menuSections = [
+  {
+    title: "Overview",
+    items: [
+      { id: 'dashboard',    label: 'Dashboard',        icon: Inbox,      roles: ['super_admin'] },
+      { id: 'reports',      label: 'Reports',          icon: BarChart,   roles: ['super_admin'] },
+      { id: 'requests',     label: 'ERP Requests',     icon: Inbox,      roles: ['super_admin'] },
+      { id: 'tenants',      label: 'SaaS Tenants',     icon: Layers,     roles: ['super_admin'] },
+      { id: 'packages',     label: 'Packages',         icon: CreditCard, roles: ['super_admin'] },
+      { id: 'subscription', label: 'Subscription',     icon: Zap,        roles: ['super_admin', 'client'] },
+      { id: 'users',        label: 'Client Accounts',  icon: UserCheck,  roles: ['super_admin'] },
+    ]
+  },
+  {
+    title: "Finance",
+    items: [
+      { id: 'invoices',  label: 'Billing',   icon: CreditCard, roles: ['super_admin'] },
+      { id: 'payments',  label: 'History',   icon: FileText,   roles: ['super_admin'] },
+    ]
+  },
+  {
+    title: "Communications",
+    items: [
+      { id: 'send-email',  label: 'Broadcast',   icon: Send, roles: ['super_admin'] },
+      { id: 'email-logs',  label: 'Audit Logs',  icon: Mail, roles: ['super_admin'] },
+    ]
+  },
+  {
+    title: "System",
+    items: [
+      { id: 'settings/rates',   label: 'Rates',       icon: Globe,      roles: ['super_admin'] },
+      { id: 'settings/company', label: 'Branding',    icon: Building2,  roles: ['super_admin'] },
+      { id: 'settings/mail',    label: 'Mail Server', icon: Mail,       roles: ['super_admin'] },
+    ]
+  }
+];
+
+export default function AdminSidebar({
+  currentUser, role, theme, onToggleTheme, isOpen, onClose
+}: AdminSidebarProps) {
+  const router   = useRouter();
   const pathname = usePathname();
 
   const handleLogout = async () => {
-    await fetch(`${API_BASE}/auth/logout`, { credentials: 'include' });
-    router.push('/admin/login');
+    localStorage.removeItem('nexus_token');
+    await fetch(`${API_BASE}/auth/logout`, { credentials: 'include' }).catch(() => {});
+    window.location.href = '/admin/login';
   };
 
-  const menuSections = [
-    {
-      title: "Main",
-      items: [
-        { id: 'requests', label: 'ERP Requests', icon: Inbox, roles: ['super_admin'] },
-        { id: 'tenants', label: 'SaaS Tenants', icon: Layers, roles: ['super_admin'] },
-        { id: 'packages', label: 'License Packages', icon: CreditCard, roles: ['super_admin'] },
-        { id: 'subscription', label: 'Subscription', icon: Zap, roles: ['super_admin', 'client'] },
-        { id: 'users', label: 'Client Accounts', icon: UserCheck, roles: ['super_admin'] },
-      ]
-    },
-    {
-      title: "Financials",
-      items: [
-        { id: 'invoices', label: 'Billing', icon: CreditCard, roles: ['super_admin'] },
-        { id: 'payments', label: 'History', icon: FileText, roles: ['super_admin'] },
-      ]
-    },
-    {
-      title: "Communications",
-      items: [
-        { id: 'send-email', label: 'Broadcast', icon: Send, roles: ['super_admin'] },
-        { id: 'email-logs', label: 'Audit Logs', icon: Mail, roles: ['super_admin'] },
-      ]
-    },
-    {
-      title: "System",
-      items: [
-        { id: 'settings/rates', label: 'Rates', icon: Globe, roles: ['super_admin'] },
-        { id: 'settings/company', label: 'Branding', icon: Building2, roles: ['super_admin'] },
-        { id: 'settings/mail', label: 'Mail Server', icon: Mail, roles: ['super_admin'] },
-      ]
+  const navigate = (id: string) => {
+    router.push(`/admin/${id}`);
+    if (typeof window !== 'undefined' && window.innerWidth < 1024) onClose?.();
+  };
+
+  const isActive = (id: string) => {
+    if (id === 'dashboard') {
+      return pathname === '/admin/dashboard' || pathname === '/admin';
     }
-  ];
+    return pathname.includes(`/admin/${id}`);
+  };
 
   return (
     <>
-      {/* Mobile Backdrop */}
+      {/* Mobile backdrop */}
       {isOpen && (
-        <div 
-          className="fixed inset-0 bg-slate-950/40 backdrop-blur-sm z-[60] lg:hidden transition-opacity duration-300"
+        <div
+          className="fixed inset-0 z-[60] bg-black/40 lg:hidden"
           onClick={onClose}
         />
       )}
 
       <aside className={`
-        fixed inset-y-0 left-0 w-64 bg-white dark:bg-slate-950 border-r border-slate-200 dark:border-white/5 
-        flex flex-col h-screen z-[70] transition-all duration-300 ease-in-out
+        fixed inset-y-0 left-0 z-[70] flex h-screen w-[220px] flex-col
+        border-r border-[#e4e4e7] bg-white
+        dark:border-[#27272a] dark:bg-[#18181b]
+        transition-transform duration-200 ease-in-out
         lg:sticky lg:top-0 lg:translate-x-0
         ${isOpen ? 'translate-x-0' : '-translate-x-full'}
       `}>
-        <div className="p-5 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-6 h-6 shrink-0 relative">
-              <img 
-                src="/icon-bizzflow-logo-optimized.webp" 
-                alt="BizzFlow" 
-                className="w-full h-full object-contain"
-              />
-            </div>
-            <span className="text-lg font-black tracking-tighter text-indigo-600 dark:text-white uppercase">BIZZFLOW</span>
+
+        {/* ── Logo ─────────────────────────────────── */}
+        <div className="flex h-14 items-center justify-between border-b border-[#e4e4e7] dark:border-[#27272a] px-4">
+          <div className="flex items-center gap-2.5">
+            <img src="/icon-bizzflow-logo-optimized.webp" alt="BizzFlow" className="h-6 w-6 object-contain" />
+            <span className="text-[13px] font-black tracking-tight text-[#09090b] dark:text-white">
+              BIZZFLOW
+            </span>
           </div>
-          <button 
+          <button
             onClick={onClose}
-            className="lg:hidden p-1.5 hover:bg-slate-100 dark:hover:bg-white/5 rounded-lg text-slate-400"
+            className="lg:hidden rounded-md p-1 text-[#a1a1aa] hover:bg-[#f4f4f5] dark:hover:bg-[#27272a] transition-colors"
           >
-            <X size={18} />
+            <X size={16} />
           </button>
         </div>
 
-        <nav className="flex-1 px-3 py-2 space-y-4 overflow-y-auto custom-scrollbar">
-          {menuSections.map((section, sIdx) => {
-            const filteredItems = section.items.filter(item => !item.roles || (role && item.roles.includes(role)));
-            if (filteredItems.length === 0) return null;
+        {/* ── Navigation ───────────────────────────── */}
+        <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-5">
+          {menuSections.map((section) => {
+            const items = section.items.filter(
+              (item) => !item.roles || (role && item.roles.includes(role))
+            );
+            if (!items.length) return null;
 
             return (
-              <div key={sIdx} className="space-y-1">
-                <h3 className="px-3 text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-2">
+              <div key={section.title}>
+                <p className="mb-1 px-2 text-[10px] font-semibold uppercase tracking-wider text-[#a1a1aa] dark:text-[#52525b]">
                   {section.title}
-                </h3>
-                {filteredItems.map((item) => {
-                  const Icon = item.icon;
-                  const isActive = pathname.includes(`/admin/${item.id}`) || (item.id === 'requests' && pathname === '/admin/dashboard');
-                  
-                  return (
-                    <button 
-                      key={item.id}
-                      onClick={() => {
-                        router.push(`/admin/${item.id}`);
-                        if (window.innerWidth < 1024) onClose?.();
-                      }}
-                      className={`w-full flex items-center gap-3 px-3 py-1.5 rounded-lg transition-all ${
-                        isActive 
-                        ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20' 
-                        : 'text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-white/5 hover:text-indigo-600 dark:hover:text-white'
-                      }`}
-                    >
-                      <Icon size={16} />
-                      <span className="text-xs font-bold">{item.label}</span>
-                    </button>
-                  );
-                })}
+                </p>
+                <div className="space-y-0.5">
+                  {items.map((item) => {
+                    const Icon    = item.icon;
+                    const active  = isActive(item.id);
+                    return (
+                      <button
+                        key={item.id}
+                        onClick={() => navigate(item.id)}
+                        className={`
+                          group relative flex w-full items-center gap-2.5 rounded-md px-2.5 py-2
+                          text-[13px] font-medium transition-colors text-left
+                          ${active
+                            ? 'bg-[#f4f4f5] text-[#09090b] dark:bg-[#27272a] dark:text-white font-semibold'
+                            : 'text-[#71717a] hover:bg-[#f4f4f5] hover:text-[#09090b] dark:text-[#71717a] dark:hover:bg-[#27272a] dark:hover:text-white'
+                          }
+                        `}
+                      >
+                        {/* Active left-bar indicator */}
+                        {active && (
+                          <span className="absolute left-0 top-1 bottom-1 w-[3px] rounded-full bg-[#6366f1]" />
+                        )}
+                        <Icon size={15} className="shrink-0" />
+                        <span>{item.label}</span>
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
             );
           })}
         </nav>
 
-        <div className="p-4 border-t border-slate-200 dark:border-white/5">
-          <div className="bg-slate-50 dark:bg-white/5 rounded-xl p-3 mb-4 border border-slate-200 dark:border-white/5">
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-lg bg-indigo-600 flex items-center justify-center text-white text-xs font-black">
-                {currentUser.charAt(0).toUpperCase()}
+        {/* ── Footer ───────────────────────────────── */}
+        <div className="border-t border-[#e4e4e7] dark:border-[#27272a] p-3 space-y-2">
+          {/* User row */}
+          <div className="flex items-center gap-2.5 rounded-md px-2 py-2">
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[#6366f1] text-[12px] font-bold text-white">
+              {currentUser.charAt(0).toUpperCase()}
+            </div>
+            <div className="min-w-0 flex-1">
+              <div className="truncate text-[12px] font-semibold text-[#09090b] dark:text-white">
+                {currentUser}
               </div>
-              <div className="min-w-0">
-                <div className="text-[11px] font-bold text-slate-900 dark:text-white truncate">{currentUser}</div>
-                <div className="text-[9px] text-slate-500 uppercase tracking-tighter font-black truncate">{role === 'super_admin' ? 'Master Access' : 'Client Access'}</div>
+              <div className="text-[10px] text-[#a1a1aa] dark:text-[#52525b]">
+                {role === 'super_admin' ? 'Super Admin' : 'Client'}
               </div>
             </div>
           </div>
-          
-          <div className="grid grid-cols-2 gap-2">
-            <button 
-              onClick={onToggleTheme}
-              title={theme === 'dark' ? 'Light Mode' : 'Dark Mode'}
-              className="flex items-center justify-center p-2 text-slate-600 dark:text-slate-400 bg-slate-100 dark:bg-white/5 hover:bg-indigo-500/10 hover:text-indigo-600 dark:hover:text-indigo-400 rounded-lg transition-all"
-            >
-              {theme === 'dark' ? <Sun size={16} /> : <Moon size={16} />}
-            </button>
 
-            <button 
-              onClick={handleLogout}
-              title="Logout"
-              className="flex items-center justify-center p-2 text-rose-500 bg-rose-500/5 hover:bg-rose-500/10 rounded-lg transition-all"
+          {/* Actions */}
+          <div className="grid grid-cols-2 gap-1.5">
+            <button
+              onClick={onToggleTheme}
+              className="flex items-center justify-center gap-1.5 rounded-md py-1.5 text-[11px] font-medium text-[#71717a] hover:bg-[#f4f4f5] hover:text-[#09090b] dark:hover:bg-[#27272a] dark:hover:text-white transition-colors"
             >
-              <LogOut size={16} />
+              {theme === 'dark' ? <Sun size={13} /> : <Moon size={13} />}
+              {theme === 'dark' ? 'Light' : 'Dark'}
+            </button>
+            <button
+              onClick={handleLogout}
+              className="flex items-center justify-center gap-1.5 rounded-md py-1.5 text-[11px] font-medium text-[#ef4444] hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors"
+            >
+              <LogOut size={13} />
+              Logout
             </button>
           </div>
         </div>

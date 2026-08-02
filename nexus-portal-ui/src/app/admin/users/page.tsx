@@ -3,152 +3,138 @@ import { API_BASE } from '@/config';
 
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { 
-  UserCheck, 
-  MoreVertical,
-  RefreshCcw
-} from 'lucide-react';
+import { UserCheck, MoreVertical, RefreshCcw, Plus } from 'lucide-react';
 import Pagination from '@/components/Pagination';
 
 export default function UsersPage() {
-  const [users, setUsers] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [users,       setUsers]       = useState<any[]>([]);
+  const [loading,     setLoading]     = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
   const router = useRouter();
 
-  
-
   const fetchData = async () => {
     setLoading(true);
     try {
-      // Role protection
       const authRes = await fetch(`${API_BASE}/auth/check`, { credentials: 'include' });
       if (authRes.ok) {
-         const authData = await authRes.json();
-         if (authData.role !== 'super_admin') {
-            router.push('/admin/dashboard');
-            return;
-         }
-      } else {
-         router.push('/admin/login');
-         return;
-      }
-
-      const res = await fetch(`${API_BASE}/admin/users`, { credentials: 'include' });
+        const authData = await authRes.json();
+        if (authData.role !== 'super_admin') { router.push('/admin/dashboard'); return; }
+      } else { router.push('/admin/login'); return; }
+      const res  = await fetch(`${API_BASE}/admin/users`, { credentials: 'include' });
       const data = await res.json();
       setUsers(data.data || []);
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setLoading(false);
-    }
+    } catch (err) { console.error(err); }
+    finally { setLoading(false); }
   };
 
-  useEffect(() => {
-    fetchData();
-  }, []);
+  useEffect(() => { fetchData(); }, []);
+
+  const pageItems  = users.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+  const totalPages = Math.ceil(users.length / itemsPerPage);
 
   return (
-    <div className="p-6 space-y-6">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-200 dark:border-white/5 pb-4">
+    <div className="p-6 space-y-5">
+      <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl sm:text-2xl font-black tracking-tight text-slate-900 dark:text-white">Client Accounts</h1>
-          <p className="hidden sm:block text-[11px] text-slate-500 dark:text-slate-400 font-bold uppercase tracking-widest mt-1">Manage enterprise identities</p>
+          <h1 className="text-lg font-semibold text-[#09090b] dark:text-white">Client Accounts</h1>
+          <p className="mt-0.5 text-[13px] text-[#71717a] dark:text-[#a1a1aa]">Manage enterprise identities</p>
         </div>
-        <button onClick={fetchData} className="p-1.5 glass glass-hover text-slate-400 rounded-lg transition-all">
-          <RefreshCcw size={16} className={loading ? 'animate-spin' : ''} />
+        <button onClick={fetchData} className="rounded-lg border border-[#e4e4e7] bg-white p-2 text-[#71717a] hover:bg-[#f4f4f5] dark:border-[#27272a] dark:bg-[#18181b] dark:hover:bg-[#27272a] transition-colors">
+          <RefreshCcw size={15} className={loading ? 'animate-spin' : ''} />
         </button>
       </div>
 
-      <div className="grid lg:grid-cols-4 gap-4">
-        <div className="glass p-5 h-fit space-y-4">
-          <h3 className="text-xs font-black uppercase tracking-widest flex items-center gap-2 text-slate-900 dark:text-white pb-3 border-b border-white/5">
-            <UserCheck size={14} className="text-indigo-600 dark:text-indigo-400" /> Authorize Identity
-          </h3>
+      <div className="grid gap-5 lg:grid-cols-4">
+        {/* Create user form */}
+        <div className="rounded-xl border border-[#e4e4e7] bg-white dark:border-[#27272a] dark:bg-[#18181b] p-5 h-fit">
+          <div className="mb-4 flex items-center gap-2 pb-3 border-b border-[#f4f4f5] dark:border-[#27272a]">
+            <UserCheck size={14} className="text-[#6366f1] dark:text-[#818cf8]" />
+            <h3 className="text-[13px] font-semibold text-[#09090b] dark:text-white">Authorize Account</h3>
+          </div>
           <form className="space-y-3" onSubmit={async (e) => {
             e.preventDefault();
             const formData = new FormData(e.currentTarget);
             const data = Object.fromEntries(formData.entries());
-            const res = await fetch(`${API_BASE}/admin/users/create`, {
-              method: 'POST',
-              headers: {'Content-Type': 'application/json'},
-              credentials: 'include',
-              body: JSON.stringify(data)
-            });
-            if (res.ok) {
-              alert('Account provisioned successfully');
-              (e.target as HTMLFormElement).reset();
-              fetchData();
-            }
+            const res = await fetch(`${API_BASE}/admin/users/create`, { method: 'POST', headers: {'Content-Type': 'application/json'}, credentials: 'include', body: JSON.stringify(data) });
+            if (res.ok) { alert('Account provisioned successfully'); (e.target as HTMLFormElement).reset(); fetchData(); }
           }}>
-            <div className="space-y-1">
-              <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Username</label>
-              <input name="username" required type="text" className="w-full bg-slate-50 dark:bg-slate-950/50 border border-slate-200 dark:border-white/10 rounded-lg px-3 py-1.5 text-xs text-slate-900 dark:text-white outline-none focus:border-indigo-500 transition-all font-bold" />
+            <div>
+              <label className="block text-[11px] font-medium text-[#71717a] dark:text-[#a1a1aa] mb-1.5">Username</label>
+              <input name="username" required type="text"
+                className="w-full rounded-lg border border-[#e4e4e7] bg-[#f4f4f5] py-2 px-3 text-[13px] text-[#09090b] dark:border-[#27272a] dark:bg-[#27272a] dark:text-white outline-none focus:border-[#6366f1] focus:ring-2 focus:ring-[#6366f1]/20 transition-all" />
             </div>
-            <div className="space-y-1">
-              <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Password</label>
-              <input name="password" required type="password" className="w-full bg-slate-50 dark:bg-slate-950/50 border border-slate-200 dark:border-white/10 rounded-lg px-3 py-1.5 text-xs text-slate-900 dark:text-white outline-none focus:border-indigo-500 transition-all font-bold" />
+            <div>
+              <label className="block text-[11px] font-medium text-[#71717a] dark:text-[#a1a1aa] mb-1.5">Password</label>
+              <input name="password" required type="password"
+                className="w-full rounded-lg border border-[#e4e4e7] bg-[#f4f4f5] py-2 px-3 text-[13px] text-[#09090b] dark:border-[#27272a] dark:bg-[#27272a] dark:text-white outline-none focus:border-[#6366f1] focus:ring-2 focus:ring-[#6366f1]/20 transition-all" />
             </div>
-            <button type="submit" className="w-full bg-indigo-600 hover:bg-indigo-500 text-white py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all shadow-md mt-2">Authorize</button>
+            <button type="submit"
+              className="flex w-full items-center justify-center gap-2 rounded-lg bg-[#6366f1] py-2 text-[13px] font-medium text-white hover:bg-[#4f46e5] transition-colors mt-1">
+              <Plus size={14} /> Create Account
+            </button>
           </form>
         </div>
 
-        <div className="lg:col-span-3 glass overflow-hidden">
-          <div className="px-5 py-3 border-b border-slate-200 dark:border-white/5 flex items-center justify-between bg-white/[0.02]">
-            <h3 className="text-xs font-black uppercase tracking-widest text-slate-900 dark:text-white">Verified Directory</h3>
-            <span className="px-2 py-0.5 bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 rounded text-[9px] font-black tracking-tighter uppercase border border-indigo-500/20">{users.length} Active</span>
+        {/* Users table */}
+        <div className="lg:col-span-3 overflow-hidden rounded-xl border border-[#e4e4e7] bg-white dark:border-[#27272a] dark:bg-[#18181b]">
+          <div className="flex items-center justify-between border-b border-[#e4e4e7] dark:border-[#27272a] px-5 py-3.5">
+            <h3 className="text-[13px] font-semibold text-[#09090b] dark:text-white">Verified Directory</h3>
+            <span className="rounded-md border border-[#e0e7ff] bg-[#eef2ff] px-2 py-0.5 text-[11px] font-medium text-[#6366f1] dark:border-[#6366f1]/20 dark:bg-[#6366f1]/10 dark:text-[#818cf8]">
+              {users.length} Active
+            </span>
           </div>
           <table className="w-full text-left">
-             <thead>
-                <tr className="border-b border-slate-200 dark:border-white/5 bg-slate-50 dark:bg-white/[0.01]">
-                   <th className="px-6 py-4 text-[11px] font-black text-slate-500 uppercase tracking-widest">Identity</th>
-                   <th className="px-6 py-4 text-[11px] font-black text-slate-500 uppercase tracking-widest">Role</th>
-                   <th className="px-6 py-4 text-[11px] font-black text-slate-500 uppercase tracking-widest">Tenant</th>
-                   <th className="px-6 py-4 text-[11px] font-black text-slate-500 uppercase tracking-widest text-right">Actions</th>
-                </tr>
-             </thead>
-             <tbody className="divide-y divide-slate-200 dark:divide-white/5">
-                 {users.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage).map((u) => (
-                   <tr key={u.id} className="hover:bg-slate-50 dark:hover:bg-white/[0.01] transition-colors group">
-                      <td className="px-4 py-2">
-                         <div className="flex items-center gap-3">
-                            <div className="w-8 h-8 rounded-lg bg-indigo-600 flex items-center justify-center text-white font-black text-xs">
-                               {u.full_name.charAt(0).toUpperCase()}
-                            </div>
-                            <div>
-                               <div className="text-xs font-bold text-slate-900 dark:text-white">{u.full_name}</div>
-                               <div className="text-[9px] text-slate-500 font-mono tracking-tighter">@{u.username}</div>
-                            </div>
-                         </div>
-                      </td>
-                      <td className="px-4 py-2">
-                         <span className={`px-1.5 py-0.5 rounded text-[9px] font-black uppercase tracking-tighter ${
-                            u.role === 'super_admin' ? 'bg-amber-500/10 text-amber-600' : 'bg-indigo-500/10 text-indigo-600'
-                         }`}>
-                            {u.role === 'super_admin' ? 'Master' : 'Client'}
-                         </span>
-                      </td>
-                      <td className="px-4 py-2">
-                         <div className="text-[11px] font-bold text-slate-700 dark:text-slate-300 truncate max-w-[150px]">{u.tenant_name || '—'}</div>
-                         <div className="text-[8px] text-slate-500 uppercase tracking-widest font-black">{u.tenant_name ? 'Enterprise' : 'System'}</div>
-                      </td>
-                      <td className="px-4 py-2 text-right">
-                         <button className="p-1.5 hover:bg-slate-200 dark:hover:bg-white/5 text-slate-400 hover:text-slate-900 dark:hover:text-white rounded-lg transition-all opacity-0 group-hover:opacity-100">
-                            <MoreVertical size={14} />
-                         </button>
-                      </td>
-                   </tr>
+            <thead>
+              <tr className="border-b border-[#e4e4e7] dark:border-[#27272a] bg-[#fafafa] dark:bg-[#18181b]">
+                {['Identity', 'Role', 'Tenant', ''].map((h, i) => (
+                  <th key={i} className={`px-5 py-3 text-[11px] font-semibold uppercase tracking-wider text-[#71717a] dark:text-[#a1a1aa] ${i === 3 ? 'text-right' : ''}`}>{h}</th>
                 ))}
-             </tbody>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-[#f4f4f5] dark:divide-[#27272a]">
+              {loading ? (
+                <tr><td colSpan={4} className="px-5 py-10 text-center">
+                  <div className="flex items-center justify-center gap-2 text-[13px] text-[#a1a1aa]">
+                    <div className="h-4 w-4 animate-spin rounded-full border-2 border-[#e4e4e7] border-t-[#6366f1]" /> Loading…
+                  </div>
+                </td></tr>
+              ) : pageItems.map(u => (
+                <tr key={u.id} className="group hover:bg-[#fafafa] dark:hover:bg-[#1c1c1f] transition-colors">
+                  <td className="px-5 py-3.5">
+                    <div className="flex items-center gap-3">
+                      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[#6366f1] text-[12px] font-bold text-white">
+                        {u.full_name.charAt(0).toUpperCase()}
+                      </div>
+                      <div>
+                        <div className="text-[13px] font-medium text-[#09090b] dark:text-white">{u.full_name}</div>
+                        <div className="text-[11px] font-mono text-[#71717a] dark:text-[#a1a1aa]">@{u.username}</div>
+                      </div>
+                    </div>
+                  </td>
+                  <td className="px-5 py-3.5">
+                    <span className={`rounded-md px-2 py-0.5 text-[11px] font-medium ${
+                      u.role === 'super_admin'
+                        ? 'border border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-800/40 dark:bg-amber-950/30 dark:text-amber-400'
+                        : 'border border-[#e0e7ff] bg-[#eef2ff] text-[#6366f1] dark:border-[#6366f1]/20 dark:bg-[#6366f1]/10 dark:text-[#818cf8]'
+                    }`}>
+                      {u.role === 'super_admin' ? 'Super Admin' : 'Client'}
+                    </span>
+                  </td>
+                  <td className="px-5 py-3.5">
+                    <div className="text-[13px] text-[#09090b] dark:text-white truncate max-w-[150px]">{u.tenant_name || '—'}</div>
+                    <div className="text-[11px] text-[#71717a] dark:text-[#a1a1aa]">{u.tenant_name ? 'Enterprise' : 'System'}</div>
+                  </td>
+                  <td className="px-5 py-3.5 text-right">
+                    <button className="rounded-md p-1.5 text-[#a1a1aa] hover:bg-[#f4f4f5] dark:hover:bg-[#27272a] transition-colors opacity-0 group-hover:opacity-100">
+                      <MoreVertical size={14} />
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
           </table>
-          <Pagination 
-            currentPage={currentPage}
-            totalPages={Math.ceil(users.length / itemsPerPage)}
-            onPageChange={setCurrentPage}
-            totalItems={users.length}
-            itemsPerPage={itemsPerPage}
-          />
+          <Pagination currentPage={currentPage} totalPages={totalPages} onPageChange={setCurrentPage} totalItems={users.length} itemsPerPage={itemsPerPage} />
         </div>
       </div>
     </div>

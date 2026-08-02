@@ -106,21 +106,34 @@ class Mailer {
             $mail->addAddress($to, $name);
             self::addCCAddresses($mail, $ccEmail);
             $mail->isHTML(true);
+
+            $isReminder = $customDescription && (strpos($customDescription, 'Reminder') !== false || strpos($customDescription, 'NOTICE') !== false);
+            
             if ($customDescription) {
-                $mail->Subject = "New Invoice #$invoiceNumber - $customDescription";
+                if (strpos($customDescription, '[') === 0 || $isReminder) {
+                    $mail->Subject = $customDescription;
+                } else {
+                    $mail->Subject = "New Invoice #$invoiceNumber - $customDescription";
+                }
             } else {
                 $mail->Subject = "New Invoice #$invoiceNumber for $period from Nebulink - $name";
             }
             
+            $heading = $isReminder ? "Payment Reminder" : "Invoice Generated";
+            $subheading = $isReminder ? "Urgent Action Required" : "Period: $period";
+            $introText = $isReminder 
+                ? "This is a payment reminder for invoice <strong>#$invoiceNumber</strong> for the billing period of <strong>$period</strong>. Our records show that this balance remains unpaid."
+                : "Your enterprise subscription invoice for <strong>$period</strong> has been generated successfully.";
+            
             $mail->Body = "
                 <div style=\"font-family: sans-serif; color: #1e293b; max-width: 600px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 16px; overflow: hidden;\">
-                    <div style=\"background: #6366f1; padding: 40px; text-align: center;\">
-                        <h1 style=\"color: white; margin: 0; font-size: 24px;\">Invoice Generated</h1>
-                        <p style=\"color: #e0e7ff; margin-top: 10px;\">Period: $period</p>
+                    <div style=\"background: " . ($isReminder ? '#ef4444' : '#6366f1') . "; padding: 40px; text-align: center;\">
+                        <h1 style=\"color: white; margin: 0; font-size: 24px;\">$heading</h1>
+                        <p style=\"color: #e0e7ff; margin-top: 10px;\">$subheading</p>
                     </div>
                     <div style=\"padding: 40px;\">
                         <h3 style=\"margin-top: 0;\">Hello $name,</h3>
-                        <p style=\"line-height: 1.6;\">Your enterprise subscription invoice for <strong>$period</strong> has been generated successfully.</p>
+                        <p style=\"line-height: 1.6;\">$introText</p>
                         
                         <div style=\"background: #f8fafc; padding: 25px; border-radius: 12px; margin: 30px 0; border: 1px solid #e2e8f0;\">
                             <table width=\"100%\" style=\"font-size: 14px;\">

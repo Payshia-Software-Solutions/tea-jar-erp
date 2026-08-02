@@ -11,7 +11,7 @@ class TenantModel {
     }
 
     public function getAll() {
-        $this->db->query("SELECT t.*, p.name as package_name FROM saas_tenants t LEFT JOIN saas_packages p ON t.package_id = p.id ORDER BY t.created_at DESC");
+        $this->db->query("SELECT t.*, p.name as package_name FROM saas_tenants t LEFT JOIN saas_packages p ON t.package_id = p.id WHERE t.status != 'Deleted' ORDER BY t.created_at DESC");
         return $this->db->resultSet();
     }
 
@@ -149,7 +149,7 @@ class TenantModel {
     }
 
     public function delete($id) {
-        $this->db->query("DELETE FROM saas_tenants WHERE id = :id");
+        $this->db->query("UPDATE saas_tenants SET status = 'Deleted' WHERE id = :id");
         $this->db->bind(':id', $id);
         return $this->db->execute();
     }

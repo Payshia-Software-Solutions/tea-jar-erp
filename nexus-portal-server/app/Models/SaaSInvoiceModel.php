@@ -12,9 +12,10 @@ class SaaSInvoiceModel {
 
     public function listAll() {
         $this->db->query("
-            SELECT i.*, t.name as tenant_name, t.admin_email, t.billing_cc_email
+            SELECT i.*, t.name as tenant_name, t.admin_email, t.billing_cc_email, p.name as package_name
             FROM saas_invoices i
             LEFT JOIN saas_tenants t ON i.tenant_id = t.id
+            LEFT JOIN saas_packages p ON t.package_id = p.id
             ORDER BY i.created_at DESC
         ");
         return $this->db->resultSet();
@@ -22,9 +23,10 @@ class SaaSInvoiceModel {
 
     public function getAllWithTenants() {
         $this->db->query("
-            SELECT i.*, t.name as tenant_name, t.admin_email, t.billing_cc_email
+            SELECT i.*, t.name as tenant_name, t.admin_email, t.billing_cc_email, p.name as package_name
             FROM saas_invoices i
             LEFT JOIN saas_tenants t ON i.tenant_id = t.id
+            LEFT JOIN saas_packages p ON t.package_id = p.id
             ORDER BY i.created_at DESC
         ");
         return $this->db->resultSet();

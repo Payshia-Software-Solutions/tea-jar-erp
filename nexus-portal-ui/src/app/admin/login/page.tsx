@@ -2,27 +2,32 @@
 import { API_BASE } from '@/config';
 
 import React, { useState, useEffect } from 'react';
-import { 
-  Zap, 
-  Lock, 
-  User, 
-  ShieldAlert,
-  Loader2,
-  ChevronRight
-} from 'lucide-react';
+import { Lock, User, ShieldAlert, Loader2, ArrowRight, Zap, Shield, BarChart3, Globe } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+
+const highlights = [
+  { icon: Shield,    title: 'Enterprise Security',   desc: 'Role-based access control with encrypted sessions.' },
+  { icon: BarChart3, title: 'Real-Time Analytics',   desc: 'Monitor tenants, billing, and platform health.' },
+  { icon: Globe,     title: 'Multi-Tenant Platform', desc: 'Manage unlimited SaaS clients from one dashboard.' },
+];
 
 export default function AdminLoginPage() {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
-  const [loading, setLoading] = useState(false);
+  const [error,    setError]    = useState('');
+  const [loading,  setLoading]  = useState(false);
   const router = useRouter();
 
   useEffect(() => {
-    // Check if already logged in
     fetch(`${API_BASE}/auth/check`, { credentials: 'include' })
-      .then(res => res.ok && router.push('/admin/dashboard'))
+      .then(res => {
+        if (res.ok) {
+          return res.json().then(data => {
+            const dest = data.role === 'super_admin' ? '/admin/requests' : '/admin/subscription';
+            router.push(dest);
+          });
+        }
+      })
       .catch(() => {});
   }, [router]);
 
@@ -30,109 +35,180 @@ export default function AdminLoginPage() {
     e.preventDefault();
     setLoading(true);
     setError('');
-
     try {
-      const response = await fetch(`${API_BASE}/auth/login`, {
-        method: 'POST',
+      const res = await fetch(`${API_BASE}/auth/login`, {
+        method:  'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ username, password })
+        body: JSON.stringify({ username, password }),
       });
-      const data = await response.json();
-
-      if (response.ok) {
-        router.push('/admin/dashboard');
+      const data = await res.json();
+      if (res.ok && data.status === 'success') {
+        if (data.token) {
+          localStorage.setItem('nexus_token', data.token);
+        }
+        const dest = data.role === 'super_admin' ? '/admin/requests' : '/admin/subscription';
+        window.location.href = dest;
       } else {
-        setError(data.message || 'Authentication failed');
+        setError(data.message || 'Invalid credentials. Please try again.');
       }
-    } catch (err) {
-      setError('Connection error. Is the PHP server running?');
+    } catch {
+      setError('Cannot connect to the server. Is the API running?');
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center p-4 relative overflow-hidden transition-colors duration-500">
-      {/* Background Orbs */}
-      <div className="absolute top-0 left-0 w-full h-full -z-10">
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-indigo-600/10 dark:bg-indigo-600/5 rounded-full blur-[120px]" />
-      </div>
+    <div className="flex min-h-screen bg-white dark:bg-[#09090b]">
 
-      <div className="w-full max-w-md lg:max-w-lg">
-        <div className="text-center mb-8">
-          <div className="inline-flex items-center gap-3 mb-6">
-            <div className="w-12 h-12 bg-indigo-600 rounded-2xl flex items-center justify-center shadow-lg shadow-indigo-500/20">
-              <Zap className="text-white fill-white" size={28} />
-            </div>
-            <span className="text-3xl font-black tracking-tighter text-gradient uppercase">Nexus Admin</span>
+      {/* ── Left panel (brand) ─────────────────────────────────── */}
+      <div className="hidden lg:flex lg:w-[45%] flex-col justify-between bg-[#09090b] dark:bg-[#18181b] p-12">
+        {/* Logo */}
+        <div className="flex items-center gap-3">
+          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#6366f1]">
+            <Zap size={20} className="text-white fill-white" />
           </div>
-          <h1 className="text-2xl font-bold text-strong">Welcome Back</h1>
-          <p className="text-muted mt-2 font-medium">Secure access to the Nexus Portal management suite.</p>
+          <span className="text-lg font-black tracking-tight text-white">BIZZFLOW</span>
         </div>
 
-        <div className="glass p-8 lg:p-12 relative overflow-hidden">
-          <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500" />
-          
-          <form onSubmit={handleLogin} className="space-y-6 relative z-10">
-            <div className="space-y-2">
-              <label className="text-xs font-bold uppercase tracking-widest text-muted flex items-center gap-2">
-                <User size={14} className="text-indigo-600 dark:text-indigo-400" />
+        {/* Main copy */}
+        <div>
+          <h1 className="mb-4 text-4xl font-bold leading-tight text-white tracking-tight">
+            Nexus Admin<br />
+            <span className="text-[#818cf8]">Control Centre</span>
+          </h1>
+          <p className="mb-10 text-[15px] text-[#71717a] leading-relaxed">
+            Manage your entire SaaS ecosystem — tenants, billing, requests, and communications — from one unified workspace.
+          </p>
+
+          {/* Feature list */}
+          <div className="space-y-5">
+            {highlights.map((h, i) => {
+              const Icon = h.icon;
+              return (
+                <div key={i} className="flex items-start gap-3.5">
+                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[#6366f1]/15">
+                    <Icon size={16} className="text-[#818cf8]" />
+                  </div>
+                  <div>
+                    <div className="text-[13px] font-semibold text-white">{h.title}</div>
+                    <div className="text-[12px] text-[#71717a] leading-snug mt-0.5">{h.desc}</div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Footer note */}
+        <div className="text-[11px] text-[#52525b]">
+          © 2026 BizzFlow · Powered by Nebulync
+        </div>
+      </div>
+
+      {/* ── Right panel (form) ─────────────────────────────────── */}
+      <div className="flex flex-1 flex-col items-center justify-center px-6 py-12">
+        {/* Mobile logo */}
+        <div className="mb-10 flex items-center gap-2.5 lg:hidden">
+          <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-[#6366f1]">
+            <Zap size={16} className="text-white fill-white" />
+          </div>
+          <span className="text-base font-black tracking-tight text-[#09090b] dark:text-white">BIZZFLOW</span>
+        </div>
+
+        <div className="w-full max-w-[360px]">
+          <div className="mb-8">
+            <h2 className="text-2xl font-bold tracking-tight text-[#09090b] dark:text-white">
+              Welcome back
+            </h2>
+            <p className="mt-1.5 text-sm text-[#71717a] dark:text-[#a1a1aa]">
+              Sign in to your admin account
+            </p>
+          </div>
+
+          <form onSubmit={handleLogin} className="space-y-4">
+            {/* Username */}
+            <div className="space-y-1.5">
+              <label className="block text-[13px] font-medium text-[#09090b] dark:text-white">
                 Username
               </label>
-              <input 
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-                required 
-                type="text" 
-                className="w-full bg-[var(--input-bg)] border border-[var(--input-border)] rounded-xl px-4 py-3.5 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition-all font-medium text-slate-950 dark:text-white placeholder:text-slate-400" 
-                placeholder="Enter admin username"
-              />
+              <div className="relative">
+                <User size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#a1a1aa]" />
+                <input
+                  type="text"
+                  required
+                  value={username}
+                  onChange={e => setUsername(e.target.value)}
+                  placeholder="admin"
+                  className="
+                    w-full rounded-lg border border-[#e4e4e7] bg-white py-2.5 pl-9 pr-3
+                    text-[13px] text-[#09090b] placeholder:text-[#a1a1aa]
+                    focus:border-[#6366f1] focus:outline-none focus:ring-2 focus:ring-[#6366f1]/20
+                    dark:border-[#27272a] dark:bg-[#18181b] dark:text-white
+                    dark:focus:border-[#818cf8] dark:focus:ring-[#818cf8]/20
+                    transition-all
+                  "
+                />
+              </div>
             </div>
 
-            <div className="space-y-2">
-              <label className="text-xs font-bold uppercase tracking-widest text-muted flex items-center gap-2">
-                <Lock size={14} className="text-indigo-600 dark:text-indigo-400" />
+            {/* Password */}
+            <div className="space-y-1.5">
+              <label className="block text-[13px] font-medium text-[#09090b] dark:text-white">
                 Password
               </label>
-              <input 
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required 
-                type="password" 
-                className="w-full bg-[var(--input-bg)] border border-[var(--input-border)] rounded-xl px-4 py-3.5 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition-all font-medium text-slate-950 dark:text-white placeholder:text-slate-400" 
-                placeholder="••••••••"
-              />
+              <div className="relative">
+                <Lock size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#a1a1aa]" />
+                <input
+                  type="password"
+                  required
+                  value={password}
+                  onChange={e => setPassword(e.target.value)}
+                  placeholder="••••••••"
+                  className="
+                    w-full rounded-lg border border-[#e4e4e7] bg-white py-2.5 pl-9 pr-3
+                    text-[13px] text-[#09090b] placeholder:text-[#a1a1aa]
+                    focus:border-[#6366f1] focus:outline-none focus:ring-2 focus:ring-[#6366f1]/20
+                    dark:border-[#27272a] dark:bg-[#18181b] dark:text-white
+                    dark:focus:border-[#818cf8] dark:focus:ring-[#818cf8]/20
+                    transition-all
+                  "
+                />
+              </div>
             </div>
 
+            {/* Error */}
             {error && (
-              <div className="p-3.5 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-600 dark:text-rose-400 text-sm flex items-center gap-3 font-bold">
-                <ShieldAlert size={18} className="shrink-0" />
-                {error}
+              <div className="flex items-center gap-2.5 rounded-lg border border-red-200 bg-red-50 px-3.5 py-3 dark:border-red-900/40 dark:bg-red-950/30">
+                <ShieldAlert size={15} className="shrink-0 text-red-500" />
+                <span className="text-[12px] font-medium text-red-600 dark:text-red-400">{error}</span>
               </div>
             )}
 
-            <button 
+            {/* Submit */}
+            <button
+              type="submit"
               disabled={loading}
-              type="submit" 
-              className="w-full btn-premium py-4 rounded-xl flex items-center justify-center gap-3 disabled:opacity-50"
+              className="
+                flex w-full items-center justify-center gap-2 rounded-lg bg-[#6366f1] py-2.5
+                text-[13px] font-semibold text-white
+                hover:bg-[#4f46e5] focus:outline-none focus:ring-2 focus:ring-[#6366f1]/40
+                disabled:opacity-60 disabled:cursor-not-allowed
+                transition-all
+              "
             >
-              {loading ? (
-                <Loader2 className="animate-spin" size={20} />
-              ) : (
-                <>
-                  <span className="font-bold uppercase tracking-[0.2em] text-xs">Connect to Dashboard</span>
-                  <ChevronRight size={18} strokeWidth={3} />
-                </>
-              )}
+              {loading
+                ? <><Loader2 size={15} className="animate-spin" /> Signing in…</>
+                : <><span>Sign in</span><ArrowRight size={14} /></>
+              }
             </button>
           </form>
-        </div>
 
-        <p className="mt-10 text-center text-muted text-[10px] font-bold uppercase tracking-[0.2em] leading-relaxed">
-          Protected by Nexus Security Protocols. <br />
-          Unauthorized access is strictly prohibited.
-        </p>
+          <p className="mt-8 text-center text-[11px] text-[#a1a1aa] dark:text-[#52525b]">
+            Protected by Nexus security. Unauthorized access is prohibited.
+          </p>
+        </div>
       </div>
     </div>
   );

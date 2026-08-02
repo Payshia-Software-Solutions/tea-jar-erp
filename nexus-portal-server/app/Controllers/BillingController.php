@@ -205,10 +205,25 @@ class BillingController extends Controller {
             $receiptPdf = \App\Services\InvoicePDF::generate($invoice, true);
             $invoicePdf = \App\Services\InvoicePDF::generate($invoice, false);
             $sent = \App\Core\Mailer::sendPaymentReceipt($invoice->admin_email, $invoice->tenant_name, $invoice->invoice_number, $receiptPdf, $invoicePdf, $invoice->amount, $invoice->currency, $invoice->receipt_number, $invoice->billing_cc_email);
+            
+            $subject = "Payment Receipt for Invoice #{$invoice->invoice_number} - {$invoice->tenant_name} | Nebulync";
         } else {
+            // Count existing resent log entries to determine escalation stage
+            $db = new \App\Core\Database();
+            $db->query("SELECT COUNT(*) as count FROM saas_email_logs WHERE invoice_id = :id AND status = 'Resent' AND email_type = 'Invoice'");
+            $db->bind(':id', $id);
+            $resentCount = $db->single()->count;
+
+            if ($resentCount == 0) {
+                $subject = "[1st Payment Reminder] Invoice #{$invoice->invoice_number} - {$invoice->tenant_name} | Nebulync";
+            } elseif ($resentCount == 1) {
+                $subject = "[2nd Payment Reminder] ACTION REQUIRED: Invoice #{$invoice->invoice_number} - {$invoice->tenant_name} | Nebulync";
+            } else {
+                $subject = "[FINAL NOTICE] SUSPENSION WARNING: Invoice #{$invoice->invoice_number} - {$invoice->tenant_name} | Nebulync";
+            }
+
             $pdf = \App\Services\InvoicePDF::generate($invoice, false);
-            $description = ($invoice->package_name ?? 'Subscription') . ' - ' . $invoice->tenant_name;
-            $sent = \App\Core\Mailer::sendInvoiceEmail($invoice->admin_email, $invoice->tenant_name, $invoice->invoice_number, $pdf, $invoice->billing_month, $invoice->amount, $invoice->currency, $invoice->billing_cc_email, $description);
+            $sent = \App\Core\Mailer::sendInvoiceEmail($invoice->admin_email, $invoice->tenant_name, $invoice->invoice_number, $pdf, $invoice->billing_month, $invoice->amount, $invoice->currency, $invoice->billing_cc_email, $subject);
         }
 
         $model->update($id, [
@@ -216,7 +231,7 @@ class BillingController extends Controller {
             'last_sent_at' => date('Y-m-d H:i:s')
         ]);
 
-        $model->logEmail($id, $isReceipt ? 'Receipt' : 'Invoice', $invoice->admin_email, $invoice->billing_cc_email, $sent ? 'Resent' : 'Failed');
+        $model->logEmail($id, $isReceipt ? 'Receipt' : 'Invoice', $invoice->admin_email, $invoice->billing_cc_email, $sent ? 'Resent' : 'Failed', null, $subject, \App\Core\Mailer::$lastBody);
 
         return $this->json([
             'status' => $sent ? 'success' : 'error', 

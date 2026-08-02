@@ -21,7 +21,7 @@ class AuthController extends Controller {
             $_SESSION['admin_user'] = $user->username;
             $_SESSION['admin_role'] = $user->role;
             $_SESSION['tenant_id'] = $user->tenant_id;
-            return $this->json(['status' => 'success', 'user' => $user->username, 'role' => $user->role]);
+            return $this->json(['status' => 'success', 'user' => $user->username, 'role' => $user->role, 'token' => session_id()]);
         } else {
             return $this->json(['status' => 'error', 'message' => 'Invalid credentials'], 401);
         }

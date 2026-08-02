@@ -3,7 +3,6 @@
 import * as React from "react";
 import { Moon, Sun } from "lucide-react";
 import { useTheme } from "next-themes";
-import { motion, AnimatePresence } from "framer-motion";
 
 export function ThemeToggle() {
   const { theme, setTheme } = useTheme();
@@ -13,36 +12,18 @@ export function ThemeToggle() {
     setMounted(true);
   }, []);
 
-  if (!mounted) return <div className="w-10 h-10" />;
+  if (!mounted) return <div className="w-9 h-9" />;
+
+  const isDark = theme === "dark";
 
   return (
     <button
-      onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-      className="relative w-10 h-10 rounded-full bg-slate-900/5 dark:bg-white/5 border border-slate-900/10 dark:border-white/10 flex items-center justify-center hover:scale-110 transition-transform overflow-hidden"
+      onClick={() => setTheme(isDark ? "light" : "dark")}
+      className="w-9 h-9 rounded-lg flex items-center justify-center text-[#6b7280] dark:text-[#8b949e] hover:bg-[#f3f4f6] dark:hover:bg-white/8 hover:text-[#111827] dark:hover:text-white transition-colors"
+      title={isDark ? "Switch to Light Mode" : "Switch to Dark Mode"}
+      aria-label={isDark ? "Switch to Light Mode" : "Switch to Dark Mode"}
     >
-      <AnimatePresence mode="wait" initial={false}>
-        {theme === "dark" ? (
-          <motion.div
-            key="moon"
-            initial={{ y: 20, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            exit={{ y: -20, opacity: 0 }}
-            transition={{ duration: 0.2 }}
-          >
-            <Moon size={20} className="text-indigo-400" />
-          </motion.div>
-        ) : (
-          <motion.div
-            key="sun"
-            initial={{ y: 20, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            exit={{ y: -20, opacity: 0 }}
-            transition={{ duration: 0.2 }}
-          >
-            <Sun size={20} className="text-amber-500" />
-          </motion.div>
-        )}
-      </AnimatePresence>
+      {isDark ? <Sun size={17} /> : <Moon size={17} />}
     </button>
   );
 }
