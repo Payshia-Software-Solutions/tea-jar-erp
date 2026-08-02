@@ -199,13 +199,13 @@ class PublicInvoiceController extends Controller {
         $db->beginTransaction();
 
         try {
-            // Resolve descriptions from parts if missing (defensive)
+            // Always overwrite item description with actual ERP product name from parts database
             foreach ($data['items'] as &$item) {
-                if (empty($item['description']) && !empty($item['item_id'])) {
+                if (!empty($item['item_id'])) {
                     $this->db->query("SELECT part_name FROM parts WHERE id = :id LIMIT 1");
                     $this->db->bind(':id', (int)$item['item_id']);
                     $part = $this->db->single();
-                    if ($part) {
+                    if ($part && !empty($part->part_name)) {
                         $item['description'] = $part->part_name;
                     }
                 }
