@@ -6,11 +6,44 @@
 class PublicCustomerController extends Controller {
     private $customerModel;
     private $orderModel;
+    private $apiClientModel;
+    private $db;
 
     public function __construct() {
         $this->customerModel = $this->model('Customer');
         $this->orderModel = $this->model('OnlineOrder');
+        $this->apiClientModel = $this->model('ApiClient');
         $this->db = new Database();
+    }
+
+    private function handlePublicCors() {
+        $origin = $_SERVER['HTTP_ORIGIN'] ?? '';
+        $apiKey = $_SERVER['HTTP_X_API_KEY'] ?? $_GET['api_key'] ?? '';
+        header('Access-Control-Allow-Methods: GET, POST, OPTIONS');
+        header('Access-Control-Allow-Headers: X-API-Key, Content-Type');
+        if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
+            if (!empty($apiKey) && !empty($origin) && $this->apiClientModel->validate($apiKey, $origin)) {
+                header('Access-Control-Allow-Origin: ' . $origin);
+            } else {
+                header('Access-Control-Allow-Origin: *');
+            }
+            http_response_code(204);
+            exit;
+        }
+        if (!empty($origin) && !empty($apiKey) && $this->apiClientModel->validate($apiKey, $origin)) {
+            header('Access-Control-Allow-Origin: ' . $origin);
+        } else {
+            header('Access-Control-Allow-Origin: *');
+        }
+    }
+
+    private function validatePublicApiKey() {
+        $this->handlePublicCors();
+        $headerKey = $_SERVER['HTTP_X_API_KEY'] ?? $_GET['api_key'] ?? '';
+        $origin = $_SERVER['HTTP_ORIGIN'] ?? '';
+        if (empty($headerKey) || !$this->apiClientModel->validate($headerKey, $origin)) {
+            $this->error('Unauthorized', 403);
+        }
     }
 
     /**
@@ -150,5 +183,70 @@ class PublicCustomerController extends Controller {
 
         $this->error('Unauthorized', 401);
         return false;
+    }
+
+    /**
+     * POST /api/publiccustomer/storefront-register
+     */
+    public function storefront_register() {
+        $this->handlePublicCors();
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            $this->error('Method Not Allowed', 405);
+            return;
+        }
+
+        $this->validatePublicApiKey();
+
+        $data = json_decode(file_get_contents('php://input'), true);
+
+        if (empty($data['phone']) || empty($data['name'])) {
+            $this->error('Phone and Name are required', 400);
+            return;
+        }
+
+        $phone = trim($data['phone']);
+        $name = trim($data['name']);
+        $email = trim($data['email'] ?? '');
+        $address = trim($data['address'] ?? '');
+
+        // Check if customer with same phone already exists
+        $this->db->query("SELECT id FROM customers WHERE phone = :phone LIMIT 1");
+        $this->db->bind(':phone', $phone);
+        $existing = $this->db->single();
+
+        if ($existing) {
+            // Update email/address if provided and empty in DB
+            $this->db->query("
+                UPDATE customers 
+                SET email = COALESCE(NULLIF(email, ''), :email),
+                    address = COALESCE(NULLIF(address, ''), :address),
+                    name = :name
+                WHERE id = :id
+            ");
+            $this->db->bind(':email', $email);
+            $this->db->bind(':address', $address);
+            $this->db->bind(':name', $name);
+            $this->db->bind(':id', $existing->id);
+            $this->db->execute();
+
+            $this->success(['id' => (int)$existing->id], 'Customer already exists, details updated');
+            return;
+        }
+
+        // Create new customer record
+        $this->db->query("
+            INSERT INTO customers (name, email, phone, address, is_active, order_type) 
+            VALUES (:name, :email, :phone, :address, 1, 'External')
+        ");
+        $this->db->bind(':name', $name);
+        $this->db->bind(':email', $email);
+        $this->db->bind(':phone', $phone);
+        $this->db->bind(':address', $address);
+
+        if ($this->db->execute()) {
+            $this->success(['id' => (int)$this->db->lastInsertId()], 'Customer registered successfully');
+        } else {
+            $this->error('Customer registration failed');
+        }
     }
 }
