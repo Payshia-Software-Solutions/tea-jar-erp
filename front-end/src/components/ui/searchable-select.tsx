@@ -27,6 +27,7 @@ export function SearchableSelect({
   contentClassName,
   emptyText = "No results",
   onSearchChange,
+  disablePortal = false,
 }: {
   value: string | null | undefined;
   onValueChange: (value: string) => void;
@@ -39,6 +40,7 @@ export function SearchableSelect({
   contentClassName?: string;
   emptyText?: string;
   onSearchChange?: (query: string) => void;
+  disablePortal?: boolean;
 }) {
   const [open, setOpen] = React.useState(false);
   const [query, setQuery] = React.useState("");
@@ -60,7 +62,7 @@ export function SearchableSelect({
 
   return (
     <div className={cn("w-full", className)}>
-      <Popover open={open} onOpenChange={(v) => (disabled ? setOpen(false) : setOpen(v))} modal={true}>
+      <Popover open={open} onOpenChange={(v) => (disabled ? setOpen(false) : setOpen(v))} modal={!disablePortal}>
         <PopoverTrigger asChild>
           <Button
             type="button"
@@ -82,6 +84,7 @@ export function SearchableSelect({
           sideOffset={12} 
           className={cn("p-0 w-[--radix-popover-trigger-width] z-[100000] shadow-2xl bg-white dark:bg-slate-900", contentClassName)}
           style={{ pointerEvents: 'auto' }}
+          disablePortal={disablePortal}
           onWheel={(e) => e.stopPropagation()}
           onPointerDown={(e) => e.stopPropagation()}
           onInteractOutside={(e) => {

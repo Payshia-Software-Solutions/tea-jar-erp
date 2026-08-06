@@ -125,6 +125,8 @@ class ProductionBOM extends Model {
                 }
             }
 
+            $this->updateFinishedProductCost($data['output_part_id'], $data['items'] ?? [], $data['output_qty'] ?? 1.000);
+
             $this->db->commit();
             return $bomId;
         } catch (Exception $e) {
@@ -167,6 +169,15 @@ class ProductionBOM extends Model {
                 }
             }
 
+            $outputPartId = isset($data['output_part_id']) ? $data['output_part_id'] : null;
+            if (!$outputPartId) {
+                $this->db->query("SELECT output_part_id FROM {$this->table} WHERE id = :id");
+                $this->db->bind(':id', (int)$id);
+                $row = $this->db->single();
+                if ($row) $outputPartId = $row->output_part_id;
+            }
+            $this->updateFinishedProductCost($outputPartId, $data['items'] ?? [], $data['output_qty'] ?? 1.000);
+
             $this->db->commit();
             return true;
         } catch (Exception $e) {
@@ -177,8 +188,8 @@ class ProductionBOM extends Model {
 
     public function getActiveBOMForPart($partId) {
         $this->db->query("SELECT id FROM {$this->table} 
-                         WHERE output_part_id = :part_id AND is_active = 1 
-                         LIMIT 1");
+                          WHERE output_part_id = :part_id AND is_active = 1 
+                          LIMIT 1");
         $this->db->bind(':part_id', (int)$partId);
         $bom = $this->db->single();
         
@@ -186,5 +197,30 @@ class ProductionBOM extends Model {
             return $this->getById($bom->id);
         }
         return null;
+    }
+
+    /**
+     * Calculate total material cost from ingredients and update finished product cost price.
+     */
+    private function updateFinishedProductCost($outputPartId, $items, $outputQty) {
+        if (!$outputPartId) return;
+        $totalCost = 0.0;
+        if (!empty($items)) {
+            foreach ($items as $item) {
+                $this->db->query("SELECT cost_price FROM parts WHERE id = :id");
+                $this->db->bind(':id', (int)$item['part_id']);
+                $partRow = $this->db->single();
+                $cost = $partRow ? (float)$partRow->cost_price : 0.0;
+                $totalCost += $cost * (float)$item['qty'];
+            }
+        }
+        $qty = (float)$outputQty;
+        if ($qty <= 0) $qty = 1.0;
+        $unitCost = $totalCost / $qty;
+
+        $this->db->query("UPDATE parts SET cost_price = :cost WHERE id = :id");
+        $this->db->bind(':cost', $unitCost);
+        $this->db->bind(':id', (int)$outputPartId);
+        $this->db->execute();
     }
 }

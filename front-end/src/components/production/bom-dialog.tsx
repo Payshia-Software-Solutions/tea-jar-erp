@@ -122,9 +122,18 @@ export function ProductionBOMDialog({ open, onOpenChange, onSuccess, bom }: BOMD
     }
   }
 
+  // Cost Calculations
+  const totalBOMCost = items.reduce((sum, item) => {
+    const part = parts.find(p => p.id === item.part_id)
+    const cost = part?.cost_price ? Number(part.cost_price) : 0
+    return sum + (cost * Number(item.qty || 0))
+  }, 0)
+
+  const finishedUnitCost = Number(outputQty) > 0 ? totalBOMCost / Number(outputQty) : 0
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{bom ? 'Edit BOM' : 'Create New BOM'}</DialogTitle>
         </DialogHeader>
@@ -156,6 +165,7 @@ export function ProductionBOMDialog({ open, onOpenChange, onSuccess, bom }: BOMD
                 options={parts.map(p => ({ value: String(p.id), label: `${p.part_name} (${p.sku || 'No SKU'})` }))}
                 value={outputPartId}
                 onValueChange={setOutputPartId}
+                disablePortal={true}
               />
             </div>
             <div className="space-y-2">
@@ -177,39 +187,58 @@ export function ProductionBOMDialog({ open, onOpenChange, onSuccess, bom }: BOMD
                 <thead className="bg-muted/50 border-b">
                   <tr>
                     <th className="px-4 py-2 text-left">Component Part</th>
+                    <th className="px-4 py-2 text-right w-28">Unit Cost</th>
                     <th className="px-4 py-2 text-left w-24">Qty</th>
+                    <th className="px-4 py-2 text-left w-20">Unit</th>
+                    <th className="px-4 py-2 text-right w-28">Total Cost</th>
                     <th className="px-4 py-2 text-center w-12"></th>
                   </tr>
                 </thead>
                 <tbody className="divide-y">
-                  {items.map((item, idx) => (
-                    <tr key={idx} className="hover:bg-muted/10">
-                      <td className="p-2">
-                        <SearchableSelect
-                          placeholder="Search part..."
-                          options={parts.map(p => ({ value: String(p.id), label: `${p.part_name} (${p.sku || 'No SKU'})` }))}
-                          value={String(item.part_id)}
-                          onValueChange={(val) => handleItemChange(idx, 'part_id', Number(val))}
-                        />
-                      </td>
-                      <td className="p-2">
-                        <Input 
-                          type="number" 
-                          step="0.001" 
-                          value={item.qty} 
-                          onChange={e => handleItemChange(idx, 'qty', e.target.value)} 
-                        />
-                      </td>
-                      <td className="p-2 text-center">
-                        <Button variant="ghost" size="icon" className="text-destructive h-8 w-8" onClick={() => removeItem(idx)}>
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
-                      </td>
-                    </tr>
-                  ))}
+                  {items.map((item, idx) => {
+                    const part = parts.find(p => p.id === item.part_id)
+                    const costPrice = part?.cost_price ? Number(part.cost_price) : 0
+                    const lineTotal = costPrice * Number(item.qty || 0)
+
+                    return (
+                      <tr key={idx} className="hover:bg-muted/10">
+                        <td className="p-2">
+                          <SearchableSelect
+                            placeholder="Search part..."
+                            options={parts.map(p => ({ value: String(p.id), label: `${p.part_name} (${p.sku || 'No SKU'})` }))}
+                            value={String(item.part_id)}
+                            onValueChange={(val) => handleItemChange(idx, 'part_id', Number(val))}
+                            disablePortal={true}
+                          />
+                        </td>
+                        <td className="p-2 text-right font-medium">
+                          ${costPrice.toFixed(2)}
+                        </td>
+                        <td className="p-2">
+                          <Input 
+                            type="number" 
+                            step="0.001" 
+                            value={item.qty} 
+                            onChange={e => handleItemChange(idx, 'qty', e.target.value)} 
+                          />
+                        </td>
+                        <td className="p-2 text-left font-medium text-muted-foreground">
+                          {part?.unit || '-'}
+                        </td>
+                        <td className="p-2 text-right font-semibold text-slate-900 dark:text-white">
+                          ${lineTotal.toFixed(2)}
+                        </td>
+                        <td className="p-2 text-center">
+                          <Button variant="ghost" size="icon" className="text-destructive h-8 w-8" onClick={() => removeItem(idx)}>
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        </td>
+                      </tr>
+                    )
+                  })}
                   {items.length === 0 && (
                     <tr>
-                      <td colSpan={3} className="px-4 py-8 text-center text-muted-foreground italic">
+                      <td colSpan={6} className="px-4 py-8 text-center text-muted-foreground italic">
                         No components added. Click "Add Item" to start.
                       </td>
                     </tr>
@@ -217,6 +246,29 @@ export function ProductionBOMDialog({ open, onOpenChange, onSuccess, bom }: BOMD
                 </tbody>
               </table>
             </div>
+
+            {/* Calculations Summary Card */}
+            <div className="flex flex-col sm:flex-row justify-between items-stretch sm:items-center p-4 bg-muted/40 border rounded-lg gap-4">
+              <div className="space-y-1">
+                <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Total BOM Material Cost</span>
+                <div className="text-xl font-bold text-slate-800 dark:text-slate-100">
+                  ${totalBOMCost.toFixed(2)}
+                </div>
+              </div>
+              <div className="border-t sm:border-t-0 sm:border-l border-muted-foreground/20 sm:pl-6 pt-3 sm:pt-0 space-y-1">
+                <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Output Yield Qty</span>
+                <div className="text-xl font-bold text-slate-800 dark:text-slate-100">
+                  {Number(outputQty || 1).toFixed(3)}
+                </div>
+              </div>
+              <div className="border-t sm:border-t-0 sm:border-l border-muted-foreground/20 sm:pl-6 pt-3 sm:pt-0 space-y-1">
+                <span className="text-xs font-semibold text-primary uppercase tracking-wider">Finished Product Unit Cost</span>
+                <div className="text-2xl font-black text-primary">
+                  ${finishedUnitCost.toFixed(2)}
+                </div>
+              </div>
+            </div>
+
           </div>
         </div>
 
@@ -231,3 +283,4 @@ export function ProductionBOMDialog({ open, onOpenChange, onSuccess, bom }: BOMD
     </Dialog>
   )
 }
+
