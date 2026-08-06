@@ -33,18 +33,52 @@ foreach ($client in $clients) {
         Write-Host "Fetching core-origin..." -ForegroundColor DarkGray
         git fetch core-origin
 
-        Write-Host "Merging core updates (main branch)..." -ForegroundColor DarkGray
-        # Use allow-unrelated-histories for edge cases and --no-edit to avoid hanging on message prompts
-        git merge core-origin/main --allow-unrelated-histories --no-edit
+        $originalBranch = (git branch --show-current).Trim()
         
-        if ($LASTEXITCODE -ne 0) {
-            Write-Host "MERGE CONFLICT or ERROR in $client!" -ForegroundColor Red
-            Write-Host "Please resolve conflicts manually in $clientDir before pushing." -ForegroundColor Red
-            continue
+        if ($originalBranch -ne "main") {
+            Write-Host "Switching to main branch..." -ForegroundColor DarkGray
+            git checkout main
+            
+            Write-Host "Merging core updates into main..." -ForegroundColor DarkGray
+            git merge core-origin/main --allow-unrelated-histories --no-edit
+            
+            if ($LASTEXITCODE -ne 0) {
+                Write-Host "MERGE CONFLICT or ERROR in $client on main branch!" -ForegroundColor Red
+                Write-Host "Please resolve conflicts manually in $clientDir." -ForegroundColor Red
+                git checkout $originalBranch
+                continue
+            }
+            
+            Write-Host "Pushing main to client's origin..." -ForegroundColor DarkGray
+            git push origin main
+            
+            Write-Host "Switching back to $originalBranch branch..." -ForegroundColor DarkGray
+            git checkout $originalBranch
+            
+            Write-Host "Merging main into $originalBranch..." -ForegroundColor DarkGray
+            git merge main --no-edit
+            
+            if ($LASTEXITCODE -ne 0) {
+                Write-Host "MERGE CONFLICT or ERROR in $client when merging main into $originalBranch!" -ForegroundColor Red
+                Write-Host "Please resolve conflicts manually in $clientDir." -ForegroundColor Red
+                continue
+            }
+            
+            Write-Host "Pushing $originalBranch to client's origin..." -ForegroundColor DarkGray
+            git push origin $originalBranch
+        } else {
+            Write-Host "Merging core updates into main..." -ForegroundColor DarkGray
+            git merge core-origin/main --allow-unrelated-histories --no-edit
+            
+            if ($LASTEXITCODE -ne 0) {
+                Write-Host "MERGE CONFLICT or ERROR in $client on main!" -ForegroundColor Red
+                Write-Host "Please resolve conflicts manually in $clientDir." -ForegroundColor Red
+                continue
+            }
+            
+            Write-Host "Pushing main to client's origin..." -ForegroundColor DarkGray
+            git push origin main
         }
-
-        Write-Host "Pushing to client's origin..." -ForegroundColor DarkGray
-        git push origin main
         
         Write-Host "$client Synced Successfully! `n" -ForegroundColor Green
     } else {

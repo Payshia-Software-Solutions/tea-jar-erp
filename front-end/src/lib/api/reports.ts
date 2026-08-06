@@ -358,3 +358,16 @@ export const fetchItemWiseSalesReport = async (params: { location_id?: string; f
   const data = await res.json();
   return data.status === 'success' ? data.data : data;
 };
+
+export const fetchBOMConsumptionReport = async (params: { location_id?: string; from?: string; to?: string }) => {
+  const qs = new URLSearchParams();
+  if (params.location_id) qs.set('location_id', params.location_id);
+  if (params.from) qs.set('from', params.from);
+  if (params.to) qs.set('to', params.to);
+
+  const res = await api(`/api/report/bom_consumption?${qs.toString()}`);
+  if (!res.ok) throw new Error('Failed to load BOM consumption report');
+  const data = await res.json();
+  return data.status === 'success' ? data.data : data;
+};
+
