@@ -1397,6 +1397,7 @@ class ReportController extends Controller {
                 ip.part_name AS ingredient_name,
                 ip.sku AS ingredient_sku,
                 ip.unit AS ingredient_unit,
+                ip.cost_price AS ingredient_cost,
                 p.id AS finished_id,
                 p.part_name AS finished_name,
                 p.sku AS finished_sku,
@@ -1411,7 +1412,7 @@ class ReportController extends Controller {
             WHERE i.status NOT IN ('Cancelled', 'CANCELLED')
               AND i.location_id IN ($inLoc)
               AND i.issue_date BETWEEN :from AND :to
-            GROUP BY bi.part_id, ip.part_name, ip.sku, ip.unit, p.id, p.part_name, p.sku
+            GROUP BY bi.part_id, ip.part_name, ip.sku, ip.unit, ip.cost_price, p.id, p.part_name, p.sku
             ORDER BY ip.part_name ASC, theoretical_qty DESC
         ";
 

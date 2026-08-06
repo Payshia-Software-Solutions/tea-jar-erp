@@ -7,6 +7,7 @@ import { ReportShell } from "../_components/report-shell";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import { useToast } from "@/hooks/use-toast";
 import { 
@@ -35,6 +36,7 @@ interface RawRecord {
   ingredient_name: string;
   ingredient_sku: string | null;
   ingredient_unit: string | null;
+  ingredient_cost: number | string | null;
   finished_id: number;
   finished_name: string;
   finished_sku: string | null;
@@ -47,6 +49,7 @@ type GroupedRow = {
   ingredient_name: string;
   ingredient_sku: string | null;
   ingredient_unit: string | null;
+  ingredient_cost: number;
   total_qty: number;
   breakdown: Array<{
     finished_id: number;
@@ -57,31 +60,31 @@ type GroupedRow = {
   }>;
 };
 
-async function downloadExcel(filename: string, rows: Array<GroupedRow>, meta: { location: string; period: string }) {
+async function downloadExcel(filename: string, rows: Array<GroupedRow>, meta: { location: string; period: string }, summaryOnly: boolean) {
   if (rows.length === 0) return;
 
   const wb = new ExcelJS.Workbook();
   const ws = wb.addWorksheet("BOM Stock Consumption");
 
   // Title
-  ws.mergeCells("A1:E1");
+  ws.mergeCells("A1:G1");
   const titleCell = ws.getCell("A1");
-  titleCell.value = "BOM Stock Consumption Report";
+  titleCell.value = "BOM Stock Consumption Report" + (summaryOnly ? " (Summary)" : "");
   titleCell.font = { name: "Arial", size: 16, bold: true, color: { argb: "FF1e293b" } };
   titleCell.alignment = { vertical: "middle", horizontal: "center" };
 
   // Meta
-  ws.mergeCells("A2:E2");
+  ws.mergeCells("A2:G2");
   ws.getCell("A2").value = `Location: ${meta.location}`;
   ws.getCell("A2").font = { name: "Arial", size: 11, bold: true };
-  ws.mergeCells("A3:E3");
+  ws.mergeCells("A3:G3");
   ws.getCell("A3").value = `Period: ${meta.period}`;
   ws.getCell("A3").font = { name: "Arial", size: 11, italic: true };
 
   ws.addRow([]); // Spacer
 
   // Header Row
-  const headerRow = ws.addRow(["Material / Ingredient", "SKU", "Unit", "Theoretical Qty Consumed", "Details / Breakdown"]);
+  const headerRow = ws.addRow(["Material / Ingredient", "SKU", "Unit", "Qty Consumed", "Cost Price", "Total Cost", "Details / Breakdown"]);
   headerRow.eachCell((cell) => {
     cell.font = { name: "Arial", size: 11, bold: true, color: { argb: "FFFFFFFF" } };
     cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF10b981" } }; // Emerald bg
@@ -91,36 +94,67 @@ async function downloadExcel(filename: string, rows: Array<GroupedRow>, meta: { 
     };
   });
 
+  let grandTotal = 0;
+
   // Rows
   rows.forEach((r) => {
+    const itemTotalCost = Number(r.total_qty * r.ingredient_cost);
+    grandTotal += itemTotalCost;
+
     // Ingredient Main Row
     const row = ws.addRow([
       r.ingredient_name,
       r.ingredient_sku || "-",
       r.ingredient_unit || "-",
       Number(r.total_qty),
+      Number(r.ingredient_cost),
+      itemTotalCost,
       "Summary Total"
     ]);
     row.getCell(4).numFmt = '#,##0.000';
+    row.getCell(5).numFmt = '#,##0.00';
+    row.getCell(6).numFmt = '#,##0.00';
     row.eachCell((cell) => {
       cell.font = { bold: true };
       cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFF0FDF4" } }; // Light emerald tint
     });
 
-    // Breakdown Rows
-    r.breakdown.forEach((b) => {
-      const bRow = ws.addRow([
-        `   └─ ${b.finished_name}`,
-        b.finished_sku || "-",
-        r.ingredient_unit || "-",
-        Number(b.qty),
-        `Finished Sales Qty: ${b.finished_qty_sold}`
-      ]);
-      bRow.getCell(4).numFmt = '#,##0.000';
-      bRow.eachCell((cell) => {
-        cell.font = { size: 10, italic: true, color: { argb: "FF475569" } };
+    if (!summaryOnly) {
+      // Breakdown Rows
+      r.breakdown.forEach((b) => {
+        const bRow = ws.addRow([
+          `   └─ ${b.finished_name}`,
+          b.finished_sku || "-",
+          r.ingredient_unit || "-",
+          Number(b.qty),
+          Number(r.ingredient_cost),
+          Number(b.qty * r.ingredient_cost),
+          `Finished Sales Qty: ${b.finished_qty_sold}`
+        ]);
+        bRow.getCell(4).numFmt = '#,##0.000';
+        bRow.getCell(5).numFmt = '#,##0.00';
+        bRow.getCell(6).numFmt = '#,##0.00';
+        bRow.eachCell((cell) => {
+          cell.font = { size: 10, italic: true, color: { argb: "FF475569" } };
+        });
       });
-    });
+    }
+  });
+
+  // Add Grand Total Row
+  const totalRow = ws.addRow([
+    "Grand Total Cost",
+    "",
+    "",
+    "",
+    "",
+    grandTotal,
+    ""
+  ]);
+  totalRow.getCell(6).numFmt = '#,##0.00';
+  totalRow.eachCell((cell) => {
+    cell.font = { bold: true, name: "Arial", size: 11 };
+    cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFE2E8F0" } }; // Slate-200 tint
   });
 
   // Columns Width
@@ -146,6 +180,7 @@ export default function BOMConsumptionReportPage() {
   const [locationId, setLocationId] = useState<string>(() => searchParams?.get("location_id") ?? "all");
   const [from, setFrom] = useState<string>(() => searchParams?.get("from") ?? firstDayOfMonth());
   const [to, setTo] = useState<string>(() => searchParams?.get("to") ?? todayLocalDate());
+  const [summaryOnly, setSummaryOnly] = useState<boolean>(false);
 
   const decodeToken = () => {
     try {
@@ -215,6 +250,7 @@ export default function BOMConsumptionReportPage() {
           ingredient_name: r.ingredient_name,
           ingredient_sku: r.ingredient_sku,
           ingredient_unit: r.ingredient_unit,
+          ingredient_cost: Number(r.ingredient_cost || 0),
           total_qty: 0,
           breakdown: []
         });
@@ -242,6 +278,10 @@ export default function BOMConsumptionReportPage() {
     }
     setExpandedIds(newSet);
   };
+
+  const grandTotalCost = useMemo(() => {
+    return groupedRows.reduce((sum, r) => sum + (r.total_qty * r.ingredient_cost), 0);
+  }, [groupedRows]);
 
   const printHref = useMemo(() => {
     const qs = new URLSearchParams();
@@ -280,7 +320,7 @@ export default function BOMConsumptionReportPage() {
             <CardTitle className="text-base font-semibold">Report Filters</CardTitle>
           </CardHeader>
           <CardContent className="p-4">
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
               <div>
                 <div className="text-xs font-semibold text-muted-foreground mb-1.5 uppercase tracking-wider">Location</div>
                 <SearchableSelect
@@ -298,6 +338,18 @@ export default function BOMConsumptionReportPage() {
                 <div className="text-xs font-semibold text-muted-foreground mb-1.5 uppercase tracking-wider">To Date</div>
                 <Input type="date" value={to} onChange={(e) => setTo(e.target.value)} className="h-9" />
               </div>
+              <div className="flex items-center gap-2 h-9 mt-auto pb-1">
+                <input
+                  type="checkbox"
+                  id="summary_only"
+                  checked={summaryOnly}
+                  onChange={(e) => setSummaryOnly(e.target.checked)}
+                  className="h-4 w-4 rounded border-slate-300 text-primary focus:ring-primary cursor-pointer"
+                />
+                <Label htmlFor="summary_only" className="text-xs font-semibold text-muted-foreground uppercase tracking-wider cursor-pointer select-none">
+                  Summary Only
+                </Label>
+              </div>
               <div className="flex items-end gap-2">
                 <Button onClick={() => void load()} className="flex-1 h-9" disabled={loading}>
                   {loading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
@@ -305,7 +357,7 @@ export default function BOMConsumptionReportPage() {
                 </Button>
                 <Button 
                   variant="outline" 
-                  onClick={() => void downloadExcel(`bom-consumption-${from}-to-${to}.xlsx`, groupedRows, { location: locationLabel, period: `${from} to ${to}` })} 
+                  onClick={() => void downloadExcel(`bom-consumption-${from}-to-${to}.xlsx`, groupedRows, { location: locationLabel, period: `${from} to ${to}` }, summaryOnly)} 
                   className="h-9 gap-1"
                   disabled={loading || groupedRows.length === 0}
                 >
@@ -322,37 +374,47 @@ export default function BOMConsumptionReportPage() {
           <table className="w-full text-sm">
             <thead className="bg-muted/50 border-b">
               <tr>
-                <th className="px-4 py-3 text-left w-12"></th>
+                {!summaryOnly && <th className="px-4 py-3 text-left w-12"></th>}
                 <th className="px-4 py-3 text-left">Material / Ingredient</th>
-                <th className="px-4 py-3 text-left w-36">SKU</th>
-                <th className="px-4 py-3 text-left w-24">Unit</th>
-                <th className="px-4 py-3 text-right w-48">Theoretical Qty Consumed</th>
+                <th className="px-4 py-3 text-left w-32">SKU</th>
+                <th className="px-4 py-3 text-left w-20">Unit</th>
+                <th className="px-4 py-3 text-right w-40">Qty Consumed</th>
+                <th className="px-4 py-3 text-right w-28">Cost Price</th>
+                <th className="px-4 py-3 text-right w-36">Total Cost</th>
               </tr>
             </thead>
             <tbody className="divide-y">
               {groupedRows.map((r) => {
-                const isExpanded = expandedIds.has(r.ingredient_id);
+                const isExpanded = expandedIds.has(r.ingredient_id) && !summaryOnly;
                 return (
                   <React.Fragment key={r.ingredient_id}>
                     {/* Ingredient Summary Row */}
                     <tr 
-                      onClick={() => toggleExpand(r.ingredient_id)}
-                      className="hover:bg-muted/10 cursor-pointer transition-colors font-medium bg-emerald-50/20 dark:bg-emerald-950/5"
+                      onClick={() => !summaryOnly && toggleExpand(r.ingredient_id)}
+                      className={`hover:bg-muted/10 transition-colors font-medium bg-emerald-50/20 dark:bg-emerald-950/5 ${!summaryOnly ? "cursor-pointer" : ""}`}
                     >
-                      <td className="px-4 py-3 text-center">
-                        {isExpanded ? (
-                          <ChevronDown className="w-4 h-4 text-muted-foreground inline" />
-                        ) : (
-                          <ChevronRight className="w-4 h-4 text-muted-foreground inline" />
-                        )}
-                      </td>
+                      {!summaryOnly && (
+                        <td className="px-4 py-3 text-center">
+                          {isExpanded ? (
+                            <ChevronDown className="w-4 h-4 text-muted-foreground inline" />
+                          ) : (
+                            <ChevronRight className="w-4 h-4 text-muted-foreground inline" />
+                          )}
+                        </td>
+                      )}
                       <td className="px-4 py-3 text-slate-900 dark:text-white font-semibold">
                         {r.ingredient_name}
                       </td>
                       <td className="px-4 py-3 text-muted-foreground">{r.ingredient_sku || "-"}</td>
                       <td className="px-4 py-3 text-muted-foreground">{r.ingredient_unit || "-"}</td>
-                      <td className="px-4 py-3 text-right font-bold text-emerald-600 dark:text-emerald-400">
+                      <td className="px-4 py-3 text-right font-bold">
                         {r.total_qty.toLocaleString(undefined, { minimumFractionDigits: 3, maximumFractionDigits: 3 })}
+                      </td>
+                      <td className="px-4 py-3 text-right font-medium text-slate-700 dark:text-slate-300">
+                        {r.ingredient_cost.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      </td>
+                      <td className="px-4 py-3 text-right font-bold text-emerald-600 dark:text-emerald-400">
+                        {(r.total_qty * r.ingredient_cost).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                       </td>
                     </tr>
 
@@ -373,8 +435,14 @@ export default function BOMConsumptionReportPage() {
                         <td className="px-4 py-2.5 text-xs text-muted-foreground">
                           Sales Qty: <span className="font-bold text-slate-700 dark:text-slate-300">{b.finished_qty_sold}</span>
                         </td>
-                        <td className="px-4 py-2.5 text-xs text-right text-slate-800 dark:text-slate-200 pr-12 font-medium">
+                        <td className="px-4 py-2.5 text-xs text-right text-slate-800 dark:text-slate-200 font-medium">
                           {b.qty.toLocaleString(undefined, { minimumFractionDigits: 3, maximumFractionDigits: 3 })}
+                        </td>
+                        <td className="px-4 py-2.5 text-xs text-right text-slate-600 dark:text-slate-400">
+                          {r.ingredient_cost.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        </td>
+                        <td className="px-4 py-2.5 text-xs text-right text-emerald-600 dark:text-emerald-400 font-semibold pr-4">
+                          {(b.qty * r.ingredient_cost).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                         </td>
                       </tr>
                     ))}
@@ -383,12 +451,25 @@ export default function BOMConsumptionReportPage() {
               })}
               {groupedRows.length === 0 && (
                 <tr>
-                  <td colSpan={5} className="px-4 py-12 text-center text-muted-foreground italic">
+                  <td colSpan={summaryOnly ? 6 : 7} className="px-4 py-12 text-center text-muted-foreground italic">
                     {loading ? "Loading data..." : "No material consumption records found for this period and location."}
                   </td>
                 </tr>
               )}
             </tbody>
+            {groupedRows.length > 0 && (
+              <tfoot className="bg-muted/30 border-t font-semibold">
+                <tr>
+                  {!summaryOnly && <td></td>}
+                  <td className="px-4 py-3 text-left" colSpan={3}>Grand Total Cost</td>
+                  <td></td>
+                  <td></td>
+                  <td className="px-4 py-3 text-right text-emerald-600 dark:text-emerald-400 font-bold text-base">
+                    {grandTotalCost.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  </td>
+                </tr>
+              </tfoot>
+            )}
           </table>
         </CardContent>
       </Card>

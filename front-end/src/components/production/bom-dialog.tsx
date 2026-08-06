@@ -212,7 +212,7 @@ export function ProductionBOMDialog({ open, onOpenChange, onSuccess, bom }: BOMD
                           />
                         </td>
                         <td className="p-2 text-right font-medium">
-                          ${costPrice.toFixed(2)}
+                          {costPrice.toFixed(2)}
                         </td>
                         <td className="p-2">
                           <Input 
@@ -226,7 +226,7 @@ export function ProductionBOMDialog({ open, onOpenChange, onSuccess, bom }: BOMD
                           {part?.unit || '-'}
                         </td>
                         <td className="p-2 text-right font-semibold text-slate-900 dark:text-white">
-                          ${lineTotal.toFixed(2)}
+                          {lineTotal.toFixed(2)}
                         </td>
                         <td className="p-2 text-center">
                           <Button variant="ghost" size="icon" className="text-destructive h-8 w-8" onClick={() => removeItem(idx)}>
@@ -252,7 +252,7 @@ export function ProductionBOMDialog({ open, onOpenChange, onSuccess, bom }: BOMD
               <div className="space-y-1">
                 <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Total BOM Material Cost</span>
                 <div className="text-xl font-bold text-slate-800 dark:text-slate-100">
-                  ${totalBOMCost.toFixed(2)}
+                  {totalBOMCost.toFixed(2)}
                 </div>
               </div>
               <div className="border-t sm:border-t-0 sm:border-l border-muted-foreground/20 sm:pl-6 pt-3 sm:pt-0 space-y-1">
@@ -264,7 +264,7 @@ export function ProductionBOMDialog({ open, onOpenChange, onSuccess, bom }: BOMD
               <div className="border-t sm:border-t-0 sm:border-l border-muted-foreground/20 sm:pl-6 pt-3 sm:pt-0 space-y-1">
                 <span className="text-xs font-semibold text-primary uppercase tracking-wider">Finished Product Unit Cost</span>
                 <div className="text-2xl font-black text-primary">
-                  ${finishedUnitCost.toFixed(2)}
+                  {finishedUnitCost.toFixed(2)}
                 </div>
               </div>
             </div>
