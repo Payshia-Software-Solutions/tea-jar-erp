@@ -125,3 +125,15 @@ export const fetchBomByPart = async (partId: number | string) => {
   const data = await res.json();
   return data.status === 'success' ? data.data : data;
 };
+
+export const deleteBom = async (id: number | string) => {
+  const res = await api(`/api/productionbom/delete/${id}`, {
+    method: 'POST',
+  });
+  if (!res.ok) {
+    const j = await res.json().catch(() => null);
+    throw new Error(j?.message || 'Failed to delete BOM');
+  }
+  return res.json() as Promise<ApiSuccess<null>>;
+};
+

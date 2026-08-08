@@ -93,6 +93,7 @@ export default function ReportsPage() {
     const inventory: ReportLink[] = [
       { title: "Stock Balance", desc: "All items, all or location-wise balances", href: "/reports/stock-balance", icon: Boxes },
       { title: "BOM Stock Consumption", desc: "Theoretical material consumption based on sales and BOM formulas", href: "/reports/bom-consumption", icon: Activity },
+      { title: "Material Issues Summary", desc: "Summary of stock items issued via issue notes within a date range", href: "/reports/material-issues-summary", icon: FileText },
       { title: "Item Movements", desc: "Pick an item to view its movements (GRN, adjustment, transfer, issues)", href: "/reports/item-movements", icon: Activity },
       { title: "Low Stock", desc: "Items below reorder level", href: "/reports/low-stock", icon: AlertTriangle },
       { title: "Stock Transfers", desc: "Transfer requests and fulfillment", href: "/reports/stock-transfers", icon: ArrowLeftRight },

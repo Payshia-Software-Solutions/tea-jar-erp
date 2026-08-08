@@ -1423,4 +1423,50 @@ class ReportController extends Controller {
 
         $this->success($this->db->resultSet());
     }
+
+    // GET /api/report/material_issues_summary
+    public function material_issues_summary() {
+        $u = $this->requirePermission('reports.read');
+        $locIds = $this->resolveLocationIds($u, $_GET['location_id'] ?? null);
+        $inLoc = $this->inList('loc', $locIds);
+        
+        $from = $_GET['from'] ?? date('Y-m-01');
+        $to = $_GET['to'] ?? date('Y-m-d');
+        $costCenterId = $_GET['cost_center_id'] ?? 'all';
+
+        $sql = "
+            SELECT 
+                ini.part_id,
+                p.part_name,
+                p.sku,
+                p.unit,
+                SUM(ini.qty_issued) AS total_qty_issued,
+                AVG(ini.unit_cost) AS avg_unit_cost,
+                SUM(ini.line_total) AS total_cost_value
+            FROM issue_notes isn
+            JOIN issue_note_items ini ON isn.id = ini.issue_note_id
+            JOIN parts p ON ini.part_id = p.id
+            WHERE isn.status = 'Issued'
+              AND isn.location_id IN ($inLoc)
+        ";
+
+        if ($costCenterId !== 'all') {
+            $sql .= " AND isn.cost_center_id = :cost_center_id";
+        }
+
+        $sql .= " AND DATE(isn.issued_at) BETWEEN :from AND :to
+            GROUP BY ini.part_id, p.part_name, p.sku, p.unit
+            ORDER BY total_cost_value DESC
+        ";
+
+        $this->db->query($sql);
+        $this->bindInList('loc', $locIds);
+        $this->db->bind(':from', $from);
+        $this->db->bind(':to', $to);
+        if ($costCenterId !== 'all') {
+            $this->db->bind(':cost_center_id', $costCenterId);
+        }
+
+        $this->success($this->db->resultSet());
+    }
 }

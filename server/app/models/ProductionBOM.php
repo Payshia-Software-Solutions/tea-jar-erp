@@ -223,4 +223,27 @@ class ProductionBOM extends Model {
         $this->db->bind(':id', (int)$outputPartId);
         $this->db->execute();
     }
+
+    public function delete($id) {
+        try {
+            $this->db->beginTransaction();
+            // Delete ingredients first
+            $this->db->query("DELETE FROM {$this->itemsTable} WHERE bom_id = :bom_id");
+            $this->db->bind(':bom_id', (int)$id);
+            $this->db->execute();
+            // Delete BOM header
+            $this->db->query("DELETE FROM {$this->table} WHERE id = :id");
+            $this->db->bind(':id', (int)$id);
+            $this->db->execute();
+
+            $this->db->commit();
+            return true;
+        } catch (Exception $e) {
+            $this->db->rollBack();
+            if ($e->getCode() == '23000' || strpos($e->getMessage(), '1451') !== false) {
+                throw new Exception("Cannot delete this BOM because it is referenced by production orders.");
+            }
+            throw $e;
+        }
+    }
 }
